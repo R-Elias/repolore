@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $RepoRoot = (Resolve-Path $RepoRoot).Path
-$SparseRoot = Join-Path $RepoRoot ".repolore/sparse-tree"
+$SparseRoot = Join-Path $RepoRoot "_repolore/sparse-tree"
 
 function Convert-ToRepoRelativePath {
     param([string]$Path)

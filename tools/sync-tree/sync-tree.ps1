@@ -1,7 +1,7 @@
 param(
     [string]$RepoRoot = (Get-Location).Path,
     [string[]]$ExcludeDirs = @(
-        ".repolore",
+        "_repolore",
         ".git",
         "node_modules",
         "bin",
@@ -19,7 +19,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $RepoRoot = (Resolve-Path $RepoRoot).Path
-$RepoLoreRoot = Join-Path $RepoRoot ".repolore"
+$RepoLoreRoot = Join-Path $RepoRoot "_repolore"
 $TreeRoot = Join-Path $RepoLoreRoot "tree"
 $EmptyMarker = "<!-- repolore:empty -->"
 

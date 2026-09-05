@@ -9,7 +9,7 @@ The tools exist to make RepoLore easier for agents and developers to use.
 ## Available Alpha Tools
 
 ```text
-.repolore/tools/
+tools/
   tools.md
 
   sync-tree/
@@ -33,20 +33,20 @@ The tools exist to make RepoLore easier for agents and developers to use.
 Write knowledge only to:
 
 ```text
-.repolore/tree/
+_repolore/tree/
 ```
 
 Do not manually edit:
 
 ```text
-.repolore/sparse-tree/
+_repolore/sparse-tree/
 ```
 
 The sparse tree is generated from the full tree.
 
 ## Tool: sync-tree
 
-Synchronizes `.repolore/tree/` with the repository structure.
+Synchronizes `_repolore/tree/` with the repository structure.
 
 It creates missing RepoLore nodes for folders and files.
 
@@ -57,22 +57,22 @@ It does not delete existing knowledge.
 Usage:
 
 ```powershell
-pwsh .repolore/tools/sync-tree/sync-tree.ps1
+pwsh tools/sync-tree/sync-tree.ps1
 ```
 
 ## Tool: sync-sparse-tree
 
-Regenerates `.repolore/sparse-tree/` from `.repolore/tree/`.
+Regenerates `_repolore/sparse-tree/` from `_repolore/tree/`.
 
 Only non-empty knowledge nodes are copied.
 
 Usage:
 
 ```powershell
-pwsh .repolore/tools/sync-sparse-tree/sync-sparse-tree.ps1
+pwsh tools/sync-sparse-tree/sync-sparse-tree.ps1
 ```
 
-Run this after changing `.repolore/tree/`.
+Run this after changing `_repolore/tree/`.
 
 ## Tool: path
 
@@ -83,7 +83,7 @@ It returns paths, not contents.
 Usage:
 
 ```powershell
-pwsh .repolore/tools/path/path.ps1 -TargetPath "src/services/payment/stripe.ts"
+pwsh tools/path/path.ps1 -TargetPath "src/services/payment/stripe.ts"
 ```
 
 ## Tool: context
@@ -97,7 +97,7 @@ It stops before exceeding the token budget.
 Usage:
 
 ```powershell
-pwsh .repolore/tools/context/context.ps1 -TargetPath "src/services/payment/stripe.ts" -BudgetTokens 8000
+pwsh tools/context/context.ps1 -TargetPath "src/services/payment/stripe.ts" -BudgetTokens 8000
 ```
 
 ## Tool: sparse-tree
@@ -107,13 +107,13 @@ Displays the non-empty RepoLore knowledge tree.
 Usage:
 
 ```powershell
-pwsh .repolore/tools/sparse-tree/sparse-tree.ps1
+pwsh tools/sparse-tree/sparse-tree.ps1
 ```
 
 To display from a specific point:
 
 ```powershell
-pwsh .repolore/tools/sparse-tree/sparse-tree.ps1 -StartPath "src/services"
+pwsh tools/sparse-tree/sparse-tree.ps1 -StartPath "src/services"
 ```
 
 ## Token Estimate

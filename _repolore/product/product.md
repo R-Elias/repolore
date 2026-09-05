@@ -1,6 +1,6 @@
 # RepoLore — Desired Result
 
-Status: product direction for the planned v1; features below are not claims about the current alpha scripts. Implementation contract: [roadmap](../roadmap/roadmap.md). Absolute constraints: [invariants](invariants.md).
+Status: product direction for the planned v1; features below are not claims about the current alpha scripts. Implementation contract: [roadmap](../roadmap/roadmap.md). Execution sequence: [first-release work packages](../roadmap/implementation-v1.md). Absolute constraints: [invariants](invariants.md).
 
 ## Philosophy
 

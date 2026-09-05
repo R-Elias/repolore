@@ -2,7 +2,7 @@
 
 Status: **DESIGN, not implemented.** This replaces the previous v0 plan. The first stable release is v1.0.0; preview releases may precede it. CLI versions and knowledge format versions are independent.
 
-Read [product direction](../product/product.md) for the desired experience and release objectives, and [invariants](../product/invariants.md) for non-negotiable rules. This file specifies the implementation work.
+Read [product direction](../product/product.md) for the desired experience and release objectives, and [invariants](../product/invariants.md) for non-negotiable rules. This file specifies the product contract. Execute the first release through [implementation work packages](implementation-v1.md): 13 dependency-ordered steps with pitfalls, fixtures, and explicit pass/fail gates. That guide resolves the implementation details referenced below; do not leave them for ad hoc interpretation.
 
 The existing PowerShell scripts and both copies of `method.md` describe the alpha layout. They are historical references, not exact v1 semantics. This planning update does not migrate the current knowledge base or change those scripts.
 
@@ -46,9 +46,9 @@ Root guidance, path notes, and custom notes are ordinary editable Markdown. Long
 
 ### Path mapping and custom nodes
 
-Keep alpha mappings for unambiguous existing paths: directory `src/payments/` maps to `sparse-tree/src/payments/payments.md`; file `src/payments/client.cs` maps to `sparse-tree/src/payments/client.cs.md`.
+Keep ordinary alpha mappings: directory `src/payments/` maps to `sparse-tree/src/payments/payments.md`; file `src/payments/client.cs` maps to `sparse-tree/src/payments/client.cs.md`.
 
-The old naming scheme can collide, for example directory `src/` and file `src/src`. Before implementing the resolver, specify and fixture-test a collision-free escape convention with a reversible mapping. Never silently assign one note to two targets. A collision blocks affected operations until resolved; do not globally rename existing unambiguous notes merely for convenience.
+Use the deterministic `~d-<UTF8 hex>` directory and `~f-<UTF8 hex>` file escapes specified in [implementation package 02](implementation-v1.md). They handle both `src/src` directory-note collisions and file `a` versus directory `a.md/` collisions. Mapping depends only on the source path, not sibling existence. Refuse unrepresentable/ambiguous paths before writing; never silently assign one note to two targets or guess ambiguous alpha authorship.
 
 Custom areas such as `architecture/`, `domain/`, and this repository's `product/` and `roadmap/` are supported alongside `sparse-tree/`. `sparse-tree`, `tree` (legacy), `sessions`, `.history`, and tool-owned temporary names are reserved. Custom Markdown is discoverable, directly readable through `context --node`, and included in recovery. Do not report it as orphaned source knowledge.
 
@@ -85,7 +85,7 @@ Human/agent workflow: read durable context and explicitly selected session → c
 - Record additions, modifications, and deletions. Read-only commands never checkpoint or otherwise write.
 - Store complete file contents addressed by hash plus a manifest of paths and hashes for each checkpoint. Unchanged content may share a stored object; no patch chains or database.
 - Hash and store the same bytes. Detect files changing during capture and fail with a retry instruction rather than claiming a consistent checkpoint. Users must pause edits while checkpointing; there is no filesystem-wide transactional snapshot guarantee.
-- No new checkpoint for unchanged state. Inject clock and checkpoint IDs for deterministic tests.
+- No new checkpoint for unchanged bytes and effective coverage/policy. Explicit checkpoint with history disabled fails clearly. Alpha checkpoint capture is supported for both physical copies without interpreting conflicts. Inject clock and checkpoint IDs for deterministic tests.
 - Only completed manifests are visible to history/restore. Interrupted writes must not damage the last completed checkpoint.
 
 A checkpoint captures the observed state, not every editor save. Edits between checkpoints collapse into one observed change. Files created and deleted between checkpoints are not recoverable. Prior content never captured cannot be reconstructed. Gitignored knowledge is eligible independently of Git status.
@@ -107,7 +107,7 @@ A checkpoint captures the observed state, not every editor save. Edits between c
 
 Count retained manifests and content objects toward `maxBytes`; document that temporary write space is additional. Evict oldest complete checkpoints, then reclaim objects no remaining checkpoint references. Never evict the latest completed checkpoint or current authored knowledge to make room for a failed capture.
 
-If the latest state or a required pre-operation checkpoint cannot fit, fail before a destructive operation; explain how to increase the budget or reduce coverage. A retention change takes effect at the next explicit checkpoint, not during reads. Recovery is bounded by retained checkpoints, and users may explicitly disable history or exclude sensitive files. Disabling/excluding is not a promise to erase previous snapshots; document retention and provide explicit local-history purge instructions.
+A destructive operation must retain both the pre-operation and resulting checkpoints, and protect its selected restore target during application. If that protected set cannot fit, fail before authored mutation; explain how to increase the budget or reduce coverage. A retention change takes effect at the next explicit checkpoint, not during reads. Recovery is bounded by retained checkpoints, and users may explicitly disable history or exclude sensitive files. Disabling/excluding is not a promise to erase previous snapshots; document retention and provide explicit local-history purge instructions.
 
 Session snapshots share the existing history budget; no second cache or retention mechanism is introduced. `history.exclude` can opt out session paths, with the same recovery limitations as other knowledge. History includes other sessions even when context reads only one.
 
@@ -116,10 +116,10 @@ Session snapshots share the existing history budget; no second cache or retentio
 - `history` lists completed checkpoints and changed paths, without exposing file contents by default.
 - `restore <id> [--path <knowledge-path>] --dry-run` previews creates, replacements, and deletions.
 - Applying restore requires a successful checkpoint of current affected contents first, including files absent from the destination snapshot. Refuse if history is disabled or the affected files cannot be protected. The resulting state is checkpointed as well. A restore of configuration uses the pre-operation coverage/budget for the complete recovery transaction; restored policy applies to subsequent operations.
-- A whole-checkpoint restore only affects its declared managed scope, not arbitrary repository files or excluded knowledge. Validate all manifest paths and hashes before applying changes.
-- If an operation fails midway, report partial completion and the pre-operation recovery ID. Do not claim whole-directory atomicity. Keep that checkpoint available for retry/recovery.
+- Ordinary whole-checkpoint restore uses the intersection of saved and current coverage; saved absence only means deletion inside that intersection. A migration rollback uses its explicitly recorded extended physical scope, including marker absence and new destinations. Neither affects arbitrary source files or unrelated excluded knowledge. Validate all manifest paths and hashes before applying changes.
+- If an operation fails midway, report partial completion and the pre-operation recovery ID. Do not claim whole-directory atomicity. Keep that checkpoint available for retry/recovery through a small pending record containing frozen policy and before/after path state. Block ordinary mutations until explicit recovery via `restore <pre-operation-id>` succeeds; never automatically replay on reads. See implementation package 07.
 - Explicit method updates and migrations use the same pre-operation preservation rule. An unchanged `init` is a no-op.
-- Serialize mutating commands with one short-lived exclusive history lock; fail clearly on another writer. This is the narrow exception to avoiding coordination infrastructure. There is no background process. Specify crash cleanup and recovery before implementing mutations.
+- Serialize mutating commands with one short-lived exclusive history lock; fail clearly on another writer. This is the narrow exception to avoiding coordination infrastructure. There is no background process. Use an OS-held exclusive lock, not file existence/PID-age guessing; process death releases ownership. Implement the failure gates in packages 05–07 before enabling destructive handlers.
 
 ## 4. Discovery, Git tracking, and recovery are separate policies
 
@@ -131,9 +131,9 @@ Session snapshots share the existing history budget; no second cache or retentio
 
 For source discovery, always exclude `_repolore/`, VCS internals, and symlink/reparse-point traversal. Ordinary generated-directory exclusions (`bin`, `obj`, `node_modules`, `build`, `vendor`, etc.) are defaults users can override; they must not be hard-coded prohibitions on authored source.
 
-For v1, implement one documented, bounded glob matcher for `_repoloreignore`; support root-relative paths, `*`, `**`, `?`, directory rules, comments, and ordered `!` negation. Specify exact matching semantics in fixtures before implementation. Do not advertise full Git ignore compatibility. No Git subprocess backend is required in v1. `.gitignore` continues to control Git itself and is not implicitly reused for history or discovery. This replaces the old hybrid Git delegate plan.
+For v1, implement one documented, bounded glob matcher for `_repoloreignore`; support root-relative paths, `*`, `**`, `?`, directory rules, comments, and ordered `!` negation. Use the anchored, case-sensitive rule grammar in implementation package 03; `build/` is root-only and `**/build/` matches any depth. Freeze that table as fixtures before implementing the matcher. Do not advertise full Git ignore compatibility. No Git subprocess backend is required in v1. `.gitignore` continues to control Git itself and is not implicitly reused for history or discovery. This replaces the old hybrid Git delegate plan.
 
-Never prune a parent if a later supported include rule could require traversing it. `health-check --explain <path>` reports source-discovery and history decisions with matching rules; direct users to Git for actual Git tracking status. Explicit path lookup can read existing authored notes even when their source path is excluded from discovery.
+For simple correct re-inclusion, traverse user-excluded directories whenever any negation rule exists; continue pruning hard safety exclusions. `health-check --explain <path>` reports source-discovery and history decisions with matching rules; direct users to Git for actual Git tracking status. Explicit path lookup can read existing authored notes even when their source path is excluded from discovery.
 
 Require `_repolore/sessions/` and `_repolore/.history/`, plus documented temporary paths, in the recommended `.gitignore` setup. Session folders are not committed or included in release artifacts. This is a workflow rule, not protection against a user forcing a Git add. `init` reports required entries without rewriting existing Git rules. Gitignore does not untrack already committed files. Provide setup instructions for correcting that situation. Users choose additional local-only paths; `history.exclude` separately opts files out of future checkpoints. Ignore changes never remove authored knowledge.
 
@@ -145,7 +145,7 @@ Common flags: `--repo-root <path>`, `--json`, `--quiet`, `--help`. Except for `i
 |---|---|
 | `init [--update-method]` | Create missing configuration and entry-point templates plus `sparse-tree/`; no empty nodes or custom-area templates. Checkpoint initialized state. Existing alpha state requires explicit migration. Explicit method update preserves old bytes first. |
 | `path <target> [--include-method]` | List root, ancestors, and target note in deterministic order with existence/empty status. Missing nodes are normal. Nonexistent directory targets use a trailing slash. |
-| `context <target> [--budget-tokens 8000] [--include-method] [--strict]` | Read those notes, skipping missing/empty nodes. Include source labels and report omissions. Estimate tokens as `ceil(chars/4)` including rendered overhead; label as approximate. Skip a non-fitting note and continue to smaller notes rather than dropping every subsequent local note. `--strict` returns findings exit code if non-empty notes are omitted for budget. |
+| `context <target> [--budget-tokens 8000] [--include-method] [--strict]` | Read those notes, skipping missing/empty nodes. Include source labels and report omissions. Use the canonical content-block estimator from implementation package 04, including source labels and content; diagnostics/serialization overhead is outside the content allowance. Label as approximate. Skip a non-fitting note and continue to smaller notes rather than dropping every subsequent local note. `--strict` returns findings exit code if non-empty notes are omitted for budget. |
 | `context --node <knowledge-path>` | Read an explicit root-relative custom or path note under `_repolore/`, using the same budget/output rules. Accept repeatable `--node` for explicitly requested additional notes. A session note requires matching `--session <id>`; reject cross-session paths. Never allow access to history internals through context. |
 | `context [<target>] --session <id> [--node <knowledge-path>]` | Read only the selected session root and explicitly requested notes, optionally after durable path context. Missing session/root returns an actionable finding; never select another session or create files. Label provisional sources and share the existing context budget. |
 | `tree [--start <knowledge-path>]` | Display durable knowledge, directories first and ordinal-sorted, excluding sessions, recovery, and tool internals by default. Explicit `--start _repolore/sessions/` lists sessions; starting inside one lists its notes. No source mirror required. |
@@ -162,11 +162,11 @@ Remove `sync`, `sync-tree`, and `sync-sparse-tree` from v1. There is no mirror t
 
 ## 6. Alpha compatibility and migration
 
-No marker means alpha format 0. The new authored `sparse-tree/` contract is format 1; no format-1 implementation was released by the superseded design. Unknown higher versions fail with an upgrade instruction and no writes. Preserve unknown JSON fields when rewriting configuration.
+No marker in a nonempty authored knowledge base means alpha format 0; an absent/empty/tool-temporary-only directory is eligible for fresh initialization, whose valid marker is published before templates to make retries safe. The new authored `sparse-tree/` contract is format 1; no format-1 implementation was released by the superseded design. Unknown higher versions fail with an upgrade instruction and no writes. Preserve unknown JSON fields when rewriting configuration.
 
 Read-only legacy support must consider both alpha `tree/` and committed `sparse-tree/`. Use an available non-empty copy; if both differ, report a conflict instead of guessing. A fresh clone containing only `sparse-tree/` must remain readable.
 
-Before migration, inventory both copies and all custom areas. Migration capture explicitly includes legacy tree contents and both variants, beyond ordinary v1 history coverage. Preserve every authored variant in recovery; abort before writes on unresolved differing copies or ambiguous path mappings. The migration plan identifies the canonical destination, leaves custom areas and any existing session folders intact, removes only validated redundant/empty legacy material after preservation, and updates the marker last. Do not treat the old byte-for-byte CLI output as a compatibility gate: preservation and explainable interpretation are the gates.
+Before migration, inventory both copies and all custom areas; conflicts and previews make no writes. Standalone alpha checkpoint can preserve variants before manual conflict resolution. Migration capture explicitly includes legacy tree contents and both variants, beyond ordinary v1 history coverage. Preserve every authored variant in recovery; abort before writes on unresolved differing copies or ambiguous path mappings. The migration plan identifies the canonical destination, leaves custom areas and any existing session folders intact, removes only validated redundant/empty legacy material after preservation, and updates the marker last. Do not treat the old byte-for-byte CLI output as a compatibility gate: preservation and explainable interpretation are the gates.
 
 The migration must flag the old `_repolore/tree/` Git ignore rule as obsolete and recommend the history and sessions exclusions; it must not blindly replace user Git configuration. Never run the alpha sparse generator on a migrated knowledge base. Restore of pre-migration state must include layout and marker/configuration bytes so rollback is meaningful.
 
@@ -193,7 +193,7 @@ Pack only `RepoLore.Cli` with `PackAsTool=true`, `ToolCommandName=repolore`, `Pa
 
 Document the .NET SDK installation prerequisite and compatible .NET 10 runtime. Do not claim that installing the NuGet package installs the SDK/runtime, and do not silently opt users into untested major runtime roll-forward.
 
-Publish the same versioned `.nupkg` to NuGet.org and as a release download. Enterprises may approve/copy it to an Artifactory NuGet repository or local folder feed. Artifactory requires no RepoLore-specific integration: this is a NuGet package of type DotnetTool. Installation uses `dotnet tool install`, not `dotnet add package`.
+Publish one versioned tool to NuGet.org and provide the verified release `.nupkg`. Record checksums for the exact distributed artifacts: repository signing can change archive bytes after upload while preserving signed content identity (implementation package 13). Enterprises may approve/copy it to an Artifactory NuGet repository or local folder feed. Artifactory requires no RepoLore-specific integration: this is a NuGet package of type DotnetTool. Installation uses `dotnet tool install`, not `dotnet add package`.
 
 Recommend a committed local tool manifest with a pinned version, plus an approved NuGet configuration that clears other sources. Do not commit credentials. Document global installation as an individual-user option. Updates change the pinned version through normal review; knowledge-format migration remains explicit.
 
@@ -218,50 +218,20 @@ CI: restore locked build dependencies → build with warnings as errors and bann
 
 Release: verify tag against a single version source → run CI → pack/sign → verify signed package → produce checksum/SBOM → publish the same package and release notes. Test tool-manifest restore from the offline feed. Measure a fixed medium-size fixture manually when scale behavior changes; correctness and preservation are the release gates.
 
-## 10. Implementation phases
+## 10. Implementation sequence
 
-### P0 — Finalize the contract before coding
+Use [First Release — Implementation Work Packages](implementation-v1.md) as the execution checklist and completion record. Each package defines its dependency, deliverable, pitfalls, and concrete pass/fail evidence. None is implemented merely because the plan exists.
 
-- [ ] Resolve the collision-free path escape convention and freeze fixtures.
-- [ ] Specify ignore matching, configuration validation, history layout, restore scope, retention accounting, and interrupted-operation recovery.
-- [ ] Define stable JSON schemas, health finding IDs, and migration examples.
-- [ ] Freeze session selection, node/budget ordering, local-only setup, and manual promotion/cleanup examples using a two-session fixture.
-- [ ] Draft the v1 method from this contract, keeping alpha guidance clearly labeled until migration is implemented.
-- Gate: a maintainer can explain fresh-clone reading, a direct edit, a checkpoint, a restore, and an alpha migration from fixtures alone.
+| Stage | Work packages | Gate |
+|---|---|---|
+| Boundary and contracts | 01–03: executable guards, safe paths/mapping, independent policies | Fail safely on forbidden capabilities, ambiguous destinations, and malformed policy. |
+| Readable knowledge | 04: durable/session context | Exact selected content; unrelated sessions excluded; reads unchanged. |
+| Recovery foundation | 05–07: capture, retention, restore | Byte recovery, budgeted undo pair, and explicit interrupted-operation recovery pass before destructive commands. |
+| Adoption and diagnostics | 08–10: init, migration, health/CLI contract | Retryable initialization, conflict-free migration/rollback, stable findings, and write-free previews. |
+| Distribution | 11–12: actual NuGet package and preview workflow | Clean-cache local-feed install, explicit session workflow, and usable fresh clone. |
+| Stable release | 13: signed v1.0.0 | Verified final artifact, required tests, supported-platform smoke, and complete local recovery guidance. |
 
-### P1 — Core scaffold and read-only use
-
-- [ ] Create three source projects, one test project, pinned SDK/versions, and CI.
-- [ ] Add network API guards, filesystem boundary checks, parser, and renderers.
-- [ ] Implement path, context, tree, version, and read-only legacy handling, including explicit session selection and default session exclusion.
-- Gate: canonical and alpha fixtures are readable; reads make no changes.
-
-### P2 — Checkpoint recovery
-
-- [ ] Implement configuration, coverage rules, byte hashing, full-version objects, completed manifests, and bounded retention.
-- [ ] Implement checkpoint, history, restore preview/application, and exclusive mutation guard.
-- [ ] Add failure and preservation tests before allowing destructive mutations, including session edits/deletions under the shared recovery budget.
-- Gate: direct file changes including deletions and Gitignored notes are recoverable between checkpoints; failed capture cannot destroy the prior state.
-
-### P3 — Initialization, policy, and migration
-
-- [ ] Implement init with first checkpoint, policy explanations, and health-check, documenting required sessions/history Git exclusions and optional session validation.
-- [ ] Implement explicit alpha migration, conflict refusal, and rollback.
-- [ ] Update both method copies and agent instructions for the implemented contract; migrate dogfood knowledge with preservation.
-- Gate: a fresh clone retains its knowledge, an alpha migration loses no authored variant, and dry-runs write nothing.
-
-### P4 — NuGet preview
-
-- [ ] Pack only RepoLore.Cli and validate installation/restore from a local feed.
-- [ ] Publish a preview with clear limitations and concise setup, daily-use, review, and recovery instructions.
-- [ ] Exercise the workflow on this repository and at least one other repository when available; fix confusing behavior.
-- Gate: one developer can install, initialize, read, create/resume a local session, edit, checkpoint, promote a finding for review, and restore using the documentation.
-
-### P5 — v1.0.0
-
-- [ ] Complete signing/verification, release metadata, and internal-feed/Artifactory documentation.
-- [ ] Run required deterministic tests and offline package smoke; publish one versioned NuGet tool package.
-- Gate: the approved package is installable from an internal or offline feed, all built-in use is local, and the recovery limitations are explicit.
+Do not weaken a preservation gate to reach a preview date. Later work may proceed only where its dependencies are already satisfied. Release credentials may be prepared independently; missing signing infrastructure does not justify calling an unsigned preview enterprise-ready.
 
 ## 11. Later releases
 

@@ -8,9 +8,10 @@ This repository is the proof of concept of RepoLore: operational memory for deve
 - Understand short-term knowledge, session selection, and promotion → [session contract](product/sessions.md).
 - Check absolute application constraints → [invariants](product/invariants.md).
 - Plan or build the first stable CLI release → [v1 roadmap and implementation contract](roadmap/roadmap.md).
+- Implement the first release step by step → [implementation work packages and pass/fail gates](roadmap/implementation-v1.md).
 - Understand the current alpha method → repository-root `method.md` and its matching `_repolore/method.md` copy.
 - Work on the PowerShell alpha tools → `tools/tools.md` and `_repolore/sparse-tree/tools/tools.md`.
-- Work as an agent → `AGENTS.md`.
+- Work as an agent → `AGENTS.md` for contract reading order, package execution/gates, alpha/v1 boundaries, and durable-update/session responsibilities.
 
 ## Current state versus target contract
 
@@ -24,4 +25,4 @@ The old alpha notes are historical implementation references. The v1 roadmap sup
 
 ## Remaining design work
 
-Before implementation, settle the collision-free path escape convention, snapshot/restore details, ignore matcher semantics, JSON contracts, and failure-recovery fixtures listed in roadmap P0. Session-aware commands, checkpoint commands, migration, and NuGet packaging do not yet exist. Later plugin/distribution releases have no committed version or date.
+The [implementation guide](roadmap/implementation-v1.md) resolves path escaping, context ordering/budgets, ignore semantics, history scope/retention, and interrupted recovery. Turn its contracts into the specified fixtures before implementing dependent mutations. Track completion there; all work packages remain unimplemented. Session-aware commands, checkpoint commands, migration, and NuGet packaging do not yet exist. Later plugin/distribution releases have no committed version or date.

@@ -1,0 +1,34 @@
+<Project>
+  <UsingTask TaskName="CheckRuntimeBoundary" TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <AssemblyPath ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Reference Include="$(MSBuildToolsPath)/Sdks/Microsoft.NET.Sdk/tools/net472/System.Reflection.Metadata.dll" />
+      <Reference Include="$(MSBuildToolsPath)/Sdks/Microsoft.NET.Sdk/tools/net472/System.Collections.Immutable.dll" />
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Reflection" />
+      <Using Namespace="System.Reflection.Metadata" />
+      <Using Namespace="System.Reflection.PortableExecutable" />
+      <Code Type="Fragment" Language="cs" Source="$(MSBuildThisFileDirectory)build/CheckRuntimeBoundary.cs" />
+    </Task>
+  </UsingTask>
+  <Target Name="EnforceRuntimeDependencies" AfterTargets="ResolveReferences"
+          Condition="'$(EnforceRuntimeBoundary)' == 'true'">
+    <Error Condition="'@(PackageReference)' != ''" Text="RLBOUNDARY: shipped projects must not reference NuGet packages." />
+    <ItemGroup>
+      <_UnexpectedReference Include="@(ReferencePath)"
+        Condition="'%(ReferencePath.FrameworkReferenceName)' != 'Microsoft.NETCore.App' and '%(ReferencePath.ReferenceSourceTarget)' != 'ProjectReference'" />
+      <_UnexpectedProject Include="@(ProjectReference)"
+        Condition="'%(ProjectReference.Filename)' != 'RepoLore.Core' and '%(ProjectReference.Filename)' != 'RepoLore.Infrastructure'" />
+    </ItemGroup>
+    <Error Condition="'@(_UnexpectedReference)' != ''" Text="RLBOUNDARY: non-BCL runtime references: @(_UnexpectedReference)" />
+    <Error Condition="'@(_UnexpectedProject)' != ''" Text="RLBOUNDARY: unexpected shipped project: @(_UnexpectedProject)" />
+  </Target>
+  <Target Name="EnforceCompiledBoundary" AfterTargets="CoreCompile"
+          Condition="'$(EnforceRuntimeBoundary)' == 'true' and '$(DesignTimeBuild)' != 'true'">
+    <CheckRuntimeBoundary AssemblyPath="@(IntermediateAssembly->'%(FullPath)')" />
+  </Target>
+</Project>

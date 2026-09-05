@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <EnforceRuntimeBoundary>true</EnforceRuntimeBoundary>
+    <IsPackable>true</IsPackable>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>repolore</ToolCommandName>
+    <PackageId>RepoLore.Cli</PackageId>
+    <RollForward>LatestPatch</RollForward>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../RepoLore.Core/RepoLore.Core.csproj" />
+    <ProjectReference Include="../RepoLore.Infrastructure/RepoLore.Infrastructure.csproj" />
+  </ItemGroup>
+  <Target Name="GenerateCliVersion" BeforeTargets="CoreCompile">
+    <WriteLinesToFile File="$(IntermediateOutputPath)CliVersion.g.cs"
+      Lines="namespace RepoLore.Cli { internal static class CliVersion { internal const string Value = &quot;$(Version)&quot;%3B } }"
+      Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup><Compile Include="$(IntermediateOutputPath)CliVersion.g.cs" /></ItemGroup>
+  </Target>
+</Project>

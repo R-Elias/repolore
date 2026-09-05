@@ -1,6 +1,6 @@
 # First Release — Implementation Work Packages
 
-Status: **implementation instructions, no CLI work completed**. Target: a preview followed by v1.0.0 of the single `RepoLore.Cli` NuGet tool. This guide decomposes the [roadmap](roadmap.md); [invariants](../product/invariants.md) and the [session contract](../product/sessions.md) still apply. It resolves earlier open implementation choices below. Do not copy alpha mirror-generation behavior into v1.
+Status: **package 01 implementation started; platform gates tracked below**. Target: a preview followed by v1.0.0 of the single `RepoLore.Cli` NuGet tool. This guide decomposes the [roadmap](roadmap.md); [invariants](../product/invariants.md) and the [session contract](../product/sessions.md) still apply. It resolves earlier open implementation choices below. Do not copy alpha mirror-generation behavior into v1.
 
 ## How to execute this plan
 
@@ -210,7 +210,7 @@ Build/test/package once for the candidate; sign the package, verify its signatur
 
 Track implementation here or in linked PRs; all entries start incomplete. For each, record the commit/PR, fixture/check command, observed result, and limitations. Do not check off the roadmap because this instruction document exists.
 
-- [ ] 01 — Executable boundary and fixtures
+- [ ] 01 — Executable boundary and fixtures — implemented and locally validated; Windows/Linux/macOS CI gate pending (details below)
 - [ ] 02 — Filesystem paths and knowledge mapping
 - [ ] 03 — Configuration and coverage policies
 - [ ] 04 — Durable and session context
@@ -223,3 +223,19 @@ Track implementation here or in linked PRs; all entries start incomplete. For ea
 - [ ] 11 — Packaged tool and restricted installation
 - [ ] 12 — Dogfood and NuGet preview
 - [ ] 13 — Signed v1.0.0 release
+
+### Package 01 — local evidence, 2026-09-05
+
+Change is in the working tree, not committed or published. The [executable foundation note](executable-foundation.md) describes responsibilities and maintenance checks. Delivered Core/Infrastructure/Cli plus one dependency-free executable test project; SDK 10.0.100, `net10.0`, and lock files; single CLI version source `0.1.0-preview.1`; independent knowledge format 1; real `version`/`--help`; only Cli packable; compiled-capability and resolved-dependency guards. No knowledge command returns placeholder success. No checkpoint or migration was performed on this checkout, and both alpha method copies remain identical.
+
+Checks actually run on macOS arm64 with the SDK installed temporarily at `/tmp/repolore-dotnet`:
+
+- `/tmp/repolore-dotnet/dotnet restore --locked-mode --disable-build-servers` — passed; all four projects restored with cleared package feeds and no NuGet dependencies.
+- `/tmp/repolore-dotnet/dotnet build --configuration Release --no-restore --disable-build-servers -m:1` — passed, 0 warnings and 0 errors.
+- `/tmp/repolore-dotnet/dotnet run --project tests/RepoLore.Tests --configuration Release --no-build` — passed, **4/4 checks**. Verified version outside a repository, all seven named fixtures unchanged after version/help/invalid commands, exactly the three shipped project libraries in the produced `.deps.json`, and guard rejection/recovery. Nine temporary API probes cover HTTP, DNS, sockets (one in each shipped project), process execution, assembly loading, load contexts, P/Invoke, native-library loading, and reflection. A tenth probe adds a non-BCL assembly reference and fails with the dependency diagnostic. Removing probes restores a successful build.
+- Fixtures: `minimal-v1`, `two-sessions`, `mapping-collisions`, `alpha-sparse-only`, `alpha-local-only`, `alpha-conflict`, `history-failures`. Distinct session roots and the materialized Gitignore template are checked. Their later context/mapping/recovery behavior is not implemented or claimed.
+- `git diff --check` and `cmp method.md _repolore/method.md` — passed. Verified synthetic session fixture files are not Gitignored; real checkout sessions/history are ignored.
+
+Initial sandboxed SDK startup stalled; validation used an approved build outside the sandbox. An initial test-host PATH lookup and a fixture Gitignore packaging issue were fixed before the final passing run. The build tool is outside the shipped application boundary.
+
+Remaining gate: `.github/workflows/ci.yml` defines Windows, Linux, and macOS locked restore/build/tests, but no CI run was dispatched or observed. Package 01 remains unchecked until that matrix passes. Package 02 (safe paths and mapping) is next after this prerequisite; no later package, actual tool install, network trace, or release is claimed complete.

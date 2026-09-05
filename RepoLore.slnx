@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RepoLore.Core/RepoLore.Core.csproj" />
+    <Project Path="src/RepoLore.Infrastructure/RepoLore.Infrastructure.csproj" />
+    <Project Path="src/RepoLore.Cli/RepoLore.Cli.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RepoLore.Tests/RepoLore.Tests.csproj" />
+  </Folder>
+</Solution>

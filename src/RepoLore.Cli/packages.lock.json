@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "repolore.core": {
+        "type": "Project"
+      },
+      "repolore.infrastructure": {
+        "type": "Project",
+        "dependencies": {
+          "RepoLore.Core": "[0.1.0-preview.1, )"
+        }
+      }
+    }
+  }
+}

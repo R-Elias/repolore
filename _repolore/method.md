@@ -1,5 +1,7 @@
 # RepoLore Method
 
+> **Alpha implementation contract.** The full mirror and generated sparse tree described below apply to the existing PowerShell tools only. The planned v1 instead has one authored `sparse-tree/`, custom long-term knowledge areas, local Gitignored short-term session folders, and explicit checkpoint history. The planned session contract is in `_repolore/product/sessions.md`: select a session explicitly, keep its notes provisional, and promote verified findings through ordinary durable-knowledge review. See `_repolore/roadmap/roadmap.md`, `_repolore/product/product.md`, and `_repolore/product/invariants.md`. Planning files in `product/` and `roadmap/` may be edited directly. This documentation update does not migrate existing knowledge; never use alpha regeneration on a v1 knowledge base.
+
 RepoLore is a static knowledge base for this repository.
 
 It exists to give humans and coding agents the operational memory they do not automatically have: the context, assumptions, structure, decisions, and maintenance knowledge needed to work on the repository efficiently.

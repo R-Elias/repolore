@@ -1,29 +1,27 @@
 # Root — repolore-poc
 
-This repository is the proof of concept of the RepoLore method.
-
-The repo content is the source of truth: `method.md` (the method), `tools/` (PowerShell alpha tools), `AGENTS.md`, `LICENSE`. `_repolore/` is an instance of the RepoLore knowledge base used on this repo exactly as a client would use it — it is independent of the repo's own content.
-
-## What this repository is
-
-- A proof of concept proving that a static, repo-native knowledge base (`_repolore/`) is usable by humans and coding agents.
-- The origin of RepoLore v0: a cross-platform .NET 10 CLI that replaces the alpha PowerShell tools.
+This repository is the proof of concept of RepoLore: operational memory for developers and coding agents, stored as local Markdown. It contains the method and PowerShell alpha tools; the .NET CLI is planned, not implemented here.
 
 ## Where to start
 
-- Planning or building RepoLore v0 → read `_repolore/roadmap/roadmap.md`.
-- Understanding the RepoLore method → read `method.md` at the repo root (copy in `_repolore/method.md`).
-- Working with the alpha tools → read `tools/tools.md`.
-- Working on this repo as an agent → read `AGENTS.md`.
+- Understand the user's philosophy, desired experience, and release objectives → [product direction](product/product.md).
+- Understand short-term knowledge, session selection, and promotion → [session contract](product/sessions.md).
+- Check absolute application constraints → [invariants](product/invariants.md).
+- Plan or build the first stable CLI release → [v1 roadmap and implementation contract](roadmap/roadmap.md).
+- Understand the current alpha method → repository-root `method.md` and its matching `_repolore/method.md` copy.
+- Work on the PowerShell alpha tools → `tools/tools.md` and `_repolore/sparse-tree/tools/tools.md`.
+- Work as an agent → `AGENTS.md`.
 
-## Key decisions
+## Current state versus target contract
 
-- The knowledge directory is `_repolore/`, not `.repolore/`, to avoid hidden-folder behaviors in file managers, globbing, and tooling.
-- `_repolore/tree/` is gitignored (local working mirror with many empty nodes); `_repolore/sparse-tree/` is committed and carries the non-empty knowledge nodes.
-- RepoLore v0 targets .NET 10 LTS.
-- The alpha PowerShell tools are the reference semantics for the v0 CLI commands.
-- `method.md` exists twice: at the repo root (content of the tool's repo) and in `_repolore/method.md` (client-style copy). Update both when the method changes.
+The current alpha uses a gitignored `_repolore/tree/` and a committed generated `_repolore/sparse-tree/`. The scripts still implement that behavior. Do not delete or regenerate either as part of a planning edit; a fresh clone may hold its only knowledge copy in sparse-tree.
 
-## Known uncertainty
+The planned v1 removes the full mirror and makes `sparse-tree/` the sole authored path tree. Custom areas are first-class. Planned `sessions/<session-id>/` folders add Gitignored short-term knowledge, explicitly selected for context and included in checkpoint recovery by default. Durable knowledge remains the reviewed long-term layer. `product/` and `roadmap/` are authored planning areas today and may be edited directly. Do not run alpha generators on a migrated v1 knowledge base.
 
-- None recorded yet. Keep `_repolore/roadmap/roadmap.md` current as decisions change.
+The first release is one NuGet .NET tool package, `RepoLore.Cli`, containing Core and Infrastructure assemblies. No plugins or additional package channels. Runtime target: .NET 10. The core is local-only; recovery uses explicit checkpoints with a configurable 200 MiB default budget.
+
+The old alpha notes are historical implementation references. The v1 roadmap supersedes their full-mirror and exact-command-compatibility assumptions. Both method copies remain synchronized and explicitly labeled alpha until the new implementation and migration land.
+
+## Remaining design work
+
+Before implementation, settle the collision-free path escape convention, snapshot/restore details, ignore matcher semantics, JSON contracts, and failure-recovery fixtures listed in roadmap P0. Session-aware commands, checkpoint commands, migration, and NuGet packaging do not yet exist. Later plugin/distribution releases have no committed version or date.

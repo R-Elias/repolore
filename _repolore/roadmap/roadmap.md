@@ -1,266 +1,270 @@
-# RepoLore v0 — Roadmap and Architecture Plan
+# RepoLore v1 — Roadmap and Implementation Contract
 
-Status: **DESIGN, approved in discussion.** No v0 code exists yet. This file is the authoritative plan; the repo `repolore-poc` and its alpha tools are the reference implementation.
+Status: **DESIGN, not implemented.** This replaces the previous v0 plan. The first stable release is v1.0.0; preview releases may precede it. CLI versions and knowledge format versions are independent.
 
-Target product: **boring, reliable, installable, usable in an enterprise tomorrow.**
+Read [product direction](../product/product.md) for the desired experience and release objectives, and [invariants](../product/invariants.md) for non-negotiable rules. This file specifies the implementation work.
 
----
+The existing PowerShell scripts and both copies of `method.md` describe the alpha layout. They are historical references, not exact v1 semantics. This planning update does not migrate the current knowledge base or change those scripts.
 
-## 1. Non-negotiable principles
+## 1. Scope and decisions
 
-Govern every decision. Agents must not violate one to gain convenience.
+- Open-source tool maintained by one developer. Enterprise usability means straightforward approval, installation, review, and recovery; no commercial platform is implied.
+- v1 ships the core functionality and CLI as **one NuGet .NET tool package, `RepoLore.Cli`**, invoking `repolore`. Confirm package ID availability before publishing.
+- `RepoLore.Core` and `RepoLore.Infrastructure` remain internal projects whose assemblies are bundled in that tool. Do not publish separate library packages in v1.
+- No plugins, plugin discovery, plugin commands, npm wrappers, or standalone platform binaries in v1.
+- One authoritative, authored path-based knowledge tree: `_repolore/sparse-tree/`. Keep that name to avoid an unnecessary rename. Remove the complete physical mirror from the design; do not generate empty nodes.
+- User-defined long-term knowledge subtrees are first-class. They need not correspond to source paths.
+- Extend durable knowledge with local, Gitignored short-term knowledge in `sessions/<session-id>/`. Sessions are ordinary folders of Markdown, explicitly selected for context, and covered by checkpoint history by default. See [session contract](../product/sessions.md).
+- Local recovery history uses explicit checkpoints and complete file versions, not delta chains. Default maximum: **200 MiB (209715200 bytes)**, configurable.
+- No daemon, filesystem watcher, database, remote service, telemetry, automatic update check, or semantic index.
+- Prefer deterministic fixtures and a small release smoke test over a large testing infrastructure. Quantitative usefulness studies are optional, not release gates.
 
-1. **Boring / too stupid to fail.** One process, one pass, file IO + subprocess only. Single-threaded. No caching, daemons, locks, databases, reflection-based plugin loading, or DI containers. Every command is idempotent: running it twice yields the same on-disk state.
-2. **100% offline after packaging.** The Core contains zero networking APIs — no `System.Net.*`, no sockets, no DNS, no HTTP, no telemetry, no update checks. Once built, the process cannot make an outgoing request because the capability does not exist. The only network activity ever involved is the package manager fetching the package, which is the user's own infrastructure.
-3. **Never destroy authored knowledge.** The only directory the tool may delete or overwrite is `_repolore/sparse-tree/` (derived). `method.md` is rewritten only on explicit `init --update-method`. Everything under `tree/`, `root.md`, `_repoloreignore` is create-if-absent only. Enforced by the never-delete invariant test.
-4. **Backwards compatibility is a hard gate.** Reads alpha-era knowledge bases unchanged. Format version marker + migration runner exist from day one. A new version must not silently break existing lore.
-5. **Maintainable.** Strict layering; `Core` is pure with no third-party dependencies and no direct IO; all IO through `IFileSystem`/`IProcessRunner`. Hand-rolled minimal argument parser (zero third-party runtime deps anywhere in shipped assemblies).
-6. **Testable.** In-memory `IFileSystem` for unit tests, real temp dirs for CLI end-to-end tests, golden snapshots, property-style invariants, performance thresholds.
-7. **Deferred complexity.** No caching infrastructure, concurrency/locking, databases, daemons, cloud services, plugin marketplaces, custom registries, RPC frameworks, editor-specific dependencies, or semantic indexes in v0.
+## 2. Knowledge contract
 
-## 2. Decision log
+### Canonical layout
 
-| Date | Decision |
-|---|---|
-| 2026-09 | Target runtime: **.NET 10 LTS** (`net10.0`), SDK pinned via `global.json`. |
-| 2026-09 | Knowledge directory name: **`_repolore/`** (not `.repolore/`) — avoids hidden-folder behaviors. Ignore file is accordingly **`_repoloreignore`**. |
-| 2026-09 | v0 command surface: `init`, `sync`, `path`, `context`, `tree`, `health-check`, `plugin --list/--details/--health-check/--run`, `migrate`, `version`. |
-| 2026-09 | Packaging: one build fanned out to package ecosystems. **NuGet = framework-dependent `dotnet tool`** (the installer guarantees the runtime is present). **All other channels = self-contained single-file per-RID binaries**. |
-| 2026-09 | v0 ships **NuGet + npm wrappers**. Maven/PyPI/crates deferred behind a documented wrapper contract. |
-| 2026-09 | Ignore model: **hybrid, extensible by design** (built-in exclusions + built-in gitignore matcher + `git check-ignore` delegation; future CVS/other backends pluggable). |
-| 2026-09 | Plugin discovery: **PATH naming convention** `repolore-plugin-<name>`; zero install step, zero config. |
-| 2026-09 | Zero third-party runtime dependencies in all shipped assemblies (Microsoft BCL only). Build-time analyzers allowed. |
-| 2026-09 | `PublishTrimmed=false`, no NativeAOT in v0 (correctness over size; revisit later). |
-| 2026-09 | `sparse-tree/` remains committed in v0 for alpha compatibility and tool-less agent reading. |
-| 2026-09 | Commit model: `_repolore/tree/` is gitignored (full structural mirror = local working state, mostly empty nodes); `_repolore/sparse-tree/` is the versioned knowledge view. |
-
-## 3. Knowledge format (v1)
-
-### Layout
-
-```
+```text
 <repo>/
-  _repoloreignore             # optional, gitignore syntax, repo root only
+  _repoloreignore                 # optional source-discovery rules
   _repolore/
-    repolore.json             # format marker
-    method.md                 # tool-managed (embedded resource copy)
-    root.md                   # authored; init writes a template only if absent
-    tree/                     # authored knowledge, complete structural mirror — LOCAL, gitignored
-    sparse-tree/              # DERIVED; regenerated by sync; the committed knowledge view
+    repolore.json                # format marker and configuration
+    method.md                    # shipped guidance; explicit updates only
+    root.md                      # authored task-oriented entry point
+    sparse-tree/                 # authored, canonical, useful path notes only
+    architecture/                # example user-defined knowledge subtree
+    domain/                      # another example; not created automatically
+    sessions/                    # short-term knowledge; excluded from Git
+      <session-id>/
+        root.md                  # objective, status, findings, next steps
+        investigation.md         # freely authored working notes
+    .history/                    # local recovery state; excluded from Git
 ```
 
-### Marker file
+There is no generated copy of the knowledge tree and no full mirror. Missing notes mean no recorded knowledge, not an error. Empty alpha markers may be read and skipped but are never generated by v1. Structural inventories are computed on request, not persisted as thousands of placeholders.
+
+Root guidance, path notes, and custom notes are ordinary editable Markdown. Long-term authored knowledge is intended for Git review by default; session knowledge is local and must not be committed. Other explicitly local-only notes remain supported. Recovery history is not the source of truth and is not a substitute for backup or Git.
+
+### Path mapping and custom nodes
+
+Keep alpha mappings for unambiguous existing paths: directory `src/payments/` maps to `sparse-tree/src/payments/payments.md`; file `src/payments/client.cs` maps to `sparse-tree/src/payments/client.cs.md`.
+
+The old naming scheme can collide, for example directory `src/` and file `src/src`. Before implementing the resolver, specify and fixture-test a collision-free escape convention with a reversible mapping. Never silently assign one note to two targets. A collision blocks affected operations until resolved; do not globally rename existing unambiguous notes merely for convenience.
+
+Custom areas such as `architecture/`, `domain/`, and this repository's `product/` and `roadmap/` are supported alongside `sparse-tree/`. `sparse-tree`, `tree` (legacy), `sessions`, `.history`, and tool-owned temporary names are reserved. Custom Markdown is discoverable, directly readable through `context --node`, and included in recovery. Do not report it as orphaned source knowledge.
+
+Use ordinary relative Markdown links for related knowledge. v1 reports those links but does not recursively load them or fetch URLs. Users and agents can explicitly request additional nodes. `root.md` should route common tasks to both path notes and custom areas.
+
+### Short-term session knowledge
+
+The durable model remains unchanged. `sessions/<session-id>/` adds working knowledge for an investigation, interruption, or handoff; `.history/` preserves versions of files. Neither replaces the durable tree.
+
+Agents create and edit session folders directly. No session database, daemon, global active-session pointer, automatic summarization, or lifecycle command is required in v1. Recommend a portable unique ID such as `2026-09-05-payment-retry-a7c2`; reject traversal, separators within IDs, and symlink escapes. Reuse an existing folder only when deliberately resuming it.
+
+Each session has a concise `root.md` with objective, status, findings/uncertainty, and next steps. Other Markdown nodes and nested folders are unrestricted within that session. Session notes are provisional: they do not override established guidance. Handoff means passing the session ID explicitly, not selecting the newest folder.
+
+Default context and knowledge listings exclude sessions. `context --session <id>` reads that session's root; `context <target> --session <id>` appends it after durable path context. Additional session notes require explicit `--node` paths within the selected session. Use the same single budget, omission reporting, and strict-mode behavior; label each source as durable or session knowledge. Do not follow links into other sessions. Multiple selected sessions are out of scope for v1.
+
+Promotion is an ordinary reviewed edit: verify the finding, incorporate the useful content and durable evidence into the appropriate long-term node, and review it with code when relevant. Never auto-promote an entire session, require a local session link to understand committed guidance, or exempt meaningful durable changes from normal RepoLore updates.
+
+Cleanup is explicit. Mark a session complete in its root, checkpoint before manually deleting it, and checkpoint afterward to record deletion. No age-based expiry or automatic pruning of session folders in v1. Retention only evicts recovery snapshots; it never deletes current session files. Session deletion does not purge retained history. Details and examples: [session contract](../product/sessions.md).
+
+### Writing and authority
+
+Record constraints, rationale, pitfalls, related areas, and evidence that would help the next maintainer. Avoid paraphrasing obvious code or documenting every file. Mark unverified inferences explicitly.
+
+Code establishes implemented behavior. If a note conflicts with code, inspect the evidence; if it describes an intended requirement or approved decision, surface the conflict rather than silently changing that requirement to match a bug.
+
+Human/agent workflow: read durable context and explicitly selected session → checkpoint → edit code, durable knowledge, and session notes directly → checkpoint → verify/promote useful session findings → checkpoint if changed → health-check → review code and durable knowledge together. Sessions remain local. The CLI does not generate semantic knowledge or claim that a healthy file structure proves statements correct.
+
+## 3. Recovery history contract
+
+### Detection and storage
+
+- `init` creates the first checkpoint after successful initialization.
+- `checkpoint` enumerates eligible knowledge/configuration files and compares SHA-256 content hashes and paths against the last completed snapshot. Include `method.md`, `root.md`, `repolore.json`, `_repoloreignore`, path notes, custom Markdown, and all session Markdown by default, independently of the session selected for context.
+- Record additions, modifications, and deletions. Read-only commands never checkpoint or otherwise write.
+- Store complete file contents addressed by hash plus a manifest of paths and hashes for each checkpoint. Unchanged content may share a stored object; no patch chains or database.
+- Hash and store the same bytes. Detect files changing during capture and fail with a retry instruction rather than claiming a consistent checkpoint. Users must pause edits while checkpointing; there is no filesystem-wide transactional snapshot guarantee.
+- No new checkpoint for unchanged state. Inject clock and checkpoint IDs for deterministic tests.
+- Only completed manifests are visible to history/restore. Interrupted writes must not damage the last completed checkpoint.
+
+A checkpoint captures the observed state, not every editor save. Edits between checkpoints collapse into one observed change. Files created and deleted between checkpoints are not recoverable. Prior content never captured cannot be reconstructed. Gitignored knowledge is eligible independently of Git status.
+
+### Retention and configuration
+
+`repolore.json` starts with a small documented schema:
 
 ```json
-{ "formatVersion": 1, "createdBy": "repolore <semver>", "createdAt": "<ISO-8601 UTC>" }
+{
+  "formatVersion": 1,
+  "history": {
+    "enabled": true,
+    "maxBytes": 209715200,
+    "exclude": []
+  }
+}
 ```
 
-Only `formatVersion` is semantically required; unknown fields are preserved on rewrite. Absence of `repolore.json` = format 0 (alpha). `formatVersion` greater than supported → exit 3 with "upgrade repolore".
+Count retained manifests and content objects toward `maxBytes`; document that temporary write space is additional. Evict oldest complete checkpoints, then reclaim objects no remaining checkpoint references. Never evict the latest completed checkpoint or current authored knowledge to make room for a failed capture.
 
-### Naming
+If the latest state or a required pre-operation checkpoint cannot fit, fail before a destructive operation; explain how to increase the budget or reduce coverage. A retention change takes effect at the next explicit checkpoint, not during reads. Recovery is bounded by retained checkpoints, and users may explicitly disable history or exclude sensitive files. Disabling/excluding is not a promise to erase previous snapshots; document retention and provide explicit local-history purge instructions.
 
-Directory `X/` → `tree/X/X.md`. File `a.cs` → `tree/<parent>/a.cs.md`.
+Session snapshots share the existing history budget; no second cache or retention mechanism is introduced. `history.exclude` can opt out session paths, with the same recovery limitations as other knowledge. History includes other sessions even when context reads only one.
 
-### Empty node
+### Restore and mutation safety
 
-File is empty/whitespace, or trimmed content equals exactly `<!-- repolore:empty -->`.
+- `history` lists completed checkpoints and changed paths, without exposing file contents by default.
+- `restore <id> [--path <knowledge-path>] --dry-run` previews creates, replacements, and deletions.
+- Applying restore requires a successful checkpoint of current affected contents first, including files absent from the destination snapshot. Refuse if history is disabled or the affected files cannot be protected. The resulting state is checkpointed as well. A restore of configuration uses the pre-operation coverage/budget for the complete recovery transaction; restored policy applies to subsequent operations.
+- A whole-checkpoint restore only affects its declared managed scope, not arbitrary repository files or excluded knowledge. Validate all manifest paths and hashes before applying changes.
+- If an operation fails midway, report partial completion and the pre-operation recovery ID. Do not claim whole-directory atomicity. Keep that checkpoint available for retry/recovery.
+- Explicit method updates and migrations use the same pre-operation preservation rule. An unchanged `init` is a no-op.
+- Serialize mutating commands with one short-lived exclusive history lock; fail clearly on another writer. This is the narrow exception to avoiding coordination infrastructure. There is no background process. Specify crash cleanup and recovery before implementing mutations.
 
-### Encoding and evolution
+## 4. Discovery, Git tracking, and recovery are separate policies
 
-All files written by the tool: UTF-8 without BOM, LF endings, regardless of OS. Reads tolerate BOM/CRLF. Additive changes (new optional fields/files) do not bump `formatVersion`. Any change altering how existing files are interpreted bumps it and ships with an `IMigration`, a fixture of the prior format, and a compat test.
-
-## 4. Product architecture
-
-### Solution layout (new repo `repolore`)
-
-```
-repolore/
-  global.json                     # pinned SDK 10.0.x, rollForward: latestPatch
-  Directory.Build.props           # TFM net10.0, Nullable, TreatWarningsAsErrors,
-                                  # Deterministic, InvariantGlobalization, UseSystemResourceKeys
-  Directory.Packages.props        # central package versions
-  nuget.config                    # single explicit feed; <clear/> first
-  version.props                   # single source of the SemVer
-  src/
-    RepoLore.Core/                # pure logic, BCL only, NO direct IO, NO Process
-    RepoLore.Infrastructure/      # PhysicalFileSystem, ProcessRunner, PathDiscovery
-    RepoLore.Cli/                 # Program, arg parser, command handlers, renderers
-  tests/
-    RepoLore.Core.Tests/
-    RepoLore.Cli.Tests/
-    RepoLore.Compat.Tests/
-    RepoLore.Guard.Tests/
-    RepoLore.Perf.Tests/
-    fixtures/                     # committed golden repos (incl. alpha-era layouts)
-  packaging/
-    npm/                          # @repolore/cli + @repolore/cli-<os>-<arch>
-    wrapper-contract.md
-  build/
-  .github/workflows/              # ci.yml, release.yml, nightly-perf.yml
-  docs/                           # install-offline.md, enterprise-feeds.md, plugin-authoring.md, format.md
-  _repolore/                      # dogfood: the repo uses RepoLore on itself
-  AGENTS.md
-```
-
-### Layering and dependency rules
-
-`Core` → pure library. References nothing but the BCL. Banned: `System.Net.*`, `System.Diagnostics.Process`, `System.IO.File`, `System.IO.Directory`, `System.IO.FileStream`, `System.Environment.GetEnvironmentVariable`. All IO through `IFileSystem`.
-
-`Infrastructure` → references `Core`. Provides `PhysicalFileSystem`, `ProcessRunner`, `SystemEnvironment`. Banned: `System.Net.*`.
-
-`Cli` → references both. Banned: `System.Net.*`, `System.Diagnostics.Process`, `System.IO.File`. Console IO only via `Console.Out`/`Console.Error`.
-
-Enforcement: `Microsoft.CodeAnalysis.BannedApiAnalyzers` with a per-project `BannedSymbols.txt`, compiled as errors. No third-party runtime dependency in any of the three projects; analyzers are build-time only (`PrivateAssets=all`).
-
-### Abstractions
-
-- `IFileSystem`: `FileExists`, `DirectoryExists`, `ReadAllText`, `WriteAllText`, `TryCreateFile` (fails if exists — the never-overwrite primitive), `CreateDirectory`, `DeleteDirectoryRecursive` (used only by `SparseTreeGenerator`), `EnumerateEntries` (name, kind, isReparsePoint), `GetFullPath`, `Combine`.
-- `IProcessRunner`: `Run(exe, args, cwd, stdin?, timeout)` → `{ExitCode, StdOut, StdErr, TimedOut}`; `StartStreaming` for the git delegate (write lines / read lines).
-- `IEnvironment`: `PathEntries`, `PathExtEntries`, `IsWindows`, `IsCaseInsensitiveFileSystem`.
-
-`Program.Main` constructs the three infrastructure objects once and passes them down explicitly. No DI container.
-
-## 5. Command surface
-
-Common flags: `--repo-root <path>` (default: walk upward from cwd to find `_repolore/`; `init` uses cwd), `--json`, `--quiet`, `--help`.
-Exit codes: `0` ok · `1` findings (health) · `2` usage error · `3` repository/format/IO error · `4` plugin error.
-
-- **`path <target> [--include-method]`** — reference: alpha `tools/path/path.ps1`. Order: `method.md` (if flag), `root.md`, then per directory segment `tree/<seg1>/…/<segN>/<segN>.md`, then for files `tree/<parent>/<file>.md`. Target is a directory if it exists as one on disk; if it does not exist, a trailing slash means directory. Output repo-relative paths with `/`; ` [missing]` suffix when absent. JSON: `[{path, exists, empty}]`.
-- **`context <target> [--budget-tokens 8000] [--include-method] [--strict]`** — reference: alpha `tools/context/context.ps1`. Iterate `path` results, skip empty nodes, `tokens = ceil(chars/4)`, include when `used + tokens + tokens(displayPath) + 20 <= budget`, else emit "Stopped before reading…" and stop. Emit `# RepoLore Context` header, per-file `---` + `## <relpath>` + trimmed content, footer with included count and token estimate.
-- **`sync [--dry-run] [--no-sparse] [--ignore-backend auto|builtin|git]`** — reference: alpha `sync-tree` + `sync-sparse-tree`. Walk repo (ignore-pruned, symlinks skipped); create `tree/<rel>/` + `<name>.md` with empty marker if absent; create `tree/<parent>/<name>.md` for files if absent; never touch existing files. Then regenerate `sparse-tree/`: delete it wholesale, copy every non-empty node. Report counts. Auto-applies `Safe` migrations first (writes `repolore.json` on alpha repos).
-- **`tree [--start <path>]`** — reference: alpha `sparse-tree`. Print `sparse-tree/` from `--start`, directories first then ordinal name sort, `[N tokens]` per entry (recursive for dirs), two-space indent.
-- **`init [--no-sync] [--with-ignore-template] [--update-method]`** — create `_repolore/`, `repolore.json`, `method.md` (embedded resource), `root.md` (embedded template), `tree/`, `sparse-tree/`, each only if missing. `--with-ignore-template` writes a commented `_repoloreignore` at repo root if missing. Then `sync` unless `--no-sync`. Re-running is a no-op.
-- **`health-check [--fix]`** — findings with stable ids: `H001` `repolore.json` missing (INFO, alpha format) · `H002` unsupported format version (ERROR) · `H003` `root.md`/`method.md` missing · `H004` `method.md` differs from embedded (INFO) · `H005` sparse-tree stale (non-empty node missing from sparse, or sparse entry absent/empty in tree) · `H006` orphan tree node with no repo path (WARN, never auto-removed) · `H007` repo path without tree node (sync needed) · `H008` invalid `_repoloreignore` line · `H009` plugin metadata invalid · `H010` git backend requested but unavailable. `--fix` only regenerates `sparse-tree/`. Exit `1` on WARN/ERROR.
-- **`plugin --list | --details <name> | --health-check <name> | --run <name> [-- args]`** — see section 7.
-- **`migrate [--check] [--dry-run]`** — detect format, apply ordered migrations. `--check` exits `1` if migration needed. v0 ships `V0ToV1Migration` (writes `repolore.json`; flagged `Safe`). Read-only commands work on any supported prior format without migrating; write commands auto-apply `Safe` migrations and refuse (exit 3) on non-`Safe` ones.
-- **`version`** — semver, supported format versions, RID, commit hash embedded at build.
-
-## 6. Ignore model
-
-Provider chain, evaluated per candidate path in fixed order:
-
-1. **BuiltIn exclusions** — `_repolore`, `.git`, `node_modules`, `bin`, `obj`, `dist`, `build`, `target`, `vendor`, `.next`, `.nuxt`, `coverage`, `.vs`, `.idea`. Match = exclude; **non-negatable**.
-2. **GitIgnore** — `.gitignore` files, honored relative to their directory. Backend selection via `--ignore-backend`:
-   - `builtin` (fallback): conservative matcher supporting `#` comments, blank lines, trailing-space stripping, `!` negation, leading `/` anchoring, trailing `/` directory-only, `*`, `?`, `**`, `[abc]`/`[!abc]`, `\#` `\!` `\ ` escapes. Last matching rule wins. Unparseable line → `H008`, line skipped.
-   - `git` (default when `.git` exists and git is on PATH): one long-lived `git check-ignore --stdin -z --no-index -v` process, paths fed per-directory batch. Any git failure → fall back to `builtin` for the rest of the run + `H010`.
-3. **RepoLoreIgnore** — `_repoloreignore`, always via the builtin matcher, evaluated **last** so it can `!` re-include a gitignored path. Cannot re-include a built-in exclusion.
-
-`IIgnoreProvider` returns `Exclude | Include | NoOpinion`. Extensibility: a new VCS backend (CVS, Mercurial, …) is a new provider implementation plus an `--ignore-backend` value; no redesign.
-
-`RepositoryWalker`: iterative DFS (explicit stack, no recursion), ordinal-sorted for determinism, skips reparse points/symlinks, never descends into excluded directories, yields `(relPath, isDir)` lazily as a stream.
-
-## 7. Plugin model
-
-- Discovery: scan PATH directories (plus `PATHEXT` on Windows: `.exe`, `.cmd`, `.bat`) for files named `repolore-plugin-<name>`. The CLI never installs, downloads, or writes plugin files.
-- Contract: `--metadata` → JSON on stdout, exit 0: `{name, version, description, commands:[{name, description}]}`. `--health-check` → exit 0/non-zero, free-text stdout. Both must complete within `--timeout-seconds` (default 5) or the CLI reports exit 4.
-- `--run <name> -- <args>` passes stdio through and propagates the plugin's exit code verbatim.
-- Policy (documented, not enforced): plugins must themselves be local-only. Trust boundary = installation + review, like any CLI.
-
-## 8. Offline and never-delete guarantees
-
-1. **Static**: `BannedApiAnalyzers` with `System.Net.*` bans as errors in all three `src` projects.
-2. **Binary scan** (`Guard.Tests`): open built `Core`, `Infrastructure`, `Cli` assemblies with `System.Reflection.Metadata`; fail on any `TypeReference` namespace starting with `System.Net`, or on any referenced assembly outside an explicit allowlist. Runs on **published** artifacts, not debug builds.
-3. **Runtime sandbox** (Linux CI): full CLI smoke script inside `unshare -rn` (no network namespace) plus `strace -f -e trace=network`; assert zero `socket`/`connect` syscalls. Runtime config disables diagnostics IPC so the .NET runtime itself opens no socket.
-4. **Never-delete invariant test**: for each fixture and for 50 seeded random trees, hash every file under `_repolore/` except `sparse-tree/`, run `init` + `sync` twice, re-hash: sets identical, additions only.
-
-## 9. Build and packaging
-
-**Build settings**: `TargetFramework=net10.0`, `LangVersion=latest`, `Nullable=enable`, `TreatWarningsAsErrors=true`, `AnalysisLevel=latest-recommended`, `EnforceCodeStyleInBuild=true`, `Deterministic=true`, `ContinuousIntegrationBuild=true` (CI), `RestorePackagesWithLockFile=true` + `--locked-mode` (CI), `nuget.config` with `<clear/>` then one feed, `InvariantGlobalization=true`, `UseSystemResourceKeys=true`, `SatelliteResourceLanguages=en`.
-
-**Artifacts**:
-- FDD dotnet tool: `PackAsTool=true`, `ToolCommandName=repolore`, `RollForward=Major` (runs on .NET 10+).
-- SCD binaries: `PublishSingleFile=true`, `SelfContained=true`, `PublishTrimmed=false`, `IncludeNativeLibrariesForSelfExtract=true`, `EnableCompressionInSingleFile=true`. RIDs: `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`, `linux-musl-x64`, `osx-x64`, `osx-arm64`.
-
-**npm wrapper**: meta package `@repolore/cli` with `bin: { repolore: "bin/repolore.js" }` — a ~30-line launcher that resolves `@repolore/cli-<platform>-<arch>` via `require.resolve`, spawns the binary with `stdio: inherit`, forwards the exit code. Platform packages are `optionalDependencies` containing only the SCD binary (`os`/`cpu` fields set). No `postinstall`, no downloads.
-
-**Wrapper contract** (`packaging/wrapper-contract.md`), so Maven/PyPI/crates can be added later without touching Core: wrapper embeds the SCD binary for its platform; exposes a `repolore` command; passes argv/stdio/env/cwd unchanged; forwards exit code; performs no network IO at install or run time beyond the package manager's own fetch; shares the version from `version.props`.
-
-**Versioning**: SemVer. Patch = bug fixes; minor = new commands/flags (additive); major = removed flags or a non-`Safe` format migration. `formatVersion` is independent of the CLI version. `version.props` is the single version source; the Cli embeds it plus the git SHA via `SourceRevisionId`.
-
-## 10. CI/CD
-
-- **`ci.yml`** (every PR/push): matrix ubuntu/windows/macos × .NET 10. Steps: checkout → setup-dotnet from `global.json` → `dotnet restore --locked-mode` → `dotnet build -warnaserror` → `dotnet format --verify-no-changes` → `dotnet test` (Core, Cli, Compat, Guard) → publish SCD for the runner RID → Guard assembly scan on published bits → Linux job additionally runs the smoke script under `unshare -rn` + `strace` → `npm pack` wrappers → `npm test` (launcher spawns the real binary).
-- **`release.yml`** (on tag `v*`): assert tag == `version.props` → all PR steps → publish SCD for all seven RIDs → `dotnet pack` FDD tool → SHA256SUMS + local SBOM (CycloneDX) → build npm platform packages + meta package → GitHub Release assets → approval gate → `dotnet nuget push` and `npm publish --provenance`.
-- **`nightly-perf.yml`**: generate 100k files / 10k dirs / 2k ignored dirs; run `sync`/`path`/`context` timings; fail above thresholds; assert ignored directories were never visited (instrumented walker).
-
-## 11. Testing strategy
-
-| Suite | Scope | Mechanism |
+| Policy | Governs | Does not imply |
 |---|---|---|
-| `Core.Tests` | matcher table (each syntax feature × anchored/dir-only/negated), walker pruning (excluded dirs never enumerated), resolver ordering, context budget boundary (exactly-at-budget, +1), health check ids, migration idempotence | in-memory `IFileSystem`, fake `IProcessRunner` |
-| `Cli.Tests` | every command × text and `--json` × each fixture; exit codes | real temp dirs; golden snapshots with normalized paths/timestamps |
-| `Compat.Tests` | fixtures `alpha-poc` (this repo's layout) and `alpha-deep` (deep tree, mixed empty/non-empty, existing sparse-tree) | `path`/`context`/`tree` output byte-identical to committed alpha expectations; `sync` adds only; `health-check` reports `H001` INFO only |
-| `Guard.Tests` | offline | assembly metadata scan on published bits (§8.2) |
-| `Perf.Tests` | scale | thresholds; ignored-dir visit count = 0 |
-| Cross-platform | separators, case-insensitivity (Windows/macOS), Windows long paths, symlinks skipped, CRLF/BOM tolerance on read, LF/no-BOM on write | CI matrix |
+| Source discovery | Which repository paths tools enumerate | Deletion of knowledge or exclusion from recovery |
+| Git tracking | What the user commits through Git | Eligibility for local recovery |
+| History coverage | Which local knowledge versions checkpoints preserve | Git tracking or automatic inclusion in agent context |
 
-## 12. Implementation phases (steps)
+For source discovery, always exclude `_repolore/`, VCS internals, and symlink/reparse-point traversal. Ordinary generated-directory exclusions (`bin`, `obj`, `node_modules`, `build`, `vendor`, etc.) are defaults users can override; they must not be hard-coded prohibitions on authored source.
 
-Each phase ends with CI green on all three OSes. Check off steps as they land.
+For v1, implement one documented, bounded glob matcher for `_repoloreignore`; support root-relative paths, `*`, `**`, `?`, directory rules, comments, and ordered `!` negation. Specify exact matching semantics in fixtures before implementation. Do not advertise full Git ignore compatibility. No Git subprocess backend is required in v1. `.gitignore` continues to control Git itself and is not implicitly reused for history or discovery. This replaces the old hybrid Git delegate plan.
 
-### P0 — Bootstrap and guards
-- [ ] Solution + projects + `Directory.Build.props`, `Directory.Packages.props`, `global.json` (SDK 10.0.x), `nuget.config`, lock files.
-- [ ] Per-project `BannedSymbols.txt` (Core: Net+IO+Process; Infrastructure: Net; Cli: Net+Process+File).
-- [ ] `Guard.Tests` assembly scan + allowlist.
-- [ ] `ci.yml` skeleton: matrix, build, Guard on `version` command only, Linux network-blocked smoke job.
-- Gate: red build on any banned API; sandbox job proves zero sockets on a trivial run.
+Never prune a parent if a later supported include rule could require traversing it. `health-check --explain <path>` reports source-discovery and history decisions with matching rules; direct users to Git for actual Git tracking status. Explicit path lookup can read existing authored notes even when their source path is excluded from discovery.
 
-### P1 — Primitives
-- [ ] `IFileSystem` / `IProcessRunner` / `IEnvironment` + in-memory and physical implementations.
-- [ ] `PathNormalizer` (separators, case rules, repo-relative resolution).
-- [ ] `RepoLoreLayout` (root discovery, `_repolore` paths) and `FormatVersion` detection (missing file = format 0).
-- [ ] `TokenEstimator` (`ceil(chars/4)`), hand-rolled `ArgParser`, text/json renderers, exit-code mapping.
-- Gate: unit tests green; parser rejects unknown flags with exit 2.
+Require `_repolore/sessions/` and `_repolore/.history/`, plus documented temporary paths, in the recommended `.gitignore` setup. Session folders are not committed or included in release artifacts. This is a workflow rule, not protection against a user forcing a Git add. `init` reports required entries without rewriting existing Git rules. Gitignore does not untrack already committed files. Provide setup instructions for correcting that situation. Users choose additional local-only paths; `history.exclude` separately opts files out of future checkpoints. Ignore changes never remove authored knowledge.
 
-### P2 — Read-only commands + compat fixtures
-- [ ] `path`, `context`, `tree`, `version` commands with exact alpha output semantics.
-- [ ] Commit fixtures `alpha-poc` and `alpha-deep` + committed alpha-expected outputs.
-- [ ] `Compat.Tests` byte-identical assertions.
-- Gate: compat green on all OSes. (Parallel with P3.)
+## 5. CLI surface
 
-### P3 — Ignore + walk + sync
-- [ ] `GitIgnoreMatcher` (subset + escape handling), `BuiltInIgnoreProvider`, `RepoLoreIgnoreProvider`, `IgnoreChain`.
-- [ ] `RepositoryWalker` (iterative, lazy, symlink-skipping, exclude-pruned).
-- [ ] `TreeSynchronizer` (create-if-absent only), `SparseTreeGenerator` (sole owner of deletion), `sync` command.
-- [ ] Never-delete invariant test (fixtures + 50 seeded random trees).
-- Gate: invariant green; `sync --dry-run` reports without writing.
+Common flags: `--repo-root <path>`, `--json`, `--quiet`, `--help`. Except for `init` (cwd by default), discover the root by walking upward to `_repolore/`. Normalize display paths with `/`; reject paths outside the repository and links escaping its boundary.
 
-### P4 — init, migrate, health-check
-- [ ] Embedded `method.md` and `root.md` template resources.
-- [ ] `MigrationRunner`, `V0ToV1Migration` (Safe), `migrate` command; write commands auto-apply Safe migrations.
-- [ ] `HealthChecker` + checks H001–H010, `--fix` (sparse-tree regeneration only).
-- Gate: alpha fixture initialized in place without any modification of existing `tree/` files.
+| Command | v1 contract |
+|---|---|
+| `init [--update-method]` | Create missing configuration and entry-point templates plus `sparse-tree/`; no empty nodes or custom-area templates. Checkpoint initialized state. Existing alpha state requires explicit migration. Explicit method update preserves old bytes first. |
+| `path <target> [--include-method]` | List root, ancestors, and target note in deterministic order with existence/empty status. Missing nodes are normal. Nonexistent directory targets use a trailing slash. |
+| `context <target> [--budget-tokens 8000] [--include-method] [--strict]` | Read those notes, skipping missing/empty nodes. Include source labels and report omissions. Estimate tokens as `ceil(chars/4)` including rendered overhead; label as approximate. Skip a non-fitting note and continue to smaller notes rather than dropping every subsequent local note. `--strict` returns findings exit code if non-empty notes are omitted for budget. |
+| `context --node <knowledge-path>` | Read an explicit root-relative custom or path note under `_repolore/`, using the same budget/output rules. Accept repeatable `--node` for explicitly requested additional notes. A session note requires matching `--session <id>`; reject cross-session paths. Never allow access to history internals through context. |
+| `context [<target>] --session <id> [--node <knowledge-path>]` | Read only the selected session root and explicitly requested notes, optionally after durable path context. Missing session/root returns an actionable finding; never select another session or create files. Label provisional sources and share the existing context budget. |
+| `tree [--start <knowledge-path>]` | Display durable knowledge, directories first and ordinal-sorted, excluding sessions, recovery, and tool internals by default. Explicit `--start _repolore/sessions/` lists sessions; starting inside one lists its notes. No source mirror required. |
+| `checkpoint` | Capture current eligible state; report changes, history size, and eviction counts. No-op if unchanged. |
+| `history` | List completed local recovery checkpoints. |
+| `restore <id> [--path <knowledge-path>] [--dry-run]` | Preview or restore within the validated managed scope, preserving the current state first. |
+| `health-check [--explain <path>] [--session <id>]` | Read-only findings: format/configuration problems, missing entry points, mapping collisions, broken local knowledge links, orphan path notes, unavailable/corrupt recovery state, and policy explanations. Session notes are not orphan source nodes. Validate an explicitly selected session through `health-check --session <id>`; default knowledge checks exclude session contents. No semantic freshness claim or automatic fixes. |
+| `migrate [--check] [--dry-run]` | Explicit, versioned migration with a complete plan, conflict detection, preservation, and recoverable application. Never auto-migrate from a read, init, or dry-run. |
+| `version` | CLI version, supported format versions, and build commit. |
 
-### P5 — Git delegate backend
-- [ ] `GitDelegateIgnoreProvider` with streaming `git check-ignore`, per-directory batches, timeout + fallback.
-- [ ] `--ignore-backend auto|builtin|git`; `H010` finding.
-- Gate: fixture with pathological `.gitignore` matches git behavior exactly; git absent → clean fallback.
+Exit codes: `0` success; `1` findings/incomplete strict context/migration needed; `2` usage error; `3` format, IO, policy, conflict, or recovery failure. Emit stable finding IDs and document JSON schemas alongside each command before implementation. Do not reuse old generated-tree health checks without revising their meaning.
 
-### P6 — Plugins
-- [ ] `PluginDiscovery` (PATH + PATHEXT), `PluginMetadata` schema validation, `PluginInvoker` (timeout, no inherited stdin).
-- [ ] `plugin` command incl. `--run` pass-through.
-- [ ] Fixture fake plugins (shell + `.cmd`).
-- Gate: list/details/health-check green on all OSes; non-plugin binary on PATH never matches.
+Remove `sync`, `sync-tree`, and `sync-sparse-tree` from v1. There is no mirror to synchronize. Checkpoint detects file changes; health-check detects structural issues. No `plugin` command exists in v1.
 
-### P7 — Packaging and release
-- [ ] SCD publish for all seven RIDs; FDD `dotnet pack`.
-- [ ] npm meta + platform packages; launcher test.
-- [ ] `release.yml` with tag verification, checksums, SBOM, approval-gated pushes.
-- [ ] `docs/`: install-offline, enterprise-feeds, plugin-authoring, format.
-- Gate: install-from-local-feed smoke (`dotnet tool install --add-source ./artifacts`, `npm install ./packaging/npm/*.tgz`) executed with networking disabled.
+## 6. Alpha compatibility and migration
 
-### P8 — Performance and hardening
-- [ ] `Perf.Tests` + `nightly-perf.yml`.
-- [ ] Long-path/case-insensitivity tests; dogfood `_repolore/` in the `repolore` repo.
-- [ ] Tag `v0.1.0`.
-- Gate: nightly perf within thresholds; release pipeline end-to-end on a dry-run tag.
+No marker means alpha format 0. The new authored `sparse-tree/` contract is format 1; no format-1 implementation was released by the superseded design. Unknown higher versions fail with an upgrade instruction and no writes. Preserve unknown JSON fields when rewriting configuration.
 
-## 13. Deferred / out of scope (v0)
+Read-only legacy support must consider both alpha `tree/` and committed `sparse-tree/`. Use an available non-empty copy; if both differ, report a conflict instead of guessing. A fresh clone containing only `sparse-tree/` must remain readable.
 
-Maven/PyPI/crates wrappers (wrapper contract documented); code signing (documented follow-up); plugin-provided ignore backends; caching; watch mode; editor integrations; semantic staleness detection; NativeAOT/trimming.
+Before migration, inventory both copies and all custom areas. Migration capture explicitly includes legacy tree contents and both variants, beyond ordinary v1 history coverage. Preserve every authored variant in recovery; abort before writes on unresolved differing copies or ambiguous path mappings. The migration plan identifies the canonical destination, leaves custom areas and any existing session folders intact, removes only validated redundant/empty legacy material after preservation, and updates the marker last. Do not treat the old byte-for-byte CLI output as a compatibility gate: preservation and explainable interpretation are the gates.
 
-## 14. Open considerations
+The migration must flag the old `_repolore/tree/` Git ignore rule as obsolete and recommend the history and sessions exclusions; it must not blindly replace user Git configuration. Never run the alpha sparse generator on a migrated knowledge base. Restore of pre-migration state must include layout and marker/configuration bytes so rollback is meaningful.
 
-1. **Commit model** (decided): `tree/` is gitignored — it is the local working mirror; `sparse-tree/` is committed — it is the versioned knowledge view containing only non-empty nodes. Authored knowledge still lives (and is edited) in `tree/`; `sync` regenerates `sparse-tree/` from it. This keeps git free of thousands of empty marker files.
-2. **Windows plugins**: `.cmd`/`.bat`/`.exe` work directly; `.ps1` plugins would require `pwsh`. Document that plugins must be directly executable (no interpreter dependency).
-3. **Code signing** (Authenticode/notarization) is enterprise-relevant; ship v0 unsigned with SHA256SUMS and make signing the first post-v0 release item.
+## 7. Architecture and privacy
+
+Target `net10.0`, pin the SDK with `global.json`, keep runtime dependencies BCL-only, and use explicit construction rather than a DI container.
+
+```text
+src/RepoLore.Core/             # resolution, policies, snapshot/restore planning
+src/RepoLore.Infrastructure/   # filesystem, hashing/storage, clock, exclusive writes
+src/RepoLore.Cli/              # parser, orchestration, text/JSON rendering; packable tool
+tests/RepoLore.Tests/         # deterministic unit tests and temp-directory CLI tests
+```
+
+Keep logic separate from physical IO through narrow interfaces. Add abstractions only when a tested use case needs them; do not prebuild plugin, VCS-provider, or package-wrapper frameworks. Use injected time/IDs and controlled filesystem failures for history tests. A small explicit parser is acceptable for this bounded command surface.
+
+Ban network APIs in all shipped projects with build-time checks. No sockets, DNS, HTTP, telemetry, remote AI calls, account system, or update checks. v1 requires no subprocess execution for its built-in functionality. Keep process execution out until there is a concrete justified feature.
+
+RepoLore's privacy guarantee covers its own code and behavior. Package-manager fetching/signature verification, externally chosen editors/agents, and user-selected network-mounted directories are outside that boundary. Never describe a local CLI as preventing another program from uploading its output. Future official plugins must satisfy the same local-only guarantee; third-party plugins would have their own trust boundary. There is no plugin implementation work in v1.
+
+## 8. NuGet release and enterprise adoption
+
+Pack only `RepoLore.Cli` with `PackAsTool=true`, `ToolCommandName=repolore`, `PackageId=RepoLore.Cli`. Bundle the referenced Core and Infrastructure assemblies. It is a framework-dependent .NET tool, not an application library dependency or a self-contained binary release.
+
+Document the .NET SDK installation prerequisite and compatible .NET 10 runtime. Do not claim that installing the NuGet package installs the SDK/runtime, and do not silently opt users into untested major runtime roll-forward.
+
+Publish the same versioned `.nupkg` to NuGet.org and as a release download. Enterprises may approve/copy it to an Artifactory NuGet repository or local folder feed. Artifactory requires no RepoLore-specific integration: this is a NuGet package of type DotnetTool. Installation uses `dotnet tool install`, not `dotnet add package`.
+
+Recommend a committed local tool manifest with a pinned version, plus an approved NuGet configuration that clears other sources. Do not commit credentials. Document global installation as an individual-user option. Updates change the pinned version through normal review; knowledge-format migration remains explicit.
+
+Release materials: license, release notes, supported environments, checksums, SBOM, short privacy/filesystem-access statement, offline/internal-feed instructions, and vulnerability-reporting contact. Establish package signing and verification for the enterprise-ready v1 release; keep credentials in release infrastructure, not source. A preview without signing must state that limitation. Do not promise paid support, certification, or universal enterprise approval.
+
+## 9. Small deterministic test and release plan
+
+Use one test project initially, organized by feature. Fixed inputs, injected clock/IDs, a few temp-directory fixtures, and selected golden JSON/text outputs are sufficient. No large statistical experiment, elaborate nightly benchmark service, or exhaustive combinatorial suite is required.
+
+Required cases:
+
+1. Path/ancestor order, custom nodes, missing and empty notes, collision refusal, budget omission reporting, and rejection of escaping paths/symlinks.
+2. Ignore precedence, re-inclusion beneath excluded parents, hard safety exclusions, and independent Git/history policies.
+3. Checkpoint additions/changes/deletions, unchanged no-op, Gitignored Markdown capture, retention with shared objects, over-budget failure, and explicit history exclusions.
+4. Restore old bytes and absence, preserve pre-restore state, interrupted writes, corrupted/missing snapshot objects, and a second writer refused. Test that failed preservation prevents destructive writes.
+5. Alpha sparse-only clone, local-only alpha knowledge, conflicting copies, custom areas, migration dry-run, migration rollback, and unknown-format refusal.
+6. Read-only commands and every dry-run leave file contents unchanged. Ordinary initialization never overwrites existing authored content.
+7. Two-session fixtures: default reads exclude both; explicit selection reads only the requested root/notes; reject invalid IDs and cross-session access. Cover shared budgets, missing roots, listing scope, and no auto-selection.
+8. Checkpoint/restore Gitignored session edits and deletions, exclude policies, and retained-history behavior after manual cleanup. A fresh clone without sessions still reads durable knowledge; document promotion as a reviewed durable edit, not an automatic transform.
+
+CI: restore locked build dependencies → build with warnings as errors and banned-network-API checks → run tests on Windows/Linux/macOS → pack the tool → install the actual package from a local feed and smoke-test commands. Run the Linux installation/runtime smoke with networking blocked and external feeds cleared; prepare the SDK and build dependencies beforehand. Trace network calls for the built-in smoke path if feasible, without claiming that one smoke test proves all possible behavior.
+
+Release: verify tag against a single version source → run CI → pack/sign → verify signed package → produce checksum/SBOM → publish the same package and release notes. Test tool-manifest restore from the offline feed. Measure a fixed medium-size fixture manually when scale behavior changes; correctness and preservation are the release gates.
+
+## 10. Implementation phases
+
+### P0 — Finalize the contract before coding
+
+- [ ] Resolve the collision-free path escape convention and freeze fixtures.
+- [ ] Specify ignore matching, configuration validation, history layout, restore scope, retention accounting, and interrupted-operation recovery.
+- [ ] Define stable JSON schemas, health finding IDs, and migration examples.
+- [ ] Freeze session selection, node/budget ordering, local-only setup, and manual promotion/cleanup examples using a two-session fixture.
+- [ ] Draft the v1 method from this contract, keeping alpha guidance clearly labeled until migration is implemented.
+- Gate: a maintainer can explain fresh-clone reading, a direct edit, a checkpoint, a restore, and an alpha migration from fixtures alone.
+
+### P1 — Core scaffold and read-only use
+
+- [ ] Create three source projects, one test project, pinned SDK/versions, and CI.
+- [ ] Add network API guards, filesystem boundary checks, parser, and renderers.
+- [ ] Implement path, context, tree, version, and read-only legacy handling, including explicit session selection and default session exclusion.
+- Gate: canonical and alpha fixtures are readable; reads make no changes.
+
+### P2 — Checkpoint recovery
+
+- [ ] Implement configuration, coverage rules, byte hashing, full-version objects, completed manifests, and bounded retention.
+- [ ] Implement checkpoint, history, restore preview/application, and exclusive mutation guard.
+- [ ] Add failure and preservation tests before allowing destructive mutations, including session edits/deletions under the shared recovery budget.
+- Gate: direct file changes including deletions and Gitignored notes are recoverable between checkpoints; failed capture cannot destroy the prior state.
+
+### P3 — Initialization, policy, and migration
+
+- [ ] Implement init with first checkpoint, policy explanations, and health-check, documenting required sessions/history Git exclusions and optional session validation.
+- [ ] Implement explicit alpha migration, conflict refusal, and rollback.
+- [ ] Update both method copies and agent instructions for the implemented contract; migrate dogfood knowledge with preservation.
+- Gate: a fresh clone retains its knowledge, an alpha migration loses no authored variant, and dry-runs write nothing.
+
+### P4 — NuGet preview
+
+- [ ] Pack only RepoLore.Cli and validate installation/restore from a local feed.
+- [ ] Publish a preview with clear limitations and concise setup, daily-use, review, and recovery instructions.
+- [ ] Exercise the workflow on this repository and at least one other repository when available; fix confusing behavior.
+- Gate: one developer can install, initialize, read, create/resume a local session, edit, checkpoint, promote a finding for review, and restore using the documentation.
+
+### P5 — v1.0.0
+
+- [ ] Complete signing/verification, release metadata, and internal-feed/Artifactory documentation.
+- [ ] Run required deterministic tests and offline package smoke; publish one versioned NuGet tool package.
+- Gate: the approved package is installable from an internal or offline feed, all built-in use is local, and the recovery limitations are explicit.
+
+## 11. Later releases
+
+v1.x prioritizes bug fixes, clearer diagnostics, compatibility, and measured usability improvements to the same core. Additional distribution channels and integrations are demand-led future scope, not commitments for a particular release.
+
+Plugins are deferred. If introduced, author-provided plugins must remain network-free; third-party plugins cannot inherit that guarantee. A watcher, delta compression, databases, semantic indexes, separate Core NuGet package, or hosted service requires a new explicit design decision. Do not introduce them while implementing this roadmap.

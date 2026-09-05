@@ -1,5 +1,7 @@
 # RepoLore Tools
 
+> **Alpha tools only.** These scripts implement the old full-mirror/generated-sparse layout. The v1 plan in `_repolore/roadmap/roadmap.md` replaces those semantics. Do not run these generators on a migrated v1 knowledge base or regenerate sparse-tree without a complete, verified source tree.
+
 RepoLore tools are small helper scripts.
 
 They are not the core of RepoLore. The core is the static knowledge base and the method.

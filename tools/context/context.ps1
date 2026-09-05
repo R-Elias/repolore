@@ -12,7 +12,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $RepoRoot = (Resolve-Path $RepoRoot).Path
-$RepoLoreRoot = Join-Path $RepoRoot ".repolore"
+$RepoLoreRoot = Join-Path $RepoRoot "_repolore"
 $TreeRoot = Join-Path $RepoLoreRoot "tree"
 $EmptyMarker = "<!-- repolore:empty -->"
 

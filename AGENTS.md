@@ -4,9 +4,10 @@ This repository uses RepoLore.
 
 RepoLore is the repository’s operational memory for humans and coding agents. Before exploring, modifying, reviewing, or auditing this repository, read:
 
-1. `.repolore/method.md`
-2. `.repolore/root.md`, if it exists
+1. `_repolore/method.md`
+2. `_repolore/root.md`, if it exists
 3. the relevant RepoLore files for the area you are working on
+4. `_repolore/roadmap/roadmap.md` when planning or building RepoLore v0
 
 Use RepoLore before broad source-code exploration.
 

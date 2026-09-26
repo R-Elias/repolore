@@ -1,0 +1,28 @@
+# generated directories are ignored by default
+**/bin/
+**/obj/
+**/node_modules/
+**/build/
+**/vendor/
+
+# keep one authored vendor note
+!vendor/keep.md
+
+# re-include a specific note under an excluded parent
+!src/build/a.md
+
+# a bare name only matches the repository root
+build
+
+# a directory rule only matches directories and their descendants
+dist/
+
+# a single-segment wildcard does not cross directory boundaries
+docs/*.tmp
+
+# '?' matches exactly one character within a segment
+notes/??.md
+
+# escaped leading '#' and '!' name literal files
+\#notes.md
+\!important.md

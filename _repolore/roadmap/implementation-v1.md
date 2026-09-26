@@ -1,6 +1,6 @@
 # First Release — Implementation Work Packages
 
-Status: **packages 01 and 02 implemented; CI green on Windows, Linux, macOS**. Target: a preview followed by v1.0.0 of the single `RepoLore.Cli` NuGet tool. This guide decomposes the [roadmap](roadmap.md); [invariants](../product/invariants.md) and the [session contract](../product/sessions.md) still apply. It resolves earlier open implementation choices below. Do not copy alpha mirror-generation behavior into v1.
+Status: **packages 01, 02, and 03 implemented; CI green on Windows, Linux, macOS**. Target: a preview followed by v1.0.0 of the single `RepoLore.Cli` NuGet tool. This guide decomposes the [roadmap](roadmap.md); [invariants](../product/invariants.md) and the [session contract](../product/sessions.md) still apply. It resolves earlier open implementation choices below. Do not copy alpha mirror-generation behavior into v1.
 
 ## How to execute this plan
 
@@ -204,7 +204,7 @@ Track implementation here or in linked PRs; all entries start incomplete. For ea
 
 - [x] 01 — Executable boundary and fixtures — implemented and validated; Windows/Linux/macOS CI green (details below)
 - [x] 02 — Filesystem paths and knowledge mapping — implemented and validated; Windows/Linux/macOS CI green (details below)
-- [ ] 03 — Configuration and coverage policies
+- [x] 03 — Configuration and coverage policies — implemented and validated locally (details below)
 - [ ] 04 — Durable and session context
 - [ ] 05 — Snapshot capture and publication
 - [ ] 06 — Retention and mutation ownership
@@ -245,3 +245,17 @@ Checks actually run on macOS arm64 with the Rider SDK on PATH (`~/.dotnet`, 10.0
 During development the build guard rejected `System.Runtime.CompilerServices.Unsafe`/`MemoryMarshal` imported by `Encoding.UTF8.GetByteCount(string)`, `Path.GetRelativePath`, and multi-char `Split(char, char)`; each was replaced with a plain deterministic equivalent (char-count length bound, substring walk, single-char split).
 
 CI gate resolved: the Windows/Linux/macOS matrix is green. Package 02 is complete. Package 03 (configuration and coverage policies) is next.
+
+### Package 03 — local evidence, 2026-09-26
+
+Delivered the format/config parser and the one bounded matcher plus the two coverage policies, all pure in Core. The [configuration-and-policies note](configuration-and-policies.md) records responsibilities. `Json.cs` provides a hand-written JSON parser/writer (duplicate-key and malformed-input detection, unknown-field retention); `ConfigParser` validates `formatVersion` (required, must equal 1; higher fails with an upgrade instruction) and the optional `history` object (`enabled`/`maxBytes`/`exclude` defaults, negative/non-integral/overflowing budgets and invalid rules rejected); `RuleSet` implements the anchored grammar; `SourceDiscoveryPolicy` layers hard exclusions → defaults (`**/bin/`, `**/obj/`, `**/node_modules/`, `**/build/`, `**/vendor/`) → user `_repoloreignore`; `HistoryCoveragePolicy` decides eligibility over regular files independently of Git and source discovery.
+
+Checks actually run on macOS arm64 with the Rider SDK on PATH (`~/.dotnet`, 10.0.100):
+
+- `dotnet restore --locked-mode --disable-build-servers` — passed; all six projects restored, no package changes.
+- `dotnet build --configuration Release --no-restore` — passed, 0 warnings and 0 errors (Core compiles under the boundary guard without tripping it; the Cli guard test also recompiles copied `src/` with probes).
+- `dotnet run --project tests/RepoLore.Core.Tests --configuration Release --no-build` — passed, **19/19 checks**. New checks: the frozen `ignore-rules.txt`/`expected-matcher.tsv` table (root `build` vs `**/build/`, `build/a`, `src/build/a`, `!src/build/a.md` re-inclusion through an excluded parent, `!vendor/keep.md` override, `dist/` directory-only, `docs/*.tmp` no cross-segment `*`, `notes/??.md` `?`, `\#`/`\!` literal leading, comments/blank lines); invalid rules (`ab**cd`, `a**`, `**a`, `a[bc]`, `a\b`, `a//b`, `\x`, bare `!`) rejected with line numbers; last-match ordering; `**` zero-or-more segments; source discovery (hard exclusions win over `!`, defaults, user override, `HasNegation`); history coverage (Gitignored session captured by default, `history.exclude` narrows only that coverage, `.history/`/symlinks/directories/non-Markdown excluded); and config parsing (defaults, full parse, malformed JSON is an error, duplicate keys, wrong types, negative/non-integral/overflowing budgets, invalid `history.exclude`, unknown/higher format versions, missing `formatVersion`, unknown-field round-trip preservation).
+- Regression: `tests/RepoLore.Infrastructure.Tests` — **3/3 checks**; `tests/RepoLore.Cli.Tests` — **4/4 checks**. All pass unchanged.
+- `git diff --check` and `cmp method.md _repolore/method.md` — passed; the two method copies remain identical.
+
+No policy change deletes a file (policies are pure decision functions). "Missing marker is alpha (format 0)" remains a filesystem-presence rule to be wired by init/migration (packages 08–09). CI/platform validation is not yet run for this package; local evidence only. Package 04 (durable and session context) is next.

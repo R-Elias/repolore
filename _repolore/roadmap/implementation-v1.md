@@ -1,6 +1,6 @@
 # First Release — Implementation Work Packages
 
-Status: **package 01 implementation started; platform gates tracked below**. Target: a preview followed by v1.0.0 of the single `RepoLore.Cli` NuGet tool. This guide decomposes the [roadmap](roadmap.md); [invariants](../product/invariants.md) and the [session contract](../product/sessions.md) still apply. It resolves earlier open implementation choices below. Do not copy alpha mirror-generation behavior into v1.
+Status: **packages 01 and 02 implemented; CI green on Windows, Linux, macOS**. Target: a preview followed by v1.0.0 of the single `RepoLore.Cli` NuGet tool. This guide decomposes the [roadmap](roadmap.md); [invariants](../product/invariants.md) and the [session contract](../product/sessions.md) still apply. It resolves earlier open implementation choices below. Do not copy alpha mirror-generation behavior into v1.
 
 ## How to execute this plan
 
@@ -202,8 +202,8 @@ Build/test/package once for the candidate; sign the package, verify its signatur
 
 Track implementation here or in linked PRs; all entries start incomplete. For each, record the commit/PR, fixture/check command, observed result, and limitations. Do not check off the roadmap because this instruction document exists.
 
-- [ ] 01 — Executable boundary and fixtures — implemented and locally validated; Windows/Linux/macOS CI gate pending (details below)
-- [ ] 02 — Filesystem paths and knowledge mapping — implemented and locally validated; Windows/Linux/macOS CI gate pending (details below)
+- [x] 01 — Executable boundary and fixtures — implemented and validated; Windows/Linux/macOS CI green (details below)
+- [x] 02 — Filesystem paths and knowledge mapping — implemented and validated; Windows/Linux/macOS CI green (details below)
 - [ ] 03 — Configuration and coverage policies
 - [ ] 04 — Durable and session context
 - [ ] 05 — Snapshot capture and publication
@@ -218,7 +218,7 @@ Track implementation here or in linked PRs; all entries start incomplete. For ea
 
 ### Package 01 — local evidence, 2026-09-05
 
-Change is in the working tree, not committed or published. The [executable foundation note](executable-foundation.md) describes responsibilities and maintenance checks. Delivered Core/Infrastructure/Cli plus three dependency-free executable test projects; SDK 10.0.100, `net10.0`, and lock files; single CLI version source `0.1.0-preview.1`; independent knowledge format 1; real `version`/`--help`; only Cli packable; compiled-capability and resolved-dependency guards. No knowledge command returns placeholder success. No checkpoint or migration was performed on this checkout, and both alpha method copies remain identical.
+Committed; not published. The [executable foundation note](executable-foundation.md) describes responsibilities and maintenance checks. Delivered Core/Infrastructure/Cli plus three dependency-free executable test projects; SDK 10.0.100, `net10.0`, and lock files; single CLI version source `0.1.0-preview.1`; independent knowledge format 1; real `version`/`--help`; only Cli packable; compiled-capability and resolved-dependency guards. No knowledge command returns placeholder success. No checkpoint or migration was performed on this checkout, and both alpha method copies remain identical.
 
 Checks actually run on macOS arm64 with the SDK installed temporarily at `/tmp/repolore-dotnet`:
 
@@ -230,7 +230,7 @@ Checks actually run on macOS arm64 with the SDK installed temporarily at `/tmp/r
 
 Initial sandboxed SDK startup stalled; validation used an approved build outside the sandbox. An initial test-host PATH lookup and a fixture Gitignore packaging issue were fixed before the final passing run. The build tool is outside the shipped application boundary.
 
-Remaining gate: `.github/workflows/ci.yml` defines Windows, Linux, and macOS locked restore/build/tests, but no CI run was dispatched or observed. Package 01 remains unchecked until that matrix passes. Package 02 (safe paths and mapping) is next after this prerequisite; no later package, actual tool install, network trace, or release is claimed complete.
+CI gate resolved: `.github/workflows/ci.yml` runs locked restore/build and all three test suites on Windows, Linux, and macOS; the matrix is green. Package 01 is complete. No later package, actual tool install, network trace, or release is claimed complete.
 
 ### Package 02 — local evidence, 2026-09-06
 
@@ -244,4 +244,4 @@ Checks actually run on macOS arm64 with the Rider SDK on PATH (`~/.dotnet`, 10.0
 
 During development the build guard rejected `System.Runtime.CompilerServices.Unsafe`/`MemoryMarshal` imported by `Encoding.UTF8.GetByteCount(string)`, `Path.GetRelativePath`, and multi-char `Split(char, char)`; each was replaced with a plain deterministic equivalent (char-count length bound, substring walk, single-char split).
 
-Remaining gate: no CI run was dispatched or observed, so the Windows/Linux/macOS matrix for package 02 is unverified. Package 03 (configuration and coverage policies) is next.
+CI gate resolved: the Windows/Linux/macOS matrix is green. Package 02 is complete. Package 03 (configuration and coverage policies) is next.

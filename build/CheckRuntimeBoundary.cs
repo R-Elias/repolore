@@ -1,5 +1,3 @@
-// Build tooling only. Inspect emitted metadata so aliases and qualified calls
-// cannot bypass the guard. This is a regression guard, not a hostile-code sandbox.
 using (var stream = File.OpenRead(AssemblyPath))
 using (var pe = new PEReader(stream))
 {

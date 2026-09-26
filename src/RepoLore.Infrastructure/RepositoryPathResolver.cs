@@ -18,8 +18,6 @@ public sealed class RepositoryPathResolver
             throw new ArgumentException("Repository root must be a non-empty absolute path.", nameof(repositoryRoot));
     }
 
-    public string Root => _root;
-
     public string Resolve(string target)
     {
         if (string.IsNullOrWhiteSpace(target))

@@ -1,5 +1,5 @@
 using RepoLore.Cli;
-using RepoLore.Core;
+using RepoLore.Core.Format;
 
 if (args is ["version"])
 {

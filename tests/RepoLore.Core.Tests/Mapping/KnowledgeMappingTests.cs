@@ -1,6 +1,7 @@
-using RepoLore.Core;
+using RepoLore.Core.Mapping;
+using RepoLore.Core.Tests;
 
-namespace RepoLore.Core.Tests;
+namespace RepoLore.Core.Tests.Mapping;
 
 public static class KnowledgeMappingTests
 {

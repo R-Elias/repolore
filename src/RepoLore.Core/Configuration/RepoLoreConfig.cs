@@ -1,4 +1,7 @@
-namespace RepoLore.Core;
+using RepoLore.Core.Json;
+using RepoLore.Core.Matching;
+
+namespace RepoLore.Core.Configuration;
 
 public sealed class RepoLoreConfig
 {

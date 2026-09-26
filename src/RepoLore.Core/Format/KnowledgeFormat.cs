@@ -1,4 +1,4 @@
-namespace RepoLore.Core;
+namespace RepoLore.Core.Format;
 
 public static class KnowledgeFormat
 {

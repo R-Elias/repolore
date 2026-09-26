@@ -1,4 +1,4 @@
-namespace RepoLore.Core;
+namespace RepoLore.Core.Mapping;
 
 public static class KnowledgePathMapper
 {

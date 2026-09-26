@@ -1,6 +1,8 @@
-using RepoLore.Core;
+using RepoLore.Core.Configuration;
+using RepoLore.Core.Json;
+using RepoLore.Core.Tests;
 
-namespace RepoLore.Core.Tests;
+namespace RepoLore.Core.Tests.Configuration;
 
 public static class ConfigParserTests
 {

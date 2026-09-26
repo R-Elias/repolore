@@ -1,4 +1,6 @@
-namespace RepoLore.Core;
+using RepoLore.Core.Matching;
+
+namespace RepoLore.Core.Policies;
 
 public sealed class SourceDiscoveryPolicy
 {

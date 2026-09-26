@@ -8,7 +8,7 @@ Only directories are nodes. Each directory has exactly one note, named after it 
 
 ## Responsibilities
 
-- `RepoLore.Core/KnowledgePathMapper.cs` owns all mapping. Pure, no IO; mapping depends only on the path string.
+- `RepoLore.Core/Mapping/KnowledgePathMapper.cs` owns all mapping. Pure, no IO; mapping depends only on the path string.
   - `MapDirectoryNote(dir)` → note path under `sparse-tree/` (`src/` → `src/src.md`; root → `root.md`).
   - `TryDecode(note)` accepts only canonical directory-note paths; anything else (a file-like note, a note name that does not match its directory, or a top-level note other than `root.md`) returns a finding.
 - `RepoLore.Infrastructure/RepositoryPathResolver.cs` owns physical path validation. Constructed with a canonicalized absolute root.

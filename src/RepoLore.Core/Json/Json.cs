@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
 
-namespace RepoLore.Core;
+namespace RepoLore.Core.Json;
 
 public sealed class JsonParseException : Exception
 {

@@ -1,4 +1,8 @@
-namespace RepoLore.Core;
+using RepoLore.Core.Format;
+using RepoLore.Core.Json;
+using RepoLore.Core.Matching;
+
+namespace RepoLore.Core.Configuration;
 
 public sealed class ConfigException : Exception
 {

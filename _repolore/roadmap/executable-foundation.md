@@ -1,10 +1,10 @@
 # Executable foundation — package 01
 
-The .NET foundation exposes `version` and `--help` only. Unknown commands and extra arguments exit 2; no knowledge handler is wired. `version` reports the CLI SemVer from `Directory.Build.props` and the independent knowledge format constant from `RepoLore.Core/KnowledgeFormat.cs`. Reporting format 1 identifies the target contract; it does not imply context, parsing, or migration is implemented.
+The .NET foundation exposes `version` and `--help` only. Unknown commands and extra arguments exit 2; no knowledge handler is wired. `version` reports the CLI SemVer from `Directory.Build.props` and the independent knowledge format constant from `RepoLore.Core/Format/KnowledgeFormat.cs`. Reporting format 1 identifies the target contract; it does not imply context, parsing, or migration is implemented.
 
 ## Responsibilities and checks
 
-- `src/RepoLore.Core/` holds format identity; future pure planning belongs here.
+- `src/RepoLore.Core/` holds pure planning, now split into responsibility folders: `Format/`, `Json/`, `Mapping/`, `Matching/`, `Configuration/`, `Policies/`.
 - `src/RepoLore.Infrastructure/` is intentionally empty until physical IO is needed. Its assembly is already referenced by the CLI. Add narrow interfaces and failure injection alongside their first tested operation.
 - `src/RepoLore.Cli/` handles arguments and console output. It alone is packable as `RepoLore.Cli`; the package installation/release gates remain pending.
 - `build/CheckRuntimeBoundary.cs` is an MSBuild inline task, not shipped runtime code. `Directory.Build.targets` checks compiled references in all three shipped projects and rejects network, process, reflection/dynamic loading, and native interop capabilities. Broad reflection restrictions are deliberate: evaluate a narrow justified allowance with a negative fixture before relaxing them. This is a regression guard, not a sandbox for hostile code.

@@ -1,4 +1,4 @@
-using RepoLore.Core;
+using RepoLore.Core.Mapping;
 using RepoLore.Infrastructure;
 
 namespace RepoLore.Infrastructure.Tests;

@@ -1,4 +1,4 @@
-namespace RepoLore.Core;
+namespace RepoLore.Core.Matching;
 
 public sealed class RuleSyntaxException : Exception
 {

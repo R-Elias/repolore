@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><IsTestProject>true</IsTestProject></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/RepoLore.Core/RepoLore.Core.csproj" />
+    <None Include="Fixtures/**/*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

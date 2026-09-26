@@ -6,7 +6,7 @@ Status: **package 01 implementation started; platform gates tracked below**. Tar
 
 Complete one work package at a time, in dependency order. Each should produce a reviewable change with its own passing gate. A compiling stub, happy-path demonstration, or updated checkbox is not completion. Do not start destructive commands until the preservation gates pass. Preserve unrelated working changes.
 
-Use a single test project with fixture files and a narrow fault-injecting filesystem wrapper. No large test framework, research program, daemon, or plugin infrastructure. Tests may invoke the CLI as a process; the shipped CLI must not spawn processes. Inject time and IDs rather than asserting wall-clock timestamps or sleeping in tests.
+Use small test projects (one per shipped assembly) with fixture files and a narrow fault-injecting filesystem wrapper. No large test framework, research program, daemon, or plugin infrastructure. Tests may invoke the CLI as a process; the shipped CLI must not spawn processes. Inject time and IDs rather than asserting wall-clock timestamps or sleeping in tests.
 
 For every work package, leave: the implemented behavior, exact check command and result, relevant fixture names, and any remaining limitation. Update the affected RepoLore note when behavior changes. A failure gate means fix the defect before claiming completion; it does not mean ask the user about a routine implementation choice. If the contract itself cannot be met, document the precise conflict before changing scope.
 
@@ -30,43 +30,35 @@ Work on 04 and 05 can proceed independently once paths and coverage are stable. 
 
 ## 01 — Establish the executable boundary, not a framework
 
-**Deliver:** `Core`, `Infrastructure`, `Cli`, and one test project. Only Cli is packable. Set the .NET 10 target, pin SDK/package versions, and expose a real `version` command carrying CLI version and supported knowledge formats. Keep format version independent of package version.
+**Deliver:** `Core`, `Infrastructure`, `Cli`, and three test projects (one per assembly). Only Cli is packable. Set the .NET 10 target, pin SDK/package versions, and expose a real `version` command carrying CLI version and supported knowledge formats. Keep format version independent of package version.
 
 Build-time guards cover all shipped projects: no networking APIs, process execution, dynamic loading/native interop used to evade guards, or third-party runtime dependencies. Core plans operations through narrow interfaces; Infrastructure owns physical IO. Add abstractions only as the following packages need them. Read console arguments/environment at the boundary and pass values explicitly.
 
-Create small named fixtures reused below: `minimal-v1`, `two-sessions`, `mapping-collisions`, `alpha-sparse-only`, `alpha-local-only`, `alpha-conflict`, and `history-failures`. Put distinctive sentinel text in unrelated files so accidental reads/writes are observable. Author expected results independently of the implementation under test.
+Create small named fixtures reused below: `minimal-v1`, `two-sessions`, `directory-mapping`, `alpha-sparse-only`, `alpha-local-only`, `alpha-conflict`, and `history-failures`. Put distinctive sentinel text in unrelated files so accidental reads/writes are observable. Author expected results independently of the implementation under test.
 
 **Pass:** builds/tests on Windows, Linux, macOS; `version` needs no repository and writes nothing. A temporary forbidden API reference makes the guard fail, then removing it restores green. Inspect the produced runtime dependency list, not only project declarations.
 
 **Fail:** empty handlers return success; tests require network access; public Core package or plugin interfaces appear; CI only tests one OS while claiming all three. No requirement for a separate Guard/Perf/Compat project.
 
-## 02 — Freeze safe paths and an injective knowledge mapping
+## 02 — Freeze safe paths and a one-to-one directory mapping
 
 **Deliver:** one shared path resolver for reads, writes, manifests, and migration. CLI paths are repo-root-relative; absolute paths may be accepted only if canonicalized inside the root. Knowledge flags use `_repolore/...`. Reject `..` escapes, rooted manifest paths, drive/UNC substitutions, and symlink/reparse traversal, including an existing ancestor of a nonexistent destination. A string prefix check is insufficient (`repo-other` is not inside `repo`).
 
 Do not infer case behavior solely from OS name. Detect actual directory/file aliases when planning writes; refuse ambiguous case/Unicode aliases on the destination filesystem. Preserve source spelling. Report unsupported filenames/lengths before writing rather than silently truncating or normalizing names. A checkpoint and restore preserve bytes; text rendering may tolerate UTF-8 BOM/CRLF without rewriting them.
 
-**Mapping decision:** retain ordinary alpha mappings, but escape reserved names deterministically using UTF-8 lowercase hex. Mapping depends on the path string, never on which sibling files happen to exist:
+**Mapping decision:** only directories are nodes. Each directory maps to one note named after it, stored inside the mirrored directory; files never get notes, so no escaping is required. The repository root maps to the fixed `root.md`. Mapping depends on the path string, never on which siblings exist. Decode accepts only canonical directory-note paths; anything else (a file-like note, a note name that does not match its directory, or a top-level note other than `root.md`) produces a finding, not a guessed path. Keep mapping knowledge in one component.
 
-1. For each source directory component `D`, use `E(D) = ~d-<hex(D)>` if it starts with `~` or ends with `.md` (case-insensitive suffix check); otherwise `E(D) = D`.
-2. A directory note is `sparse-tree/E(parent)/E(D)/E(D).md`.
-3. A file note is `sparse-tree/E(parent)/F.md`. Normally `F` is the original filename. Use `F = ~f-<hex(filename)>` if the filename starts with `~` or equals the parent's encoded basename ignoring case. Root-level files only need the `~` rule because the knowledge root lives outside the tree.
-4. Decode only valid canonical escape forms; malformed or noncanonical reserved names produce a finding, not a guessed path. Keep mapping knowledge in one component.
-
-This prevents both directory-note/file-note collisions and file-note/mirrored-directory collisions. Examples:
+Examples:
 
 | Source target | Path under `sparse-tree/` |
 |---|---|
 | `src/` | `src/src.md` |
-| `src/client.cs` | `src/client.cs.md` |
-| `src/src` | `src/~f-737263.md` |
-| `src/~src` | `src/~f-7e737263.md` |
-| file `a` | `a.md` |
-| directory `a.md/` | `~d-612e6d64/~d-612e6d64.md` |
+| `src/sub/` | `src/sub/sub.md` |
+| root | `root.md` |
 
-**Pass:** table-driven encode/decode round trips, nested escaped components, unknown targets with directory trailing slash, and real filesystem alias/escape checks. Adding/removing a sibling never relocates another note. `a` and directory `a.md/` coexist. Sentinels outside the root remain unread/unmodified after malicious target/manifest inputs.
+**Pass:** table-driven encode/decode round trips, nested directories, the root `root.md` case, and real filesystem alias/escape checks. Adding/removing a sibling never relocates another note. Files inside a directory produce no notes. Sentinels outside the root remain unread/unmodified after malicious target/manifest inputs.
 
-**Fail:** use source existence to resolve ambiguous alpha authorship; universal case-folding merges two Linux files; only the `src/src` collision is tested. Escaping can make names too long: refuse affected writes with a path-specific error, do not introduce hidden hash-only mappings.
+**Fail:** assigning a note to an individual file; any escaping/hex scheme; universal case-folding that merges two Linux files; only the happy path tested. Over-long names: refuse affected writes with a path-specific error, do not silently truncate.
 
 ## 03 — Make policy decisions explainable and independent
 
@@ -168,7 +160,7 @@ Use the mapping from 02 for destinations. Stage the full destination plan and ve
 
 **Deliver:** stable JSON/text renderers and one documented findings table. Use exit 0 for completed success, 1 for findings/migration-needed/strict omissions, 2 for syntax, and 3 for operational/format/conflict/recovery failure. No stack trace or progress text inside JSON stdout; operational errors have a machine-readable result and concise diagnostics. IDs are stable across minor releases.
 
-Freeze finding IDs in a fixture before wiring each check. At minimum distinguish missing required note, malformed/unsupported format, policy error, mapping collision, conflicting alpha notes, broken local link, orphan path note, invalid session, and unavailable/corrupt/pending history. Missing optional path notes and missing history in a fresh clone are normal; corrupt existing history is not. `--explain` describes discovery/history eligibility, never actual Git tracking status.
+Freeze finding IDs in a fixture before wiring each check. At minimum distinguish missing required note, malformed/unsupported format, policy error, invalid note name, conflicting alpha notes, broken local link, orphan path note, invalid session, and unavailable/corrupt/pending history. Missing optional path notes and missing history in a fresh clone are normal; corrupt existing history is not. `--explain` describes discovery/history eligibility, never actual Git tracking status.
 
 Health checks observe; they do not fix. Session checks run only for explicitly selected sessions. A durable link that requires a local session is a portability finding. Support a bounded documented subset of local Markdown links for validation (relative inline file links, strip fragment for file existence, skip web/mail URLs); do not add a general Markdown engine or open URLs. Validation cannot certify semantic freshness.
 
@@ -211,7 +203,7 @@ Build/test/package once for the candidate; sign the package, verify its signatur
 Track implementation here or in linked PRs; all entries start incomplete. For each, record the commit/PR, fixture/check command, observed result, and limitations. Do not check off the roadmap because this instruction document exists.
 
 - [ ] 01 — Executable boundary and fixtures — implemented and locally validated; Windows/Linux/macOS CI gate pending (details below)
-- [ ] 02 — Filesystem paths and knowledge mapping
+- [ ] 02 — Filesystem paths and knowledge mapping — implemented and locally validated; Windows/Linux/macOS CI gate pending (details below)
 - [ ] 03 — Configuration and coverage policies
 - [ ] 04 — Durable and session context
 - [ ] 05 — Snapshot capture and publication
@@ -226,16 +218,30 @@ Track implementation here or in linked PRs; all entries start incomplete. For ea
 
 ### Package 01 — local evidence, 2026-09-05
 
-Change is in the working tree, not committed or published. The [executable foundation note](executable-foundation.md) describes responsibilities and maintenance checks. Delivered Core/Infrastructure/Cli plus one dependency-free executable test project; SDK 10.0.100, `net10.0`, and lock files; single CLI version source `0.1.0-preview.1`; independent knowledge format 1; real `version`/`--help`; only Cli packable; compiled-capability and resolved-dependency guards. No knowledge command returns placeholder success. No checkpoint or migration was performed on this checkout, and both alpha method copies remain identical.
+Change is in the working tree, not committed or published. The [executable foundation note](executable-foundation.md) describes responsibilities and maintenance checks. Delivered Core/Infrastructure/Cli plus three dependency-free executable test projects; SDK 10.0.100, `net10.0`, and lock files; single CLI version source `0.1.0-preview.1`; independent knowledge format 1; real `version`/`--help`; only Cli packable; compiled-capability and resolved-dependency guards. No knowledge command returns placeholder success. No checkpoint or migration was performed on this checkout, and both alpha method copies remain identical.
 
 Checks actually run on macOS arm64 with the SDK installed temporarily at `/tmp/repolore-dotnet`:
 
-- `/tmp/repolore-dotnet/dotnet restore --locked-mode --disable-build-servers` — passed; all four projects restored with cleared package feeds and no NuGet dependencies.
+- `/tmp/repolore-dotnet/dotnet restore --locked-mode --disable-build-servers` — passed; all six projects restored with cleared package feeds and no NuGet dependencies.
 - `/tmp/repolore-dotnet/dotnet build --configuration Release --no-restore --disable-build-servers -m:1` — passed, 0 warnings and 0 errors.
-- `/tmp/repolore-dotnet/dotnet run --project tests/RepoLore.Tests --configuration Release --no-build` — passed, **4/4 checks**. Verified version outside a repository, all seven named fixtures unchanged after version/help/invalid commands, exactly the three shipped project libraries in the produced `.deps.json`, and guard rejection/recovery. Nine temporary API probes cover HTTP, DNS, sockets (one in each shipped project), process execution, assembly loading, load contexts, P/Invoke, native-library loading, and reflection. A tenth probe adds a non-BCL assembly reference and fails with the dependency diagnostic. Removing probes restores a successful build.
-- Fixtures: `minimal-v1`, `two-sessions`, `mapping-collisions`, `alpha-sparse-only`, `alpha-local-only`, `alpha-conflict`, `history-failures`. Distinct session roots and the materialized Gitignore template are checked. Their later context/mapping/recovery behavior is not implemented or claimed.
+- `/tmp/repolore-dotnet/dotnet run --project tests/RepoLore.Cli.Tests --configuration Release --no-build` — passed, **4/4 checks**. Verified version outside a repository, the six named fixtures unchanged after version/help/invalid commands, exactly the three shipped project libraries in the produced `.deps.json`, and guard rejection/recovery. Nine temporary API probes cover HTTP, DNS, sockets (one in each shipped project), process execution, assembly loading, load contexts, P/Invoke, native-library loading, and reflection. A tenth probe adds a non-BCL assembly reference and fails with the dependency diagnostic. Removing probes restores a successful build.
+- Fixtures: `minimal-v1`, `two-sessions`, `alpha-sparse-only`, `alpha-local-only`, `alpha-conflict`, `history-failures` (Cli.Tests), plus `expected-mappings.tsv` (Core.Tests). Distinct session roots and the materialized Gitignore template are checked. Their later context/mapping/recovery behavior is not implemented or claimed.
 - `git diff --check` and `cmp method.md _repolore/method.md` — passed. Verified synthetic session fixture files are not Gitignored; real checkout sessions/history are ignored.
 
 Initial sandboxed SDK startup stalled; validation used an approved build outside the sandbox. An initial test-host PATH lookup and a fixture Gitignore packaging issue were fixed before the final passing run. The build tool is outside the shipped application boundary.
 
 Remaining gate: `.github/workflows/ci.yml` defines Windows, Linux, and macOS locked restore/build/tests, but no CI run was dispatched or observed. Package 01 remains unchecked until that matrix passes. Package 02 (safe paths and mapping) is next after this prerequisite; no later package, actual tool install, network trace, or release is claimed complete.
+
+### Package 02 — local evidence, 2026-09-06
+
+Delivered the shared path resolver and the one-note-per-directory mapping. The [paths-and-mapping note](paths-and-mapping.md) records responsibilities and the span-lowering pitfalls that trip the build guard. Core's `KnowledgePathMapper` is pure: each directory maps to a note named after it, files get no notes, and the root maps to `root.md`. Infrastructure's `RepositoryPathResolver` validates rooted targets, rejects `..`/rooted/UNC/symlink escapes, and detects case/Unicode aliases on the destination filesystem.
+
+Checks actually run on macOS arm64 with the Rider SDK on PATH (`~/.dotnet`, 10.0.100):
+
+- `dotnet build --configuration Release --no-restore` — passed, 0 warnings and 0 errors.
+- `dotnet run --project tests/RepoLore.Core.Tests --configuration Release --no-build` — passed, **3/3 checks**; `tests/RepoLore.Infrastructure.Tests` — **3/3 checks**; `tests/RepoLore.Cli.Tests` — **4/4 checks**.
+- Package 02 checks: `RepoLore.Core.Tests` asserts the authored `expected-mappings.tsv` (`src/`, `src/sub/`, `a.md/`) encodes each directory note and decodes it round-trip, the root maps to `root.md`, and non-directory note paths (`src/client.cs.md`, `foo/bar.md`, a bare `src.md`, etc.) produce findings; `RepoLore.Infrastructure.Tests` asserts the resolver rejects `..`/rooted/UNC/backslash targets and a symlinked ancestor (while a `repo-other` sentinel outside the root stays untouched), write-alias detection agrees with what the filesystem actually resolves, and over-long note names are refused before `Path.GetFullPath`.
+
+During development the build guard rejected `System.Runtime.CompilerServices.Unsafe`/`MemoryMarshal` imported by `Encoding.UTF8.GetByteCount(string)`, `Path.GetRelativePath`, and multi-char `Split(char, char)`; each was replaced with a plain deterministic equivalent (char-count length bound, substring walk, single-char split).
+
+Remaining gate: no CI run was dispatched or observed, so the Windows/Linux/macOS matrix for package 02 is unverified. Package 03 (configuration and coverage policies) is next.

@@ -131,7 +131,6 @@ _repolore/
       API.md
       Controllers/
         Controllers.md
-        UserController.cs.md
 ```
 
 So:
@@ -148,12 +147,7 @@ API/Controllers/
 → _repolore/tree/API/Controllers/Controllers.md
 ```
 
-For repository files, append `.md` to the original filename:
-
-```text
-API/Controllers/UserController.cs
-→ _repolore/tree/API/Controllers/UserController.cs.md
-```
+Only directories get notes; files never do. Any knowledge about a file belongs in the note for its containing directory. The top-level note is always named `root.md`.
 
 ## 7. Sparse Tree
 
@@ -262,9 +256,7 @@ _repolore/tree/src/services/services.md
 _repolore/tree/packages/auth/auth.md
 ```
 
-Use file-level knowledge only when a specific file contains non-obvious behavior, important constraints, or unusual implementation details.
-
-Do not create rich file-level knowledge by default.
+Record non-obvious behavior of a specific file in the note for its containing directory. Do not create a note per file.
 
 ## 12. What to Write
 

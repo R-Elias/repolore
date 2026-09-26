@@ -4,3 +4,6 @@ _repolore/.history/
 **/bin/
 **/obj/
 .idea/
+.vs/
+*.user
+.DS_Store

@@ -6,13 +6,14 @@ RepoLore is an open-source, local knowledge tool maintained by one developer. Ke
 
 Before exploring, modifying, reviewing, or auditing an area:
 
+0. Read the [Engineering Quality Policy](ENGINEERING.md).
 1. Read [`_repolore/method.md`](_repolore/method.md) and [`_repolore/root.md`](_repolore/root.md).
 2. Read the relevant path notes and related knowledge for the area; inspect source only as needed for the task.
 3. For v1 work, read [product direction](_repolore/product/product.md), [invariants](_repolore/product/invariants.md), and the [roadmap](_repolore/roadmap/roadmap.md).
 4. Before implementation, read the [first-release work packages](_repolore/roadmap/implementation-v1.md), including the requested package and its dependencies. Read the [session contract](_repolore/product/sessions.md) when handling short-term knowledge or session behavior.
 5. Inspect the working-tree status and existing implementation/check evidence. Preserve unrelated and user-authored changes; do not assume an unchecked item means no code exists.
 
-The product documents define intended behavior; the implementation guide resolves detailed first-release choices. Its pass/fail gates are required. Do not replace specified path escaping, context ordering, history scope, or recovery rules with an easier approximation. If these documents conflict, identify the exact conflict rather than silently choosing a convenient interpretation.
+The product documents define intended behavior; the implementation guide resolves detailed first-release choices. Its pass/fail gates are required. Do not replace specified path mapping, context ordering, history scope, or recovery rules with an easier approximation. If these documents conflict, identify the exact conflict rather than silently choosing a convenient interpretation.
 
 Code remains the source of truth for current behavior. Verify discrepancies and update stale implementation notes. A bug does not redefine an intended requirement: surface that conflict and fix within the authorized task.
 
@@ -38,7 +39,7 @@ For each work package:
 4. Update affected durable knowledge and the implementation completion record with the behavior delivered, exact check commands/results, fixture names, and remaining limitations.
 5. Mark the package complete only when its required gates passed. Distinguish local validation from CI/platform checks not yet run. Compilation, a stub returning success, or a documentation edit alone is not completion.
 
-Use one deterministic test project with small fixtures, injected time/IDs, and narrow failure injection. Do not introduce a benchmark service, broad research program, speculative framework, or duplicate test infrastructure. After required checks pass, broaden testing only for a specific unresolved risk or regression.
+Use small deterministic test projects (one per shipped assembly) with small fixtures, injected time/IDs, and narrow failure injection. Do not introduce a benchmark service, broad research program, speculative framework, or duplicate test infrastructure. After required checks pass, broaden testing only for a specific unresolved risk or regression.
 
 ## Boundaries that must survive every change
 

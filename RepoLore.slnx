@@ -5,6 +5,8 @@
     <Project Path="src/RepoLore.Cli/RepoLore.Cli.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/RepoLore.Tests/RepoLore.Tests.csproj" />
+    <Project Path="tests/RepoLore.Core.Tests/RepoLore.Core.Tests.csproj" />
+    <Project Path="tests/RepoLore.Infrastructure.Tests/RepoLore.Infrastructure.Tests.csproj" />
+    <Project Path="tests/RepoLore.Cli.Tests/RepoLore.Cli.Tests.csproj" />
   </Folder>
 </Solution>

@@ -46,9 +46,7 @@ Root guidance, path notes, and custom notes are ordinary editable Markdown. Long
 
 ### Path mapping and custom nodes
 
-Keep ordinary alpha mappings: directory `src/payments/` maps to `sparse-tree/src/payments/payments.md`; file `src/payments/client.cs` maps to `sparse-tree/src/payments/client.cs.md`.
-
-Use the deterministic `~d-<UTF8 hex>` directory and `~f-<UTF8 hex>` file escapes specified in [implementation package 02](implementation-v1.md). They handle both `src/src` directory-note collisions and file `a` versus directory `a.md/` collisions. Mapping depends only on the source path, not sibling existence. Refuse unrepresentable/ambiguous paths before writing; never silently assign one note to two targets or guess ambiguous alpha authorship.
+Only directories are nodes: directory `src/payments/` maps to `sparse-tree/src/payments/payments.md`. Files never get notes, so no escaping is needed. The repository root maps to the fixed `root.md`. Mapping depends only on the source path, not sibling existence. Refuse unrepresentable/ambiguous paths before writing; never silently assign one note to two targets.
 
 Custom areas such as `architecture/`, `domain/`, and this repository's `product/` and `roadmap/` are supported alongside `sparse-tree/`. `sparse-tree`, `tree` (legacy), `sessions`, `.history`, and tool-owned temporary names are reserved. Custom Markdown is discoverable, directly readable through `context --node`, and included in recovery. Do not report it as orphaned source knowledge.
 
@@ -152,7 +150,7 @@ Common flags: `--repo-root <path>`, `--json`, `--quiet`, `--help`. Except for `i
 | `checkpoint` | Capture current eligible state; report changes, history size, and eviction counts. No-op if unchanged. |
 | `history` | List completed local recovery checkpoints. |
 | `restore <id> [--path <knowledge-path>] [--dry-run]` | Preview or restore within the validated managed scope, preserving the current state first. |
-| `health-check [--explain <path>] [--session <id>]` | Read-only findings: format/configuration problems, missing entry points, mapping collisions, broken local knowledge links, orphan path notes, unavailable/corrupt recovery state, and policy explanations. Session notes are not orphan source nodes. Validate an explicitly selected session through `health-check --session <id>`; default knowledge checks exclude session contents. No semantic freshness claim or automatic fixes. |
+| `health-check [--explain <path>] [--session <id>]` | Read-only findings: format/configuration problems, missing entry points, invalid note names, broken local knowledge links, orphan path notes, unavailable/corrupt recovery state, and policy explanations. Session notes are not orphan source nodes. Validate an explicitly selected session through `health-check --session <id>`; default knowledge checks exclude session contents. No semantic freshness claim or automatic fixes. |
 | `migrate [--check] [--dry-run]` | Explicit, versioned migration with a complete plan, conflict detection, preservation, and recoverable application. Never auto-migrate from a read, init, or dry-run. |
 | `version` | CLI version, supported format versions, and build commit. |
 
@@ -166,7 +164,7 @@ No marker in a nonempty authored knowledge base means alpha format 0; an absent/
 
 Read-only legacy support must consider both alpha `tree/` and committed `sparse-tree/`. Use an available non-empty copy; if both differ, report a conflict instead of guessing. A fresh clone containing only `sparse-tree/` must remain readable.
 
-Before migration, inventory both copies and all custom areas; conflicts and previews make no writes. Standalone alpha checkpoint can preserve variants before manual conflict resolution. Migration capture explicitly includes legacy tree contents and both variants, beyond ordinary v1 history coverage. Preserve every authored variant in recovery; abort before writes on unresolved differing copies or ambiguous path mappings. The migration plan identifies the canonical destination, leaves custom areas and any existing session folders intact, removes only validated redundant/empty legacy material after preservation, and updates the marker last. Do not treat the old byte-for-byte CLI output as a compatibility gate: preservation and explainable interpretation are the gates.
+Before migration, inventory both copies and all custom areas; conflicts and previews make no writes. Standalone alpha checkpoint can preserve variants before manual conflict resolution. Migration capture explicitly includes legacy tree contents and both variants, beyond ordinary v1 history coverage. Preserve every authored variant in recovery; abort before writes on unresolved differing copies or conflicting notes. The migration plan identifies the canonical destination, leaves custom areas and any existing session folders intact, removes only validated redundant/empty legacy material after preservation, and updates the marker last. Do not treat the old byte-for-byte CLI output as a compatibility gate: preservation and explainable interpretation are the gates.
 
 The migration must flag the old `_repolore/tree/` Git ignore rule as obsolete and recommend the history and sessions exclusions; it must not blindly replace user Git configuration. Never run the alpha sparse generator on a migrated knowledge base. Restore of pre-migration state must include layout and marker/configuration bytes so rollback is meaningful.
 
@@ -178,7 +176,9 @@ Target `net10.0`, pin the SDK with `global.json`, keep runtime dependencies BCL-
 src/RepoLore.Core/             # resolution, policies, snapshot/restore planning
 src/RepoLore.Infrastructure/   # filesystem, hashing/storage, clock, exclusive writes
 src/RepoLore.Cli/              # parser, orchestration, text/JSON rendering; packable tool
-tests/RepoLore.Tests/         # deterministic unit tests and temp-directory CLI tests
+tests/RepoLore.Core.Tests/            # deterministic path-mapping tests
+tests/RepoLore.Infrastructure.Tests/   # deterministic resolver tests
+tests/RepoLore.Cli.Tests/              # temp-directory CLI and build-guard tests
 ```
 
 Keep logic separate from physical IO through narrow interfaces. Add abstractions only when a tested use case needs them; do not prebuild plugin, VCS-provider, or package-wrapper frameworks. Use injected time/IDs and controlled filesystem failures for history tests. A small explicit parser is acceptable for this bounded command surface.
@@ -201,11 +201,11 @@ Release materials: license, release notes, supported environments, checksums, SB
 
 ## 9. Small deterministic test and release plan
 
-Use one test project initially, organized by feature. Fixed inputs, injected clock/IDs, a few temp-directory fixtures, and selected golden JSON/text outputs are sufficient. No large statistical experiment, elaborate nightly benchmark service, or exhaustive combinatorial suite is required.
+Use small test projects, one per shipped assembly, organized by feature. Fixed inputs, injected clock/IDs, a few temp-directory fixtures, and selected golden JSON/text outputs are sufficient. No large statistical experiment, elaborate nightly benchmark service, or exhaustive combinatorial suite is required.
 
 Required cases:
 
-1. Path/ancestor order, custom nodes, missing and empty notes, collision refusal, budget omission reporting, and rejection of escaping paths/symlinks.
+1. Path/ancestor order, custom nodes, missing and empty notes, invalid-note refusal, budget omission reporting, and rejection of escaping paths/symlinks.
 2. Ignore precedence, re-inclusion beneath excluded parents, hard safety exclusions, and independent Git/history policies.
 3. Checkpoint additions/changes/deletions, unchanged no-op, Gitignored Markdown capture, retention with shared objects, over-budget failure, and explicit history exclusions.
 4. Restore old bytes and absence, preserve pre-restore state, interrupted writes, corrupted/missing snapshot objects, and a second writer refused. Test that failed preservation prevents destructive writes.

@@ -16,9 +16,9 @@ This repository is the proof of concept of RepoLore: operational memory for deve
 
 ## Current state versus target contract
 
-The current alpha uses a gitignored `_repolore/tree/` and a committed generated `_repolore/sparse-tree/`. The scripts still implement that behavior. Do not delete or regenerate either as part of a planning edit; a fresh clone may hold its only knowledge copy in sparse-tree.
+The alpha full mirror (`_repolore/tree/`) has been removed; `_repolore/sparse-tree/` is the authored canonical path tree (currently `tools/tools.md`). The PowerShell scripts still describe the alpha mirror behavior as a historical reference. Do not regenerate the full mirror; a sparse-only clone holds authored knowledge only in `sparse-tree/`.
 
-The planned v1 removes the full mirror and makes `sparse-tree/` the sole authored path tree. Custom areas are first-class. Planned `sessions/<session-id>/` folders add Gitignored short-term knowledge, explicitly selected for context and included in checkpoint recovery by default. Durable knowledge remains the reviewed long-term layer. `product/` and `roadmap/` are authored planning areas today and may be edited directly. Do not run alpha generators on a migrated v1 knowledge base.
+The full mirror is gone and `sparse-tree/` is the sole authored path tree. Custom areas are first-class. Planned `sessions/<session-id>/` folders add Gitignored short-term knowledge, explicitly selected for context and included in checkpoint recovery by default. Durable knowledge remains the reviewed long-term layer. `product/` and `roadmap/` are authored planning areas today and may be edited directly. Do not run alpha generators on a migrated v1 knowledge base.
 
 The first release is one NuGet .NET tool package, `RepoLore.Cli`, containing Core and Infrastructure assemblies. No plugins or additional package channels. Runtime target: .NET 10. The core is local-only; recovery uses explicit checkpoints with a configurable 200 MiB default budget.
 

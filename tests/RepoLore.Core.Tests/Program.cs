@@ -1,5 +1,6 @@
 using RepoLore.Core.Tests;
 using RepoLore.Core.Tests.Configuration;
+using RepoLore.Core.Tests.Context;
 using RepoLore.Core.Tests.Mapping;
 using RepoLore.Core.Tests.Matching;
 using RepoLore.Core.Tests.Policies;
@@ -11,4 +12,8 @@ return TestRunner.RunAll(() =>
     SourceDiscoveryPolicyTests.Run();
     HistoryCoveragePolicyTests.Run();
     ConfigParserTests.Run();
+    SessionIdTests.Run();
+    ContextSelectorTests.Run();
+    BlockEstimatorTests.Run();
+    NoteReadTests.Run();
 });

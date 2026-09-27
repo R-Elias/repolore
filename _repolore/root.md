@@ -1,6 +1,6 @@
 # Root — repolore-poc
 
-This repository is the proof of concept of RepoLore: operational memory for developers and coding agents, stored as local Markdown. It contains the method, PowerShell alpha tools, and the first .NET executable foundation (`version` and `--help`). Knowledge commands remain planned.
+This repository is the proof of concept of RepoLore: operational memory for developers and coding agents, stored as local Markdown. It contains the method, PowerShell alpha tools, and the .NET CLI foundation: `version`/`--help` and the read-only knowledge commands `path`, `context`, and `tree` (durable path notes plus explicitly selected session notes). Checkpoint, migration, and NuGet installation remain planned.
 
 ## Where to start
 
@@ -10,6 +10,7 @@ This repository is the proof of concept of RepoLore: operational memory for deve
 - Plan or build the first stable CLI release → [v1 roadmap and implementation contract](roadmap/roadmap.md).
 - Implement the first release step by step → [implementation work packages and pass/fail gates](roadmap/implementation-v1.md).
 - Work on the .NET executable, build guards, or deterministic tests → [executable foundation](roadmap/executable-foundation.md).
+- Work on durable/session context, path/context/tree commands, budget estimation, or session IDs → [durable and session context](roadmap/durable-and-session-context.md).
 - Understand the current alpha method → repository-root `method.md` and its matching `_repolore/method.md` copy.
 - Work on the PowerShell alpha tools → `tools/tools.md` and `_repolore/sparse-tree/tools/tools.md`.
 - Work as an agent → `AGENTS.md` for contract reading order, package execution/gates, alpha/v1 boundaries, and durable-update/session responsibilities.
@@ -26,4 +27,4 @@ The old alpha notes are historical implementation references. The v1 roadmap sup
 
 ## Remaining design work
 
-The [implementation guide](roadmap/implementation-v1.md) resolves path escaping, context ordering/budgets, ignore semantics, history scope/retention, and interrupted recovery. Turn its contracts into the specified fixtures before implementing dependent mutations. Track completion there; packages 01–03 (executable foundation, safe paths and mapping, configuration and coverage policies) are implemented with local checks, with CI/platform gates tracked separately. Session-aware commands, checkpoint commands, migration, and verified NuGet installation do not yet exist. Later plugin/distribution releases have no committed version or date.
+The [implementation guide](roadmap/implementation-v1.md) resolves path escaping, context ordering/budgets, ignore semantics, history scope/retention, and interrupted recovery. Turn its contracts into the specified fixtures before implementing dependent mutations. Track completion there; packages 01–04 (executable foundation, safe paths and mapping, configuration and coverage policies, durable and session context) are implemented with local checks, with CI/platform gates tracked separately. Checkpoint commands, migration, and verified NuGet installation do not yet exist. Later plugin/distribution releases have no committed version or date.

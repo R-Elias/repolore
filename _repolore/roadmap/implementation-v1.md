@@ -205,7 +205,7 @@ Track implementation here or in linked PRs; all entries start incomplete. For ea
 - [x] 01 — Executable boundary and fixtures — implemented and validated; Windows/Linux/macOS CI green (details below)
 - [x] 02 — Filesystem paths and knowledge mapping — implemented and validated; Windows/Linux/macOS CI green (details below)
 - [x] 03 — Configuration and coverage policies — implemented and validated locally (details below)
-- [ ] 04 — Durable and session context
+- [x] 04 — Durable and session context — implemented and validated locally (details below)
 - [ ] 05 — Snapshot capture and publication
 - [ ] 06 — Retention and mutation ownership
 - [ ] 07 — Restore and interrupted-operation recovery
@@ -259,3 +259,18 @@ Checks actually run on macOS arm64 with the Rider SDK on PATH (`~/.dotnet`, 10.0
 - `git diff --check` and `cmp method.md _repolore/method.md` — passed; the two method copies remain identical.
 
 No policy change deletes a file (policies are pure decision functions). "Missing marker is alpha (format 0)" remains a filesystem-presence rule to be wired by init/migration (packages 08–09). CI/platform validation is not yet run for this package; local evidence only. Package 04 (durable and session context) is next.
+
+### Package 04 — local evidence, 2026-09-26
+
+Delivered the read-only `path`, `context`, and `tree` commands with alpha read support and explicit session scope. The pure `RepoLore.Core.Context` components (`SessionId`, `KnowledgeNodePath`, `ContextSelector`, `BlockEstimator`, `NoteContent`, `NoteReadResolver`) implement selection, dedup, budget estimation, session-id validation, and sparse/alpha-copy resolution; the CLI orchestrates and reads via the existing `RepositoryPathResolver`. The [durable-and-session-context note](durable-and-session-context.md) records responsibilities and the `record`-type build-guard pitfall.
+
+Checks actually run on macOS arm64 with the Rider SDK on PATH (`~/.dotnet`, 10.0.100):
+
+- `dotnet restore --locked-mode --disable-build-servers` — passed; all projects up to date, no package changes.
+- `dotnet build --configuration Release --no-restore` — passed, 0 warnings and 0 errors (the new Core `Context/` and Cli command files compile under the boundary guard; `record` types were avoided because the guard rejects the generated `System.Type`).
+- `dotnet run --project tests/RepoLore.Core.Tests --configuration Release --no-build` — passed, **36/36 checks**. New checks: session-id accept/reject/reserved/limit; selection order (method → root/ancestors/target), root-only target, session root + named nodes, dedup, node-only, invalid/cross-session/history/outside/non-Markdown node rejection, unsupported source-target segments; canonical block format and `ceil(length/4)` charge, skip-non-fitting-and-continue, fits-nothing; BOM/CRLF/trim normalization, invalid-UTF-8 finding, empty marker; sparse-preferred/tree-fallback/conflict resolution.
+- Regression: `tests/RepoLore.Infrastructure.Tests` — **3/3 checks**; `tests/RepoLore.Cli.Tests` — **19/19 checks** (4 existing foundation checks unchanged plus 15 new process-level checks).
+- Package 04 checks (Cli.Tests, process-level, frozen `two-sessions`/`minimal-v1`/`alpha-sparse-only`/`alpha-local-only`/`alpha-conflict` fixtures plus an inline budget fixture): default durable context excludes both sessions; selecting A includes only A's root and named nodes; missing session/note findings exit 1; invalid `--session` exits 2 even with `--budget-tokens 1`; cross-session node exits 2; no-selector/zero/negative budget exit 2; duplicate nodes appear once; an oversized ancestor is omitted while a later fitting target note is still included (plain and `--json` agree); `--strict` exits 1 on budget omission while returning the partial result; alpha sparse-only/tree-only read correctly and alpha-conflict exits 3; `path` lists status; `tree` excludes sessions by default, lists IDs via `--start _repolore/sessions/`, and lists a session's notes when started inside one; a read-only batch leaves file contents/hashes/mtimes unchanged.
+- `git diff --check` and `cmp method.md _repolore/method.md` — passed; the two method copies remain identical (unchanged).
+
+Selection, estimation, session-id validation, and alpha resolution are pure; no read, preview, `path`, `context`, or `tree` invocation writes or checkpoints (invariant 8). Multiple selected sessions, recursive link loading, and health-check link validation remain out of scope (roadmap: single session per read; links reported later by health-check). CI/platform validation is not yet run for this package; local evidence only. Package 05 (snapshot capture and publication) is next.

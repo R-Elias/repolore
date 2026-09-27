@@ -20,7 +20,7 @@ public sealed class Clock
 
 public sealed class CheckpointResult
 {
-    public CheckpointResult(bool wasNoOp, long? publishedId, IReadOnlyList<string> added, IReadOnlyList<string> changed, IReadOnlyList<string> removed, int capturedFileCount)
+    public CheckpointResult(bool wasNoOp, long? publishedId, IReadOnlyList<string> added, IReadOnlyList<string> changed, IReadOnlyList<string> removed, int capturedFileCount, CleanupResult cleanup)
     {
         WasNoOp = wasNoOp;
         PublishedId = publishedId;
@@ -28,6 +28,7 @@ public sealed class CheckpointResult
         Changed = changed;
         Removed = removed;
         CapturedFileCount = capturedFileCount;
+        Cleanup = cleanup;
     }
 
     public bool WasNoOp { get; }
@@ -36,6 +37,7 @@ public sealed class CheckpointResult
     public IReadOnlyList<string> Changed { get; }
     public IReadOnlyList<string> Removed { get; }
     public int CapturedFileCount { get; }
+    public CleanupResult Cleanup { get; }
 }
 
 public sealed class CheckpointEngine
@@ -44,14 +46,16 @@ public sealed class CheckpointEngine
     private readonly RepositoryPathResolver _resolver;
     private readonly ObjectStore _objects;
     private readonly CheckpointStore _checkpoints;
+    private readonly HistoryCleanup _cleanup;
     private readonly Clock _clock;
 
-    public CheckpointEngine(string repositoryRoot, string historyDirectory, Clock? clock = null)
+    public CheckpointEngine(string repositoryRoot, string historyDirectory, Clock? clock = null, Func<string, bool>? deleteFile = null)
     {
         _repositoryRoot = repositoryRoot;
         _resolver = new RepositoryPathResolver(repositoryRoot);
         _objects = new ObjectStore(historyDirectory);
         _checkpoints = new CheckpointStore(historyDirectory);
+        _cleanup = new HistoryCleanup(_objects, _checkpoints, deleteFile);
         _clock = clock ?? new Clock();
     }
 
@@ -74,16 +78,23 @@ public sealed class CheckpointEngine
         var diff = SnapshotDiffer.Compare(previous, scope, first);
 
         if (diff.IsNoOp)
-            return new CheckpointResult(true, null, Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>(), first.Count);
+            return new CheckpointResult(true, null, Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>(), first.Count, _cleanup.Clean(config.HistoryMaxBytes));
 
         var nextId = (previous is null ? 0 : previous.Id) + 1;
         var manifest = new CheckpointManifest(nextId, _clock.NowIso(), HistoryVersion.Current, KnowledgeFormat.Current, scope, first);
+
+        var snapshotBytes = HistoryCleanup.SnapshotBytes(manifest);
+        if (snapshotBytes > config.HistoryMaxBytes)
+            throw new HistoryStoreException(
+                $"this checkpoint needs {snapshotBytes} bytes, which exceeds history.maxBytes ({config.HistoryMaxBytes}); raise history.maxBytes or reduce coverage");
 
         beforeManifestPublish?.Invoke();
 
         _checkpoints.Publish(manifest);
 
-        return new CheckpointResult(false, nextId, diff.Added, diff.Changed, diff.Removed, first.Count);
+        var cleanup = _cleanup.Clean(config.HistoryMaxBytes);
+
+        return new CheckpointResult(false, nextId, diff.Added, diff.Changed, diff.Removed, first.Count, cleanup);
     }
 
     private List<FileEntry> Collect(RuleSet historyExclude, bool storeObjects)

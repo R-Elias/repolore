@@ -190,6 +190,67 @@ public static class HistoryTests
                 TestRunner.True(corrupt.Error.Contains("corrupt manifest", StringComparison.Ordinal));
             });
         });
+
+        TestRunner.Check("an over-budget checkpoint exits 3 and leaves the previous checkpoint usable", () =>
+        {
+            TestSupport.WithTemp(temp =>
+            {
+                Directory.CreateDirectory(Path.Combine(temp, "_repolore"));
+                File.WriteAllText(Path.Combine(temp, "_repolore", "repolore.json"), "{\"formatVersion\":1}");
+                File.WriteAllText(Path.Combine(temp, "_repolore", "root.md"), "A");
+                TestRunner.Equal(0, TestSupport.Run(temp, TestSupport.Cli, "checkpoint").Code);
+
+                var retained = HistoryBytes(Path.Combine(temp, "_repolore", ".history"));
+                File.WriteAllText(Path.Combine(temp, "_repolore", "root.md"), "B");
+                File.WriteAllText(Path.Combine(temp, "_repolore", "repolore.json"),
+                    "{\"formatVersion\":1,\"history\":{\"maxBytes\":" + (retained - 1) + "}}");
+
+                var result = TestSupport.Run(temp, TestSupport.Cli, "checkpoint");
+                TestRunner.Equal(3, result.Code);
+                TestRunner.True(result.Error.Contains("exceeds", StringComparison.Ordinal), result.Error);
+
+                var history = TestSupport.Run(temp, TestSupport.Cli, "history");
+                TestRunner.Equal(0, history.Code, history.Error);
+                TestRunner.Equal(1, CountManifestLines(TestSupport.Normalize(history.Out)));
+                TestRunner.Equal("B", File.ReadAllText(Path.Combine(temp, "_repolore", "root.md")));
+            });
+        });
+
+        TestRunner.Check("checkpoint reports eviction when the budget shrinks", () =>
+        {
+            TestSupport.WithTemp(temp =>
+            {
+                Directory.CreateDirectory(Path.Combine(temp, "_repolore"));
+                File.WriteAllText(Path.Combine(temp, "_repolore", "repolore.json"), "{\"formatVersion\":1}");
+                File.WriteAllText(Path.Combine(temp, "_repolore", "root.md"), "A");
+                TestRunner.Equal(0, TestSupport.Run(temp, TestSupport.Cli, "checkpoint").Code);
+                File.WriteAllText(Path.Combine(temp, "_repolore", "root.md"), "B");
+                TestRunner.Equal(0, TestSupport.Run(temp, TestSupport.Cli, "checkpoint").Code);
+
+                var retained = HistoryBytes(Path.Combine(temp, "_repolore", ".history"));
+                File.WriteAllText(Path.Combine(temp, "_repolore", "repolore.json"),
+                    "{\"formatVersion\":1,\"history\":{\"maxBytes\":" + retained + "}}");
+
+                var result = TestSupport.Run(temp, TestSupport.Cli, "checkpoint");
+                TestRunner.Equal(0, result.Code, result.Error);
+                TestRunner.True(TestSupport.Normalize(result.Out).Contains("evicted", StringComparison.Ordinal), result.Out);
+            });
+        });
+    }
+
+    private static long HistoryBytes(string historyDir)
+    {
+        long total = 0;
+        var checkpoints = Path.Combine(historyDir, "checkpoints");
+        if (Directory.Exists(checkpoints))
+            foreach (var file in Directory.EnumerateFiles(checkpoints))
+                if (file.EndsWith(".json", StringComparison.Ordinal))
+                    total += new FileInfo(file).Length;
+        var objects = Path.Combine(historyDir, "objects");
+        if (Directory.Exists(objects))
+            foreach (var file in Directory.EnumerateFiles(objects))
+                total += new FileInfo(file).Length;
+        return total;
     }
 
     private static void WriteFixture(string temp)

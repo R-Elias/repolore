@@ -1,8 +1,8 @@
 # Snapshot capture and publication — package 05
 
 `checkpoint` and `history` backed by plain files, plus the basic exclusive writer guard used for
-manifest ID allocation and publication. No retention/eviction yet (package 06 counts bytes and
-evicts); the guard is reused across processes and bounded there.
+manifest ID allocation and publication. Retention/eviction and the cross-process/crash validation of
+that guard are delivered in package 06 (see [retention-and-mutation-ownership](retention-and-mutation-ownership.md)).
 
 ## Folder layout
 
@@ -58,7 +58,7 @@ and its only consumer); a file only splits when it is a distinct, evolving respo
   `RepositoryPathResolver.IsReparsePoint` (now public), used by `HistoryEnumerator`.
 - The lock is a `FileStream(path, OpenOrCreate, ReadWrite, FileShare.None)` over `write.lock`;
   OS-held, so process death releases it. Do not infer ownership from file existence or delete by
-  age (package 06 validates this across processes).
+  age (validated across processes in package 06).
 - Fault injection goes through `CheckpointEngine.Capture`'s `beforeVerification` and
   `beforeManifestPublish` hooks (matching the guide's "inject failures after object write and
   before manifest publication").

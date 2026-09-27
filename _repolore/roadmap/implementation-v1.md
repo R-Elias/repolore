@@ -1,6 +1,6 @@
 # First Release — Implementation Work Packages
 
-Status: **packages 01–05 implemented (01–02 CI-green; 03–05 local evidence pending CI)**. Target: a preview followed by v1.0.0 of the single `RepoLore.Cli` NuGet tool. This guide decomposes the [roadmap](roadmap.md); [invariants](../product/invariants.md) and the [session contract](../product/sessions.md) still apply. It resolves earlier open implementation choices below. Do not copy alpha mirror-generation behavior into v1.
+Status: **packages 01–06 implemented (01–02 CI-green; 03–06 local evidence pending CI)**. Target: a preview followed by v1.0.0 of the single `RepoLore.Cli` NuGet tool. This guide decomposes the [roadmap](roadmap.md); [invariants](../product/invariants.md) and the [session contract](../product/sessions.md) still apply. It resolves earlier open implementation choices below. Do not copy alpha mirror-generation behavior into v1.
 
 ## How to execute this plan
 
@@ -207,7 +207,7 @@ Track implementation here or in linked PRs; all entries start incomplete. For ea
 - [x] 03 — Configuration and coverage policies — implemented and validated locally (details below)
 - [x] 04 — Durable and session context — implemented and validated locally (details below)
 - [x] 05 — Snapshot capture and publication
-- [ ] 06 — Retention and mutation ownership
+- [x] 06 — Retention and mutation ownership
 - [ ] 07 — Restore and interrupted-operation recovery
 - [ ] 08 — Initialization and method updates
 - [ ] 09 — Alpha migration and rollback
@@ -288,3 +288,17 @@ Checks actually run on macOS arm64 with the Rider SDK on PATH (`~/.dotnet`, 10.0
 - `git diff --check` and `cmp method.md _repolore/method.md` — passed; the two method copies remain identical (unchanged).
 
 Retention/eviction (`history.maxBytes` counting, oldest-first eviction, unreferenced-object reclamation) and cross-process lock/crash validation remain for package 06; package 05 records the budget in scope but does not enforce it. The `checkpoint`/`history` commands write only under the writer lock and publish the manifest last. CI/platform validation is not yet run for this package; local evidence only. Package 06 (retention and mutation ownership) is next.
+
+### Package 06 — local evidence, 2026-09-27
+
+Delivered retention/eviction against `history.maxBytes` (default 209715200) and cross-process/crash validation of the package-05 writer guard. New `RepoLore.Infrastructure.History.HistoryCleanup` (`CleanupResult` plus byte counting, eviction, and reclamation) reuses `ObjectStore`/`CheckpointStore`. `CheckpointEngine.Capture` preflights that the new snapshot alone fits (`SnapshotBytes > maxBytes` fails before publishing, exit 3), publishes the manifest, then evicts oldest-first (never the latest) and reclaims objects no surviving manifest references, counting shared objects once. `checkpoint` reports evicted/reclaimed/retained bytes and warns on stderr when the budget was not achieved. Core is unchanged; the [retention note](retention-and-mutation-ownership.md) records responsibilities and the hand-written UTF-8 byte counter (avoids the `Encoding.UTF8.GetByteCount` build-guard trip).
+
+Checks actually run on macOS arm64 with the Rider SDK on PATH (`~/.dotnet`, 10.0.100):
+
+- `dotnet build --configuration Release --no-restore` — passed, 0 warnings and 0 errors.
+- `dotnet run --project tests/RepoLore.Infrastructure.Tests --configuration Release --no-build` — passed, **25/25 checks**. New checks: oldest-first eviction + object reclamation; shared-object retention; latest-never-evicted; failed-delete reports `BudgetOk=false` without corrupting history; exact-at-budget success; one-byte-over failure leaving prior state usable; shrinking the budget evicts on the next capture; a killed lock owner does not block later writes (spawned `--hold-lock` holder, killed it, re-acquired).
+- `dotnet run --project tests/RepoLore.Cli.Tests --configuration Release --no-build` — passed, **31/31 checks**. New checks: over-budget checkpoint exits 3 and leaves the previous checkpoint usable; checkpoint reports eviction when the budget shrinks.
+- Regression: `tests/RepoLore.Core.Tests` — **48/48 checks** (unchanged; no Core change).
+- `git diff --check` and `cmp method.md _repolore/method.md` — passed; the two method copies remain identical.
+
+Retention counts retained manifest and object bytes exactly (objects deduplicated); `tmp/`, `write.lock`, and pending controls are not charged. A failed cleanup preserves validity and retries on a later mutation, never a read. The restore-target pinning and pre-operation "undo pair" preflight from the roadmap remain for package 07 (restore and interrupted-operation recovery), which is next. CI/platform validation is not yet run for this package; local evidence only.

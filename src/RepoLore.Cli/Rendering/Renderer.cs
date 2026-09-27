@@ -80,6 +80,9 @@ public static class Renderer
 
     public static void Checkpoint(CheckpointResult result, bool json, bool quiet)
     {
+        if (!result.Cleanup.BudgetOk)
+            Console.Error.WriteLine("repolore: history budget was not achieved after cleanup; retry checkpoint later");
+
         if (json)
         {
             var root = new JsonObject();
@@ -89,6 +92,10 @@ public static class Renderer
             root.Members.Add(new JsonMember("added", StringArray(result.Added)));
             root.Members.Add(new JsonMember("changed", StringArray(result.Changed)));
             root.Members.Add(new JsonMember("removed", StringArray(result.Removed)));
+            root.Members.Add(new JsonMember("retainedBytes", Number(result.Cleanup.RetainedBytes)));
+            root.Members.Add(new JsonMember("evicted", Number(result.Cleanup.Evicted)));
+            root.Members.Add(new JsonMember("reclaimed", Number(result.Cleanup.Reclaimed)));
+            root.Members.Add(new JsonMember("budgetOk", new JsonBooleanValue(result.Cleanup.BudgetOk)));
             Console.WriteLine(JsonWriter.Write(root));
             return;
         }
@@ -102,7 +109,7 @@ public static class Renderer
             return;
         }
 
-        Console.WriteLine($"checkpoint {ManifestId.Format(result.PublishedId!.Value)}: {result.CapturedFileCount} files, {result.Added.Count} added, {result.Changed.Count} changed, {result.Removed.Count} removed");
+        Console.WriteLine($"checkpoint {ManifestId.Format(result.PublishedId!.Value)}: {result.CapturedFileCount} files, {result.Added.Count} added, {result.Changed.Count} changed, {result.Removed.Count} removed, {result.Cleanup.Evicted} evicted, {result.Cleanup.Reclaimed} reclaimed, {result.Cleanup.RetainedBytes} bytes retained");
     }
 
     public static void History(List<CheckpointManifest> manifests, bool json, bool quiet)

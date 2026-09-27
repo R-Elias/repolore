@@ -1,6 +1,6 @@
 # RepoLore v1 — Roadmap and Implementation Contract
 
-Status: **Packages 01–04 implemented (01–02 CI-green; 03–04 local evidence pending CI); checkpoint/migration commands remain design.** See the [completion record](implementation-v1.md#completion-record) for actual checks and remaining gates. This replaces the previous v0 plan. The first stable release is v1.0.0; preview releases may precede it. CLI versions and knowledge format versions are independent.
+Status: **Packages 01–05 implemented (01–02 CI-green; 03–05 local evidence pending CI); retention/restore/migration commands remain design.** See the [completion record](implementation-v1.md#completion-record) for actual checks and remaining gates. This replaces the previous v0 plan. The first stable release is v1.0.0; preview releases may precede it. CLI versions and knowledge format versions are independent.
 
 Read [product direction](../product/product.md) for the desired experience and release objectives, and [invariants](../product/invariants.md) for non-negotiable rules. This file specifies the product contract. Execute the first release through [implementation work packages](implementation-v1.md): 13 dependency-ordered steps with pitfalls, fixtures, and explicit pass/fail gates. That guide resolves the implementation details referenced below; do not leave them for ad hoc interpretation.
 

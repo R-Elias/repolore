@@ -1,5 +1,8 @@
+using System.Globalization;
 using RepoLore.Core.Context;
 using RepoLore.Core.Json;
+using RepoLore.Core.Snapshot;
+using RepoLore.Infrastructure.History;
 using RepoLore.Cli.Reading;
 
 namespace RepoLore.Cli.Rendering;
@@ -73,6 +76,79 @@ public static class Renderer
 
         foreach (var entry in entries)
             Console.WriteLine(entry.IsDirectory ? entry.Path + "/" : entry.Path);
+    }
+
+    public static void Checkpoint(CheckpointResult result, bool json, bool quiet)
+    {
+        if (json)
+        {
+            var root = new JsonObject();
+            root.Members.Add(new JsonMember("noOp", new JsonBooleanValue(result.WasNoOp)));
+            root.Members.Add(new JsonMember("id", result.PublishedId is long id ? Number(id) : new JsonNullValue()));
+            root.Members.Add(new JsonMember("files", Number(result.CapturedFileCount)));
+            root.Members.Add(new JsonMember("added", StringArray(result.Added)));
+            root.Members.Add(new JsonMember("changed", StringArray(result.Changed)));
+            root.Members.Add(new JsonMember("removed", StringArray(result.Removed)));
+            Console.WriteLine(JsonWriter.Write(root));
+            return;
+        }
+
+        if (quiet)
+            return;
+
+        if (result.WasNoOp)
+        {
+            Console.WriteLine("checkpoint: no changes");
+            return;
+        }
+
+        Console.WriteLine($"checkpoint {ManifestId.Format(result.PublishedId!.Value)}: {result.CapturedFileCount} files, {result.Added.Count} added, {result.Changed.Count} changed, {result.Removed.Count} removed");
+    }
+
+    public static void History(List<CheckpointManifest> manifests, bool json, bool quiet)
+    {
+        var ordered = new List<CheckpointManifest>(manifests);
+        ordered.Reverse();
+
+        if (json)
+        {
+            var array = new JsonArray();
+            foreach (var manifest in ordered)
+            {
+                var obj = new JsonObject();
+                obj.Members.Add(new JsonMember("id", Number(manifest.Id)));
+                obj.Members.Add(new JsonMember("timestamp", new JsonStringValue(manifest.Timestamp)));
+                var files = new JsonArray();
+                foreach (var file in manifest.Files)
+                    files.Items.Add(new JsonStringValue(file.Path));
+                obj.Members.Add(new JsonMember("files", files));
+                array.Items.Add(obj);
+            }
+            var root = new JsonObject();
+            root.Members.Add(new JsonMember("checkpoints", array));
+            Console.WriteLine(JsonWriter.Write(root));
+            return;
+        }
+
+        if (quiet)
+            return;
+
+        foreach (var manifest in ordered)
+        {
+            Console.WriteLine($"{ManifestId.Format(manifest.Id)} {manifest.Timestamp}");
+            foreach (var file in manifest.Files)
+                Console.WriteLine("  " + file.Path);
+        }
+    }
+
+    private static JsonNumberValue Number(long value) => new(value.ToString(CultureInfo.InvariantCulture));
+
+    private static JsonArray StringArray(IReadOnlyList<string> values)
+    {
+        var array = new JsonArray();
+        foreach (var value in values)
+            array.Items.Add(new JsonStringValue(value));
+        return array;
     }
 
     private static string StatusName(NoteStatus status) => status switch

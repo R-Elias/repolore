@@ -12,14 +12,16 @@ public sealed class RepoLoreConfig
     public bool HistoryEnabled { get; }
     public long HistoryMaxBytes { get; }
     public RuleSet HistoryExclude { get; }
+    public IReadOnlyList<string> HistoryExcludeRules { get; }
     public JsonObject Raw { get; }
 
-    public RepoLoreConfig(int formatVersion, bool historyEnabled, long historyMaxBytes, RuleSet historyExclude, JsonObject raw)
+    public RepoLoreConfig(int formatVersion, bool historyEnabled, long historyMaxBytes, RuleSet historyExclude, IReadOnlyList<string> historyExcludeRules, JsonObject raw)
     {
         FormatVersion = formatVersion;
         HistoryEnabled = historyEnabled;
         HistoryMaxBytes = historyMaxBytes;
         HistoryExclude = historyExclude;
+        HistoryExcludeRules = historyExcludeRules;
         Raw = raw;
     }
 }

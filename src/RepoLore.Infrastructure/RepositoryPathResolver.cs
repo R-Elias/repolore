@@ -100,7 +100,7 @@ public sealed class RepositoryPathResolver
     private static bool IsRootedOrUnsafe(string target) =>
         Path.IsPathRooted(target) || target.StartsWith("//", StringComparison.Ordinal) || target.StartsWith("\\\\", StringComparison.Ordinal);
 
-    private static bool IsReparsePoint(string path)
+    public static bool IsReparsePoint(string path)
     {
         try
         {

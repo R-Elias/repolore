@@ -400,3 +400,40 @@ public static class JsonWriter
         }
     }
 }
+
+public static class JsonNumbers
+{
+    public static bool TryParseInteger(string raw, out long value)
+    {
+        value = 0;
+        if (raw.Length == 0)
+            return false;
+        if (raw.Contains('.') || raw.Contains('e') || raw.Contains('E'))
+            return false;
+
+        var negative = false;
+        var start = 0;
+        if (raw[0] == '-')
+        {
+            negative = true;
+            start = 1;
+        }
+        if (start == raw.Length)
+            return false;
+
+        long accumulated = 0;
+        for (var i = start; i < raw.Length; i++)
+        {
+            var c = raw[i];
+            if (c is < '0' or > '9')
+                return false;
+            var digit = c - '0';
+            if (accumulated > (long.MaxValue - digit) / 10)
+                return false;
+            accumulated = accumulated * 10 + digit;
+        }
+
+        value = negative ? -accumulated : accumulated;
+        return true;
+    }
+}

@@ -66,7 +66,7 @@ public static class ConfigParser
             throw new ConfigException($"history.exclude rule #{ex.Line} is invalid: {ex.Message}");
         }
 
-        return new RepoLoreConfig(formatVersion, enabled, maxBytes, historyExclude, root);
+        return new RepoLoreConfig(formatVersion, enabled, maxBytes, historyExclude, exclude, root);
     }
 
     private static void ReadHistory(JsonValue historyRaw, out bool enabled, out long maxBytes, List<string> exclude)
@@ -102,7 +102,7 @@ public static class ConfigParser
     {
         if (value is not JsonNumberValue number)
             throw new ConfigException("'formatVersion' must be an integer number.");
-        if (!TryParseInteger(number.Raw, out var parsed))
+        if (!JsonNumbers.TryParseInteger(number.Raw, out var parsed))
             throw new ConfigException("'formatVersion' must be a non-negative integer.");
         if (parsed != KnowledgeFormat.Current)
         {
@@ -118,7 +118,7 @@ public static class ConfigParser
     {
         if (value is not JsonNumberValue number)
             throw new ConfigException("'history.maxBytes' must be an integer number.");
-        if (!TryParseInteger(number.Raw, out var parsed))
+        if (!JsonNumbers.TryParseInteger(number.Raw, out var parsed))
             throw new ConfigException("'history.maxBytes' must be a non-negative integer that fits in a 64-bit signed value.");
         if (parsed < 0)
             throw new ConfigException("'history.maxBytes' must not be negative.");
@@ -150,39 +150,5 @@ public static class ConfigParser
             for (var j = i + 1; j < obj.Members.Count; j++)
                 if (string.Equals(obj.Members[i].Name, obj.Members[j].Name, StringComparison.Ordinal))
                     throw new ConfigException($"{label} contains a duplicate key '{obj.Members[i].Name}'.");
-    }
-
-    private static bool TryParseInteger(string raw, out long value)
-    {
-        value = 0;
-        if (raw.Length == 0)
-            return false;
-        if (raw.Contains('.') || raw.Contains('e') || raw.Contains('E'))
-            return false;
-
-        var negative = false;
-        var start = 0;
-        if (raw[0] == '-')
-        {
-            negative = true;
-            start = 1;
-        }
-        if (start == raw.Length)
-            return false;
-
-        long accumulated = 0;
-        for (var i = start; i < raw.Length; i++)
-        {
-            var c = raw[i];
-            if (c is < '0' or > '9')
-                return false;
-            var digit = c - '0';
-            if (accumulated > (long.MaxValue - digit) / 10)
-                return false;
-            accumulated = accumulated * 10 + digit;
-        }
-
-        value = negative ? -accumulated : accumulated;
-        return true;
     }
 }

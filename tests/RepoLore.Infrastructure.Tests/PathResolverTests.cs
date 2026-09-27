@@ -67,11 +67,5 @@ public static class PathResolverTests
         });
     }
 
-    private static void WithTemp(Action<string> action)
-    {
-        var temp = Path.Combine(Path.GetTempPath(), "repolore-infra-tests-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(temp);
-        try { action(temp); }
-        finally { Directory.Delete(temp, recursive: true); }
-    }
+    private static void WithTemp(Action<string> action) => TestSupport.WithTemp(action);
 }

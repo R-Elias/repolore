@@ -232,14 +232,7 @@ public static class DurableSessionContextTests
         File.WriteAllText(Path.Combine(root, "_repolore", "sparse-tree", "src", "sub", "sub.md"), "TARGET_SENTINEL\n");
     }
 
-    private static void WithFixture(string name, Action<string> action)
-    {
-        TestSupport.WithTemp(temp =>
-        {
-            TestSupport.CopyTree(Path.Combine(AppContext.BaseDirectory, "Fixtures", name), temp);
-            action(temp);
-        });
-    }
+    private static void WithFixture(string name, Action<string> action) => TestSupport.WithFixture(name, action);
 
     private static int Count(string text, string needle)
     {

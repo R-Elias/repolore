@@ -1,7 +1,9 @@
 using RepoLore.Cli;
 using RepoLore.Cli.Arguments;
 using RepoLore.Cli.Commands;
+using RepoLore.Core.Configuration;
 using RepoLore.Core.Format;
+using RepoLore.Infrastructure.History;
 
 try
 {
@@ -31,6 +33,12 @@ try
         case "tree":
             return TreeCommand.Run(cl, Environment.CurrentDirectory);
 
+        case "checkpoint":
+            return CheckpointCommand.Run(cl, Environment.CurrentDirectory);
+
+        case "history":
+            return HistoryCommand.Run(cl, Environment.CurrentDirectory);
+
         case null:
             return Usage("missing command");
 
@@ -46,12 +54,30 @@ catch (ArgumentException ex)
 {
     return Usage(ex.Message);
 }
+catch (ConfigException ex)
+{
+    return OperationalError(ex.Message);
+}
+catch (WriterLockException ex)
+{
+    return OperationalError(ex.Message);
+}
+catch (HistoryStoreException ex)
+{
+    return OperationalError(ex.Message);
+}
 
 static int Usage(string message)
 {
-    Console.Error.WriteLine("Usage: repolore version | --help | path <target> | context [<target>] | tree");
+    Console.Error.WriteLine("Usage: repolore version | --help | path <target> | context [<target>] | tree | checkpoint | history");
     Console.Error.WriteLine(message);
     return ExitCodes.Usage;
+}
+
+static int OperationalError(string message)
+{
+    Console.Error.WriteLine("repolore: " + message);
+    return ExitCodes.Failure;
 }
 
 static void PrintHelp()
@@ -64,6 +90,8 @@ static void PrintHelp()
     Console.WriteLine("  context [<target>] [--session <id>]        Read selected durable and session notes.");
     Console.WriteLine("            [--node <path>]... [--budget-tokens <n>] [--strict] [--include-method]");
     Console.WriteLine("  tree [--start <path>]                      List the durable knowledge tree.");
+    Console.WriteLine("  checkpoint                                 Capture the current eligible state.");
+    Console.WriteLine("  history                                    List completed local recovery checkpoints.");
     Console.WriteLine();
     Console.WriteLine("Common options: --repo-root <path>, --json, --quiet, --help");
 }

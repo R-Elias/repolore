@@ -68,4 +68,13 @@ public static class TestSupport
             if (Path.GetFileName(directory) is not ("bin" or "obj"))
                 CopyTree(directory, Path.Combine(destination, Path.GetFileName(directory)));
     }
+
+    public static void WithFixture(string name, Action<string> action)
+    {
+        WithTemp(temp =>
+        {
+            CopyTree(Path.Combine(AppContext.BaseDirectory, "Fixtures", name), temp);
+            action(temp);
+        });
+    }
 }

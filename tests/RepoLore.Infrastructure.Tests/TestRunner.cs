@@ -26,6 +26,13 @@ public static class TestRunner
         throw new InvalidOperationException($"Expected {typeof(T).Name}. {detail}");
     }
 
+    public static T Capture<T>(Action action, string detail = "") where T : Exception
+    {
+        try { action(); }
+        catch (T ex) { return ex; }
+        throw new InvalidOperationException($"Expected {typeof(T).Name}. {detail}");
+    }
+
     public static void Equal<T>(T expected, T actual, string detail = "")
     {
         if (!EqualityComparer<T>.Default.Equals(expected, actual))

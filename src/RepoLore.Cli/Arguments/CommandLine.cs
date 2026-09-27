@@ -85,6 +85,12 @@ public sealed class CommandLine
         return cl;
     }
 
+    public void RejectKnowledgeArguments(string commandName)
+    {
+        if (Target is not null || Session is not null || Nodes.Count > 0 || IncludeMethod || Strict || TreeStart is not null)
+            throw new UsageException(commandName + " takes no arguments");
+    }
+
     private static string Value(string[] args, ref int i, string option)
     {
         if (i + 1 >= args.Length)

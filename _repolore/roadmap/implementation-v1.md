@@ -1,6 +1,6 @@
 # First Release — Implementation Work Packages
 
-Status: **packages 01, 02, and 03 implemented; CI green on Windows, Linux, macOS**. Target: a preview followed by v1.0.0 of the single `RepoLore.Cli` NuGet tool. This guide decomposes the [roadmap](roadmap.md); [invariants](../product/invariants.md) and the [session contract](../product/sessions.md) still apply. It resolves earlier open implementation choices below. Do not copy alpha mirror-generation behavior into v1.
+Status: **packages 01–05 implemented (01–02 CI-green; 03–05 local evidence pending CI)**. Target: a preview followed by v1.0.0 of the single `RepoLore.Cli` NuGet tool. This guide decomposes the [roadmap](roadmap.md); [invariants](../product/invariants.md) and the [session contract](../product/sessions.md) still apply. It resolves earlier open implementation choices below. Do not copy alpha mirror-generation behavior into v1.
 
 ## How to execute this plan
 
@@ -206,7 +206,7 @@ Track implementation here or in linked PRs; all entries start incomplete. For ea
 - [x] 02 — Filesystem paths and knowledge mapping — implemented and validated; Windows/Linux/macOS CI green (details below)
 - [x] 03 — Configuration and coverage policies — implemented and validated locally (details below)
 - [x] 04 — Durable and session context — implemented and validated locally (details below)
-- [ ] 05 — Snapshot capture and publication
+- [x] 05 — Snapshot capture and publication
 - [ ] 06 — Retention and mutation ownership
 - [ ] 07 — Restore and interrupted-operation recovery
 - [ ] 08 — Initialization and method updates
@@ -274,3 +274,17 @@ Checks actually run on macOS arm64 with the Rider SDK on PATH (`~/.dotnet`, 10.0
 - `git diff --check` and `cmp method.md _repolore/method.md` — passed; the two method copies remain identical (unchanged).
 
 Selection, estimation, session-id validation, and alpha resolution are pure; no read, preview, `path`, `context`, or `tree` invocation writes or checkpoints (invariant 8). Multiple selected sessions, recursive link loading, and health-check link validation remain out of scope (roadmap: single session per read; links reported later by health-check). CI/platform validation is not yet run for this package; local evidence only. Package 05 (snapshot capture and publication) is next.
+
+### Package 05 — local evidence, 2026-09-27
+
+Delivered `checkpoint` and `history` over plain files plus the basic exclusive writer guard. The pure `RepoLore.Core.Snapshot` components (`HistoryVersion`, `ManifestId`, `ManifestCodec`, `SnapshotDiffer`, and the manifest/scope/entry model) handle monotonic IDs, strict manifest decode, and no-op/diff classification; `RepoLore.Infrastructure.History` owns the clock, SHA-256 hashing, the `write.lock` guard, the object/checkpoint stores, the eligible-file walker, and the two-pass capture engine. `RepoLoreConfig` now retains the raw `history.exclude` rules so manifests record exact scope. The [snapshot-capture note](snapshot-capture.md) records responsibilities and the fault-injection hooks.
+
+Checks actually run on macOS arm64 with the Rider SDK on PATH (`~/.dotnet`, 10.0.100):
+
+- `dotnet build --configuration Release --no-restore` — passed, 0 warnings and 0 errors (the new Core `Snapshot/` and Infrastructure `History/` files compile under the boundary guard; no `record` types were introduced).
+- `dotnet run --project tests/RepoLore.Core.Tests --configuration Release --no-build` — passed, **48/48 checks**. New checks: manifest-id format/parse/reject; manifest encode/decode round-trip and malformed-input rejection (wrong types, unknown history version, negative id/size/maxBytes, unknown repoloreJson status, malformed scope/files); snapshot diff (first-checkpoint all-added, unchanged no-op, add/change/remove classification, scope-only change, exclude-rule and repoloreJson-status changes).
+- `dotnet run --project tests/RepoLore.Infrastructure.Tests --configuration Release --no-build` — passed, **17/17 checks**. New checks: object store/reuse/validate and corrupt-object refusal; checkpoint store publish/highest-id, incomplete-file ignore, malformed-manifest error, empty history; writer-lock acquire/release and second-writer refusal; capture engine first publish, no-op, add/change/delete, changed-during-capture failure (no publish), interrupted-before-publish leaves previous valid, shared objects.
+- `dotnet run --project tests/RepoLore.Cli.Tests --configuration Release --no-build` — passed, **29/29 checks**. New checks (frozen `history-failures` fixture plus inline fixtures): add/change/delete as three distinguishable manifests with recoverable original bytes; unchanged no-op; mtime-only no-op; same-length/same-mtime byte change captured; distinct paths with identical bytes share one object; scope/exclusion change recorded when visible hashes match; disabled history exits 3 and history stays readable; second writer refused (cross-process); alpha conflict captured as separate paths; incomplete files ignored while a malformed completed manifest fails.
+- `git diff --check` and `cmp method.md _repolore/method.md` — passed; the two method copies remain identical (unchanged).
+
+Retention/eviction (`history.maxBytes` counting, oldest-first eviction, unreferenced-object reclamation) and cross-process lock/crash validation remain for package 06; package 05 records the budget in scope but does not enforce it. The `checkpoint`/`history` commands write only under the writer lock and publish the manifest last. CI/platform validation is not yet run for this package; local evidence only. Package 06 (retention and mutation ownership) is next.

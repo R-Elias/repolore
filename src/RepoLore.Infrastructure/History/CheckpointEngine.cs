@@ -59,7 +59,7 @@ public sealed class CheckpointEngine
         _clock = clock ?? new Clock();
     }
 
-    public CheckpointResult Capture(RepoLoreConfig config, Action? beforeVerification = null, Action? beforeManifestPublish = null)
+    public CheckpointResult Capture(RepoLoreConfig config, Action? beforeVerification = null, Action? beforeManifestPublish = null, IReadOnlySet<long>? protectedIds = null)
     {
         var historyExclude = config.HistoryExclude;
         _objects.EnsureDirectories();
@@ -78,7 +78,7 @@ public sealed class CheckpointEngine
         var diff = SnapshotDiffer.Compare(previous, scope, first);
 
         if (diff.IsNoOp)
-            return new CheckpointResult(true, null, Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>(), first.Count, _cleanup.Clean(config.HistoryMaxBytes));
+            return new CheckpointResult(true, null, Array.Empty<string>(), Array.Empty<string>(), Array.Empty<string>(), first.Count, _cleanup.Clean(config.HistoryMaxBytes, protectedIds));
 
         var nextId = (previous is null ? 0 : previous.Id) + 1;
         var manifest = new CheckpointManifest(nextId, _clock.NowIso(), HistoryVersion.Current, KnowledgeFormat.Current, scope, first);
@@ -92,7 +92,7 @@ public sealed class CheckpointEngine
 
         _checkpoints.Publish(manifest);
 
-        var cleanup = _cleanup.Clean(config.HistoryMaxBytes);
+        var cleanup = _cleanup.Clean(config.HistoryMaxBytes, protectedIds);
 
         return new CheckpointResult(false, nextId, diff.Added, diff.Changed, diff.Removed, first.Count, cleanup);
     }

@@ -1,6 +1,7 @@
 using System.Globalization;
 using RepoLore.Core.Context;
 using RepoLore.Core.Json;
+using RepoLore.Core.Restore;
 using RepoLore.Core.Snapshot;
 using RepoLore.Infrastructure.History;
 using RepoLore.Cli.Reading;
@@ -147,6 +148,84 @@ public static class Renderer
                 Console.WriteLine("  " + file.Path);
         }
     }
+
+    public static void RestorePlan(RestorePlan plan, bool json, bool quiet)
+    {
+        if (json)
+        {
+            var array = new JsonArray();
+            foreach (var entry in plan.Entries)
+            {
+                var obj = new JsonObject();
+                obj.Members.Add(new JsonMember("action", new JsonStringValue(ActionName(entry.Action))));
+                obj.Members.Add(new JsonMember("path", new JsonStringValue(entry.Path)));
+                obj.Members.Add(new JsonMember("reason", new JsonStringValue(entry.Reason)));
+                obj.Members.Add(new JsonMember("before", entry.Before is null ? new JsonNullValue() : new JsonStringValue(entry.Before)));
+                obj.Members.Add(new JsonMember("after", entry.After is null ? new JsonNullValue() : new JsonStringValue(entry.After)));
+                array.Items.Add(obj);
+            }
+            var root = new JsonObject();
+            root.Members.Add(new JsonMember("entries", array));
+            Console.WriteLine(JsonWriter.Write(root));
+            return;
+        }
+
+        if (quiet)
+            return;
+
+        if (plan.Entries.Count == 0)
+        {
+            Console.WriteLine("restore: no changes");
+            return;
+        }
+
+        foreach (var entry in plan.Entries)
+            Console.WriteLine($"{ActionName(entry.Action)} {entry.Path} ({entry.Reason})");
+    }
+
+    public static void Restore(RestoreResult result, bool json, bool quiet)
+    {
+        if (json)
+        {
+            var root = new JsonObject();
+            root.Members.Add(new JsonMember("noOp", new JsonBooleanValue(result.WasNoOp)));
+            root.Members.Add(new JsonMember("recovery", new JsonBooleanValue(result.WasRecovery)));
+            root.Members.Add(new JsonMember("checkpointId", result.PublishedId is long id ? Number(id) : new JsonNullValue()));
+            root.Members.Add(new JsonMember("recoveryId", Number(result.RecoveryId)));
+            root.Members.Add(new JsonMember("added", Number(result.Added)));
+            root.Members.Add(new JsonMember("replaced", Number(result.Replaced)));
+            root.Members.Add(new JsonMember("deleted", Number(result.Deleted)));
+            root.Members.Add(new JsonMember("recovered", Number(result.Recovered)));
+            Console.WriteLine(JsonWriter.Write(root));
+            return;
+        }
+
+        if (quiet)
+            return;
+
+        if (result.WasNoOp)
+        {
+            Console.WriteLine("restore: no changes");
+            return;
+        }
+
+        if (result.WasRecovery)
+        {
+            Console.WriteLine($"recovered {result.Recovered} files to the pre-operation state (checkpoint {ManifestId.Format(result.PublishedId!.Value)})");
+            return;
+        }
+
+        Console.WriteLine($"restore complete: {result.Added} added, {result.Replaced} replaced, {result.Deleted} deleted (checkpoint {ManifestId.Format(result.PublishedId!.Value)})");
+    }
+
+    private static string ActionName(RestoreAction action) => action switch
+    {
+        RestoreAction.Add => "add",
+        RestoreAction.Replace => "replace",
+        RestoreAction.Delete => "delete",
+        RestoreAction.Unchanged => "unchanged",
+        _ => "unknown"
+    };
 
     private static JsonNumberValue Number(long value) => new(value.ToString(CultureInfo.InvariantCulture));
 

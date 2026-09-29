@@ -3,6 +3,7 @@ using RepoLore.Cli.Arguments;
 using RepoLore.Cli.Commands;
 using RepoLore.Core.Configuration;
 using RepoLore.Core.Format;
+using RepoLore.Core.Restore;
 using RepoLore.Infrastructure.History;
 
 try
@@ -39,6 +40,9 @@ try
         case "history":
             return HistoryCommand.Run(cl, Environment.CurrentDirectory);
 
+        case "restore":
+            return RestoreCommand.Run(cl, Environment.CurrentDirectory);
+
         case null:
             return Usage("missing command");
 
@@ -66,10 +70,20 @@ catch (HistoryStoreException ex)
 {
     return OperationalError(ex.Message);
 }
+catch (RestoreException ex)
+{
+    Console.Error.WriteLine($"repolore: {ex.Message}");
+    Console.Error.WriteLine($"repolore: recover with: repolore restore {ex.RecoveryId}");
+    return ExitCodes.Failure;
+}
+catch (RestorePlanException ex)
+{
+    return OperationalError(ex.Message);
+}
 
 static int Usage(string message)
 {
-    Console.Error.WriteLine("Usage: repolore version | --help | path <target> | context [<target>] | tree | checkpoint | history");
+    Console.Error.WriteLine("Usage: repolore version | --help | path <target> | context [<target>] | tree | checkpoint | history | restore <id>");
     Console.Error.WriteLine(message);
     return ExitCodes.Usage;
 }
@@ -92,6 +106,7 @@ static void PrintHelp()
     Console.WriteLine("  tree [--start <path>]                      List the durable knowledge tree.");
     Console.WriteLine("  checkpoint                                 Capture the current eligible state.");
     Console.WriteLine("  history                                    List completed local recovery checkpoints.");
+    Console.WriteLine("  restore <id> [--path <path>] [--dry-run]   Preview or restore a checkpoint within coverage.");
     Console.WriteLine();
     Console.WriteLine("Common options: --repo-root <path>, --json, --quiet, --help");
 }

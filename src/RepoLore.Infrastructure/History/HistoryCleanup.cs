@@ -35,7 +35,26 @@ public sealed class HistoryCleanup
     public static long SnapshotBytes(CheckpointManifest manifest) =>
         ManifestBytes(manifest) + ObjectBytes(manifest.Files);
 
-    public CleanupResult Clean(long maxBytes)
+    public static long ManifestBytes(CheckpointManifest manifest) =>
+        Utf8Len(JsonWriter.Write(ManifestCodec.Encode(manifest)));
+
+    public static long ProtectedBytes(IReadOnlyList<CheckpointManifest> manifests)
+    {
+        long total = 0;
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var manifest in manifests)
+        {
+            total += ManifestBytes(manifest);
+            foreach (var file in manifest.Files)
+                if (seen.Add(file.Hash))
+                    total += file.Size;
+        }
+        return total;
+    }
+
+    public CleanupResult Clean(long maxBytes) => Clean(maxBytes, null);
+
+    public CleanupResult Clean(long maxBytes, IReadOnlySet<long>? protectedIds)
     {
         var all = _checkpoints.ListCompleted();
         if (all.Count == 0)
@@ -71,7 +90,7 @@ public sealed class HistoryCleanup
         {
             if (total <= maxBytes)
                 break;
-            if (manifest.Id == latest)
+            if (manifest.Id == latest || (protectedIds is not null && protectedIds.Contains(manifest.Id)))
                 continue;
             evict.Add(manifest.Id);
             total -= manifestBytes[manifest.Id];
@@ -123,9 +142,6 @@ public sealed class HistoryCleanup
 
         return new CleanupResult(total, evicted, reclaimed, ok && total <= maxBytes);
     }
-
-    private static long ManifestBytes(CheckpointManifest manifest) =>
-        Utf8Len(JsonWriter.Write(ManifestCodec.Encode(manifest)));
 
     private static long ObjectBytes(IReadOnlyList<FileEntry> files)
     {

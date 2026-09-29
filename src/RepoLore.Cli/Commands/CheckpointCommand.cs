@@ -22,6 +22,14 @@ public static class CheckpointCommand
         }
 
         using var writerLock = WriterLock.Acquire(historyDirectory);
+
+        var pending = new PendingStore(historyDirectory).Read();
+        if (pending is not null)
+        {
+            Console.Error.WriteLine($"repolore: a restore is pending; recover it with: repolore restore {pending.PreOperationId}");
+            return ExitCodes.Failure;
+        }
+
         var engine = new CheckpointEngine(root, historyDirectory);
         var result = engine.Capture(config);
 

@@ -5,6 +5,7 @@ using RepoLore.Core.Tests.Mapping;
 using RepoLore.Core.Tests.Matching;
 using RepoLore.Core.Tests.Policies;
 using RepoLore.Core.Tests.Snapshot;
+using RepoLore.Core.Tests.Restore;
 
 return TestRunner.RunAll(() =>
 {
@@ -20,4 +21,6 @@ return TestRunner.RunAll(() =>
     ManifestIdTests.Run();
     ManifestCodecTests.Run();
     SnapshotDifferTests.Run();
+    RestorePlannerTests.Run();
+    PendingCodecTests.Run();
 });

@@ -11,6 +11,8 @@ public sealed class CommandLine
     public bool Strict { get; set; }
     public string? RepoRoot { get; set; }
     public string? TreeStart { get; set; }
+    public string? RestorePath { get; set; }
+    public bool DryRun { get; set; }
     public bool Json { get; set; }
     public bool Quiet { get; set; }
     public bool Help { get; set; }
@@ -65,6 +67,14 @@ public sealed class CommandLine
                     break;
                 case "--start":
                     cl.TreeStart = Value(args, ref i, "--start");
+                    cl.SawOption = true;
+                    break;
+                case "--path":
+                    cl.RestorePath = Value(args, ref i, "--path");
+                    cl.SawOption = true;
+                    break;
+                case "--dry-run":
+                    cl.DryRun = true;
                     cl.SawOption = true;
                     break;
                 default:

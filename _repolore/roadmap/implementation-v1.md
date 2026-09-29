@@ -1,6 +1,6 @@
 # First Release — Implementation Work Packages
 
-Status: **packages 01–06 implemented (01–02 CI-green; 03–06 local evidence pending CI)**. Target: a preview followed by v1.0.0 of the single `RepoLore.Cli` NuGet tool. This guide decomposes the [roadmap](roadmap.md); [invariants](../product/invariants.md) and the [session contract](../product/sessions.md) still apply. It resolves earlier open implementation choices below. Do not copy alpha mirror-generation behavior into v1.
+Status: **packages 01–07 implemented (01–02 CI-green; 03–07 local evidence pending CI)**. Target: a preview followed by v1.0.0 of the single `RepoLore.Cli` NuGet tool. This guide decomposes the [roadmap](roadmap.md); [invariants](../product/invariants.md) and the [session contract](../product/sessions.md) still apply. It resolves earlier open implementation choices below. Do not copy alpha mirror-generation behavior into v1.
 
 ## How to execute this plan
 
@@ -208,7 +208,7 @@ Track implementation here or in linked PRs; all entries start incomplete. For ea
 - [x] 04 — Durable and session context — implemented and validated locally (details below)
 - [x] 05 — Snapshot capture and publication
 - [x] 06 — Retention and mutation ownership
-- [ ] 07 — Restore and interrupted-operation recovery
+- [x] 07 — Restore and interrupted-operation recovery
 - [ ] 08 — Initialization and method updates
 - [ ] 09 — Alpha migration and rollback
 - [ ] 10 — Health checks and final CLI contract
@@ -302,3 +302,20 @@ Checks actually run on macOS arm64 with the Rider SDK on PATH (`~/.dotnet`, 10.0
 - `git diff --check` and `cmp method.md _repolore/method.md` — passed; the two method copies remain identical.
 
 Retention counts retained manifest and object bytes exactly (objects deduplicated); `tmp/`, `write.lock`, and pending controls are not charged. A failed cleanup preserves validity and retries on a later mutation, never a read. The restore-target pinning and pre-operation "undo pair" preflight from the roadmap remain for package 07 (restore and interrupted-operation recovery), which is next. CI/platform validation is not yet run for this package; local evidence only.
+
+### Package 07 — local evidence, 2026-09-27
+
+Delivered `restore <id> [--path <path>] [--dry-run]` as a pure plan first, then a guarded application, with an interrupted-operation recovery route. New pure `RepoLore.Core.Restore` components (`RestorePlan`, `RestoreAction`, `RestorePlanner`, `PendingTransaction`, `PendingPlanEntry`, `PendingCodec`) compute the plan and model/codec the durable pending record; `RepoLore.Infrastructure.History.RestoreEngine` (with `RestoreResult`, `RestoreException`, and `PendingStore`) orchestrates plan/apply/recover while reusing `ObjectStore`/`CheckpointStore`/`CheckpointEngine`/`HistoryCleanup`/`WriterLock`/`HistoryCoveragePolicy`/`ConfigParser`/`RepositoryPathResolver`. The [restore-and-recovery note](restore-and-recovery.md) records responsibilities and the retention-pinning extension.
+
+Behavior: the plan is the candidate union of saved and currently-eligible paths, restricted to paths eligible under both saved `scope.exclude` and current `history.exclude`; saved absence deletes only inside saved coverage, and an explicit `--path` excluded on either side fails with a scope explanation. Unknown ids and corrupt target objects fail before any authored mutation. No-op restore (complete plan unchanged) reports no changes and creates no checkpoint or pending record. Apply writes `.history/pending.json` (target id, protected pre-operation id, historyVersion, frozen config/coverage/budget, and the affected before/after plan) before the first replacement, stages each write as a temp-file rename, rechecks each file against its recorded before-state, preflights `HistoryCleanup.ProtectedBytes({pre-operation, resulting, target}) ≤ maxBytes`, then publishes the post-checkpoint and clears pending. A pending record makes `checkpoint` and non-matching `restore` refuse with the recovery id, while `history`/`context`/`path`/`tree` stay available. `restore <pre-operation-id>` recovers exactly the before-images, refuses a fresh unrelated edit instead of overwriting it, confirms/publishes the recovered before-state checkpoint under the frozen policy, and only then clears pending; no nested recovery. `HistoryCleanup.Clean(maxBytes, protectedIds)` and `CheckpointEngine.Capture(..., protectedIds)` implement the retention pinning.
+
+Checks actually run on macOS arm64 with the Rider SDK on PATH (`~/.dotnet`, 10.0.100):
+
+- `dotnet restore --locked-mode --disable-build-servers` — passed; all six projects restored, no package changes.
+- `dotnet build --configuration Release --no-restore` — passed, 0 warnings and 0 errors (new Core `Restore/` and Infrastructure/CLI files compile under the boundary guard; no `record` types).
+- `dotnet run --project tests/RepoLore.Core.Tests --configuration Release --no-build` — passed, **62/62 checks**. New checks (14): planner add/replace/delete/unchanged classification; identical-state no-op; currently-excluded path never deleted; saved-excluded path never deleted when newly covered; `--path` single-file replace/add/delete/absent-in-both; `--path` excluded on current/saved side fails with a scope explanation; pending codec round-trip and malformed/missing/wrong-type/negative/unknown-version rejection.
+- `dotnet run --project tests/RepoLore.Infrastructure.Tests --configuration Release --no-build` — passed, **38/38 checks**. New checks (13): restore to an old snapshot then restore its pre-operation id undoes it byte-for-byte; excluded file untouched; unknown id and corrupt target object fail before mutation; disabled history refuses; no-op restore leaves no pending/checkpoint; failure before the first replacement, between two replacements, and after writes but before the final checkpoint each report the same recovery id (2) and recover; restart-and-recover restores the exact before-state; a fresh unrelated edit during recovery is detected not overwritten; `--path` restores one file; restore preflights the protected set against the budget before mutating.
+- `dotnet run --project tests/RepoLore.Cli.Tests --configuration Release --no-build` — passed, **38/38 checks**. New checks (7, process-level): restore/undo; `--dry-run` lists add/replace/delete/unchanged and writes nothing (history and files unchanged); unknown id exits 3; `--path` restores one file; `checkpoint` and `restore` refuse with the recovery id while pending; `restore <pre-operation-id>` recovers the before-state and clears pending; a fresh edit during recovery exits 3 and stays pending.
+- `git diff --check` and `cmp method.md _repolore/method.md` — passed; the two method copies remain identical.
+
+The shipped CLI performs no network/process/telemetry operations; the boundary guard still passes. Migration (09), health-check findings (10), and the packaged install (11) remain out of scope. CI/platform validation is not yet run for this package; local evidence only. Package 08 (initialization and method updates) is next.

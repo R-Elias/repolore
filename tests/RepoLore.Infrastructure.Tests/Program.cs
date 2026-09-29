@@ -22,4 +22,5 @@ return TestRunner.RunAll(() =>
     HistoryCleanupTests.Run();
     RetentionEngineTests.Run();
     WriterLockCrashTests.Run();
+    RestoreEngineTests.Run();
 });

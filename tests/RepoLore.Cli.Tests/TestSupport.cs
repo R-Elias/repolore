@@ -1,4 +1,5 @@
-using System.Diagnostics;
+using CliWrap;
+using CliWrap.Buffered;
 using System.Security.Cryptography;
 
 namespace RepoLore.Cli.Tests;
@@ -14,25 +15,25 @@ public static class TestSupport
 
     public static (int Code, string Out, string Error) Run(string cwd, params string[] arguments)
     {
-        var start = new ProcessStartInfo(Dotnet)
+        using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+        try
         {
-            WorkingDirectory = cwd,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-        };
-        start.Environment["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1";
-        start.Environment["DOTNET_SKIP_FIRST_TIME_EXPERIENCE"] = "1";
-        foreach (var argument in arguments) start.ArgumentList.Add(argument);
-        using var process = Process.Start(start) ?? throw new InvalidOperationException("Could not start dotnet.");
-        var stdout = process.StandardOutput.ReadToEndAsync();
-        var stderr = process.StandardError.ReadToEndAsync();
-        if (!process.WaitForExit(120_000))
+            var result = CliWrap.Cli.Wrap(Dotnet)
+                .WithArguments(arguments)
+                .WithWorkingDirectory(cwd)
+                .WithEnvironmentVariables(env => env
+                    .Set("DOTNET_CLI_TELEMETRY_OPTOUT", "1")
+                    .Set("DOTNET_SKIP_FIRST_TIME_EXPERIENCE", "1"))
+                .WithValidation(CommandResultValidation.None)
+                .ExecuteBufferedAsync(timeout.Token)
+                .GetAwaiter()
+                .GetResult();
+            return (result.ExitCode, result.StandardOutput, result.StandardError);
+        }
+        catch (OperationCanceledException)
         {
-            process.Kill(entireProcessTree: true);
             throw new TimeoutException("dotnet exceeded two minutes.");
         }
-        return (process.ExitCode, stdout.GetAwaiter().GetResult(), stderr.GetAwaiter().GetResult());
     }
 
     public static string Normalize(string value) => value.Replace("\r\n", "\n", StringComparison.Ordinal);

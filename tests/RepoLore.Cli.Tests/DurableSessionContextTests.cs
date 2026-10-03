@@ -1,226 +1,239 @@
-using RepoLore.Cli.Tests;
+using FluentAssertions;
+using Xunit;
 
 namespace RepoLore.Cli.Tests;
 
-public static class DurableSessionContextTests
+public class DurableSessionContextTests
 {
-    public static void Run()
+    [Fact]
+    public void Default_durable_context_excludes_both_sessions()
     {
-        TestRunner.Check("default durable context excludes both sessions", () =>
+        WithFixture("two-sessions", temp =>
         {
-            WithFixture("two-sessions", temp =>
-            {
-                var result = TestSupport.Run(temp, TestSupport.Cli, "context", ".");
-                TestRunner.Equal(0, result.Code, result.Error);
-                var outText = TestSupport.Normalize(result.Out);
-                TestRunner.True(outText.Contains("TWO_SESSIONS_DURABLE_SENTINEL", StringComparison.Ordinal));
-                TestRunner.True(!outText.Contains("SESSION_A", StringComparison.Ordinal));
-                TestRunner.True(!outText.Contains("SESSION_B", StringComparison.Ordinal));
-            });
+            var result = TestSupport.Run(temp, TestSupport.Cli, "context", ".");
+            result.Code.Should().Be(0);
+            var outText = TestSupport.Normalize(result.Out);
+            outText.Should().Contain("TWO_SESSIONS_DURABLE_SENTINEL");
+            outText.Should().NotContain("SESSION_A");
+            outText.Should().NotContain("SESSION_B");
+        });
+    }
+
+    [Fact]
+    public void Selecting_session_A_reads_only_As_root_and_named_nodes()
+    {
+        WithFixture("two-sessions", temp =>
+        {
+            var root = TestSupport.Run(temp, TestSupport.Cli, "context", "--session", "session-a");
+            root.Code.Should().Be(0);
+            var rootText = TestSupport.Normalize(root.Out);
+            rootText.Should().Contain("SESSION_A_ROOT_SENTINEL");
+            rootText.Should().NotContain("SESSION_B");
+            rootText.Should().NotContain("TWO_SESSIONS_DURABLE");
+
+            var withNode = TestSupport.Run(temp, TestSupport.Cli, "context",
+                "--session", "session-a", "--node", "_repolore/sessions/session-a/investigation.md");
+            withNode.Code.Should().Be(0);
+            var nodeText = TestSupport.Normalize(withNode.Out);
+            nodeText.Should().Contain("SESSION_A_ROOT_SENTINEL");
+            nodeText.Should().Contain("SESSION_A_DETAIL_SENTINEL");
+            nodeText.Should().NotContain("SESSION_B");
+        });
+    }
+
+    [Fact]
+    public void Missing_session_is_a_finding()
+    {
+        WithFixture("two-sessions", temp =>
+        {
+            var result = TestSupport.Run(temp, TestSupport.Cli, "context", "--session", "session-missing");
+            result.Code.Should().Be(1);
+            result.Error.Should().Contain("missing-session");
+        });
+    }
+
+    [Fact]
+    public void Missing_explicit_node_is_a_finding()
+    {
+        WithFixture("two-sessions", temp =>
+        {
+            var result = TestSupport.Run(temp, TestSupport.Cli, "context", "--node", "_repolore/does-not-exist.md");
+            result.Code.Should().Be(1);
+            result.Error.Should().Contain("missing-note");
+        });
+    }
+
+    [Fact]
+    public void Invalid_session_is_a_usage_error_even_with_a_tiny_budget()
+    {
+        WithFixture("two-sessions", temp =>
+        {
+            var result = TestSupport.Run(temp, TestSupport.Cli, "context", "--session", "bad id!", "--budget-tokens", "1");
+            result.Code.Should().Be(2);
+            result.Error.Should().Contain("invalid --session");
+        });
+    }
+
+    [Fact]
+    public void Cross_session_node_is_rejected()
+    {
+        WithFixture("two-sessions", temp =>
+        {
+            var result = TestSupport.Run(temp, TestSupport.Cli, "context",
+                "--session", "session-a", "--node", "_repolore/sessions/session-b/investigation.md");
+            result.Code.Should().Be(2);
+        });
+    }
+
+    [Fact]
+    public void No_selector_and_non_positive_budget_are_usage_errors()
+    {
+        WithFixture("two-sessions", temp =>
+        {
+            TestSupport.Run(temp, TestSupport.Cli, "context").Code.Should().Be(2);
+            TestSupport.Run(temp, TestSupport.Cli, "context", ".", "--budget-tokens", "0").Code.Should().Be(2);
+            TestSupport.Run(temp, TestSupport.Cli, "context", ".", "--budget-tokens", "-5").Code.Should().Be(2);
+        });
+    }
+
+    [Fact]
+    public void Duplicate_nodes_appear_once()
+    {
+        WithFixture("two-sessions", temp =>
+        {
+            var result = TestSupport.Run(temp, TestSupport.Cli, "context",
+                "--node", "_repolore/root.md", "--node", "_repolore/root.md");
+            result.Code.Should().Be(0);
+            Count(TestSupport.Normalize(result.Out), "## _repolore/root.md").Should().Be(1);
+        });
+    }
+
+    [Fact]
+    public void Oversized_ancestor_cannot_hide_a_later_fitting_target_note()
+    {
+        TestSupport.WithTemp(temp =>
+        {
+            WriteBudgetFixture(temp);
+            var result = TestSupport.Run(temp, TestSupport.Cli, "context", "src/sub/", "--budget-tokens", "50");
+            result.Code.Should().Be(0);
+            var outText = TestSupport.Normalize(result.Out);
+            outText.Should().Contain("TARGET_SENTINEL");
+            outText.Should().NotContain("ANCESTOR_MARKER");
+            result.Error.Should().Contain("omitted: _repolore/sparse-tree/src/src.md");
+        });
+    }
+
+    [Fact]
+    public void Budget_omissions_with_strict_exit_1_and_keep_the_partial_result()
+    {
+        TestSupport.WithTemp(temp =>
+        {
+            WriteBudgetFixture(temp);
+            var result = TestSupport.Run(temp, TestSupport.Cli, "context", "src/sub/", "--budget-tokens", "50", "--strict");
+            result.Code.Should().Be(1);
+            var outText = TestSupport.Normalize(result.Out);
+            outText.Should().Contain("TARGET_SENTINEL");
+            outText.Should().NotContain("ANCESTOR_MARKER");
+            result.Error.Should().Contain("omitted:");
+        });
+    }
+
+    [Fact]
+    public void Alpha_read_support_sparse_only_tree_only_and_conflict()
+    {
+        WithFixture("alpha-sparse-only", temp =>
+        {
+            var result = TestSupport.Run(temp, TestSupport.Cli, "context", "src/");
+            result.Code.Should().Be(0);
+            TestSupport.Normalize(result.Out).Should().Contain("ALPHA_SPARSE_ONLY_SENTINEL");
         });
 
-        TestRunner.Check("selecting session A reads only A's root and named nodes", () =>
+        WithFixture("alpha-local-only", temp =>
         {
-            WithFixture("two-sessions", temp =>
-            {
-                var root = TestSupport.Run(temp, TestSupport.Cli, "context", "--session", "session-a");
-                TestRunner.Equal(0, root.Code, root.Error);
-                var rootText = TestSupport.Normalize(root.Out);
-                TestRunner.True(rootText.Contains("SESSION_A_ROOT_SENTINEL", StringComparison.Ordinal));
-                TestRunner.True(!rootText.Contains("SESSION_B", StringComparison.Ordinal));
-                TestRunner.True(!rootText.Contains("TWO_SESSIONS_DURABLE", StringComparison.Ordinal));
-
-                var withNode = TestSupport.Run(temp, TestSupport.Cli, "context",
-                    "--session", "session-a", "--node", "_repolore/sessions/session-a/investigation.md");
-                TestRunner.Equal(0, withNode.Code, withNode.Error);
-                var nodeText = TestSupport.Normalize(withNode.Out);
-                TestRunner.True(nodeText.Contains("SESSION_A_ROOT_SENTINEL", StringComparison.Ordinal));
-                TestRunner.True(nodeText.Contains("SESSION_A_DETAIL_SENTINEL", StringComparison.Ordinal));
-                TestRunner.True(!nodeText.Contains("SESSION_B", StringComparison.Ordinal));
-            });
+            var result = TestSupport.Run(temp, TestSupport.Cli, "context", "src/");
+            result.Code.Should().Be(0);
+            TestSupport.Normalize(result.Out).Should().Contain("ALPHA_LOCAL_ONLY_SENTINEL");
         });
 
-        TestRunner.Check("missing session is a finding", () =>
+        WithFixture("alpha-conflict", temp =>
         {
-            WithFixture("two-sessions", temp =>
-            {
-                var result = TestSupport.Run(temp, TestSupport.Cli, "context", "--session", "session-missing");
-                TestRunner.Equal(1, result.Code);
-                TestRunner.True(result.Error.Contains("missing-session", StringComparison.Ordinal));
-            });
+            var result = TestSupport.Run(temp, TestSupport.Cli, "context", "src/");
+            result.Code.Should().Be(3);
+            result.Error.Should().Contain("conflict");
         });
+    }
 
-        TestRunner.Check("missing explicit node is a finding", () =>
+    [Fact]
+    public void Path_lists_durable_note_status()
+    {
+        WithFixture("minimal-v1", temp =>
         {
-            WithFixture("two-sessions", temp =>
-            {
-                var result = TestSupport.Run(temp, TestSupport.Cli, "context", "--node", "_repolore/does-not-exist.md");
-                TestRunner.Equal(1, result.Code);
-                TestRunner.True(result.Error.Contains("missing-note", StringComparison.Ordinal));
-            });
+            var result = TestSupport.Run(temp, TestSupport.Cli, "path", "src/");
+            result.Code.Should().Be(0);
+            var outText = TestSupport.Normalize(result.Out);
+            outText.Should().Contain("present _repolore/root.md");
+            outText.Should().Contain("present _repolore/sparse-tree/src/src.md");
         });
+    }
 
-        TestRunner.Check("invalid --session is a usage error even with a tiny budget", () =>
+    [Fact]
+    public void Tree_lists_durable_knowledge_and_session_ids_only_when_requested()
+    {
+        WithFixture("two-sessions", temp =>
         {
-            WithFixture("two-sessions", temp =>
-            {
-                var result = TestSupport.Run(temp, TestSupport.Cli, "context", "--session", "bad id!", "--budget-tokens", "1");
-                TestRunner.Equal(2, result.Code);
-                TestRunner.True(result.Error.Contains("invalid --session", StringComparison.Ordinal));
-            });
+            var durable = TestSupport.Run(temp, TestSupport.Cli, "tree");
+            durable.Code.Should().Be(0);
+            var durableText = TestSupport.Normalize(durable.Out);
+            durableText.Should().Contain("_repolore/root.md");
+            durableText.Should().NotContain("sessions");
+
+            var sessions = TestSupport.Run(temp, TestSupport.Cli, "tree", "--start", "_repolore/sessions/");
+            sessions.Code.Should().Be(0);
+            var sessionsText = TestSupport.Normalize(sessions.Out);
+            sessionsText.Should().Contain("_repolore/sessions/session-a/");
+            sessionsText.Should().Contain("_repolore/sessions/session-b/");
+            sessionsText.Should().NotContain("root.md");
+
+            var inside = TestSupport.Run(temp, TestSupport.Cli, "tree", "--start", "_repolore/sessions/session-a/");
+            inside.Code.Should().Be(0);
+            var insideText = TestSupport.Normalize(inside.Out);
+            insideText.Should().Contain("_repolore/sessions/session-a/root.md");
+            insideText.Should().Contain("_repolore/sessions/session-a/investigation.md");
         });
+    }
 
-        TestRunner.Check("cross-session node is rejected", () =>
+    [Fact]
+    public void Json_and_plain_context_render_the_same_logical_sets()
+    {
+        TestSupport.WithTemp(temp =>
         {
-            WithFixture("two-sessions", temp =>
-            {
-                var result = TestSupport.Run(temp, TestSupport.Cli, "context",
-                    "--session", "session-a", "--node", "_repolore/sessions/session-b/investigation.md");
-                TestRunner.Equal(2, result.Code);
-            });
+            WriteBudgetFixture(temp);
+            var plain = TestSupport.Run(temp, TestSupport.Cli, "context", "src/sub/", "--budget-tokens", "50");
+            var json = TestSupport.Run(temp, TestSupport.Cli, "context", "src/sub/", "--budget-tokens", "50", "--json");
+            json.Code.Should().Be(plain.Code);
+            var plainText = TestSupport.Normalize(plain.Out);
+            var jsonText = TestSupport.Normalize(json.Out);
+            jsonText.Should().Contain("TARGET_SENTINEL");
+            jsonText.Should().NotContain("ANCESTOR_MARKER");
+            plainText.Contains("TARGET_SENTINEL", StringComparison.Ordinal).Should().Be(jsonText.Contains("TARGET_SENTINEL", StringComparison.Ordinal));
+            jsonText.Should().Contain("omitted");
         });
+    }
 
-        TestRunner.Check("no selector and non-positive budget are usage errors", () =>
+    [Fact]
+    public void Read_only_commands_leave_repository_and_history_files_unchanged()
+    {
+        WithFixture("two-sessions", temp =>
         {
-            WithFixture("two-sessions", temp =>
-            {
-                TestRunner.Equal(2, TestSupport.Run(temp, TestSupport.Cli, "context").Code);
-                TestRunner.Equal(2, TestSupport.Run(temp, TestSupport.Cli, "context", ".", "--budget-tokens", "0").Code);
-                TestRunner.Equal(2, TestSupport.Run(temp, TestSupport.Cli, "context", ".", "--budget-tokens", "-5").Code);
-            });
-        });
-
-        TestRunner.Check("duplicate nodes appear once", () =>
-        {
-            WithFixture("two-sessions", temp =>
-            {
-                var result = TestSupport.Run(temp, TestSupport.Cli, "context",
-                    "--node", "_repolore/root.md", "--node", "_repolore/root.md");
-                TestRunner.Equal(0, result.Code, result.Error);
-                TestRunner.Equal(1, Count(TestSupport.Normalize(result.Out), "## _repolore/root.md"));
-            });
-        });
-
-        TestRunner.Check("oversized ancestor cannot hide a later fitting target note", () =>
-        {
-            TestSupport.WithTemp(temp =>
-            {
-                WriteBudgetFixture(temp);
-                var result = TestSupport.Run(temp, TestSupport.Cli, "context", "src/sub/", "--budget-tokens", "50");
-                TestRunner.Equal(0, result.Code, result.Error);
-                var outText = TestSupport.Normalize(result.Out);
-                TestRunner.True(outText.Contains("TARGET_SENTINEL", StringComparison.Ordinal));
-                TestRunner.True(!outText.Contains("ANCESTOR_MARKER", StringComparison.Ordinal));
-                TestRunner.True(result.Error.Contains("omitted: _repolore/sparse-tree/src/src.md", StringComparison.Ordinal));
-            });
-        });
-
-        TestRunner.Check("budget omissions with --strict exit 1 and keep the partial result", () =>
-        {
-            TestSupport.WithTemp(temp =>
-            {
-                WriteBudgetFixture(temp);
-                var result = TestSupport.Run(temp, TestSupport.Cli, "context", "src/sub/", "--budget-tokens", "50", "--strict");
-                TestRunner.Equal(1, result.Code);
-                var outText = TestSupport.Normalize(result.Out);
-                TestRunner.True(outText.Contains("TARGET_SENTINEL", StringComparison.Ordinal));
-                TestRunner.True(!outText.Contains("ANCESTOR_MARKER", StringComparison.Ordinal));
-                TestRunner.True(result.Error.Contains("omitted:", StringComparison.Ordinal));
-            });
-        });
-
-        TestRunner.Check("alpha read support: sparse-only, tree-only, and conflict", () =>
-        {
-            WithFixture("alpha-sparse-only", temp =>
-            {
-                var result = TestSupport.Run(temp, TestSupport.Cli, "context", "src/");
-                TestRunner.Equal(0, result.Code, result.Error);
-                TestRunner.True(TestSupport.Normalize(result.Out).Contains("ALPHA_SPARSE_ONLY_SENTINEL", StringComparison.Ordinal));
-            });
-
-            WithFixture("alpha-local-only", temp =>
-            {
-                var result = TestSupport.Run(temp, TestSupport.Cli, "context", "src/");
-                TestRunner.Equal(0, result.Code, result.Error);
-                TestRunner.True(TestSupport.Normalize(result.Out).Contains("ALPHA_LOCAL_ONLY_SENTINEL", StringComparison.Ordinal));
-            });
-
-            WithFixture("alpha-conflict", temp =>
-            {
-                var result = TestSupport.Run(temp, TestSupport.Cli, "context", "src/");
-                TestRunner.Equal(3, result.Code);
-                TestRunner.True(result.Error.Contains("conflict", StringComparison.Ordinal));
-            });
-        });
-
-        TestRunner.Check("path lists durable note status", () =>
-        {
-            WithFixture("minimal-v1", temp =>
-            {
-                var result = TestSupport.Run(temp, TestSupport.Cli, "path", "src/");
-                TestRunner.Equal(0, result.Code, result.Error);
-                var outText = TestSupport.Normalize(result.Out);
-                TestRunner.True(outText.Contains("present _repolore/root.md", StringComparison.Ordinal));
-                TestRunner.True(outText.Contains("present _repolore/sparse-tree/src/src.md", StringComparison.Ordinal));
-            });
-        });
-
-        TestRunner.Check("tree lists durable knowledge and session IDs only when requested", () =>
-        {
-            WithFixture("two-sessions", temp =>
-            {
-                var durable = TestSupport.Run(temp, TestSupport.Cli, "tree");
-                TestRunner.Equal(0, durable.Code, durable.Error);
-                var durableText = TestSupport.Normalize(durable.Out);
-                TestRunner.True(durableText.Contains("_repolore/root.md", StringComparison.Ordinal));
-                TestRunner.True(!durableText.Contains("sessions", StringComparison.Ordinal));
-
-                var sessions = TestSupport.Run(temp, TestSupport.Cli, "tree", "--start", "_repolore/sessions/");
-                TestRunner.Equal(0, sessions.Code, sessions.Error);
-                var sessionsText = TestSupport.Normalize(sessions.Out);
-                TestRunner.True(sessionsText.Contains("_repolore/sessions/session-a/", StringComparison.Ordinal));
-                TestRunner.True(sessionsText.Contains("_repolore/sessions/session-b/", StringComparison.Ordinal));
-                TestRunner.True(!sessionsText.Contains("root.md", StringComparison.Ordinal));
-
-                var inside = TestSupport.Run(temp, TestSupport.Cli, "tree", "--start", "_repolore/sessions/session-a/");
-                TestRunner.Equal(0, inside.Code, inside.Error);
-                var insideText = TestSupport.Normalize(inside.Out);
-                TestRunner.True(insideText.Contains("_repolore/sessions/session-a/root.md", StringComparison.Ordinal));
-                TestRunner.True(insideText.Contains("_repolore/sessions/session-a/investigation.md", StringComparison.Ordinal));
-            });
-        });
-
-        TestRunner.Check("json and plain context render the same logical sets", () =>
-        {
-            TestSupport.WithTemp(temp =>
-            {
-                WriteBudgetFixture(temp);
-                var plain = TestSupport.Run(temp, TestSupport.Cli, "context", "src/sub/", "--budget-tokens", "50");
-                var json = TestSupport.Run(temp, TestSupport.Cli, "context", "src/sub/", "--budget-tokens", "50", "--json");
-                TestRunner.Equal(plain.Code, json.Code, json.Error);
-                var plainText = TestSupport.Normalize(plain.Out);
-                var jsonText = TestSupport.Normalize(json.Out);
-                TestRunner.True(jsonText.Contains("TARGET_SENTINEL", StringComparison.Ordinal));
-                TestRunner.True(!jsonText.Contains("ANCESTOR_MARKER", StringComparison.Ordinal));
-                TestRunner.True(plainText.Contains("TARGET_SENTINEL", StringComparison.Ordinal) == jsonText.Contains("TARGET_SENTINEL", StringComparison.Ordinal));
-                TestRunner.True(jsonText.Contains("omitted", StringComparison.Ordinal));
-            });
-        });
-
-        TestRunner.Check("read-only commands leave repository and history files unchanged", () =>
-        {
-            WithFixture("two-sessions", temp =>
-            {
-                var before = TestSupport.Snapshot(temp);
-                TestSupport.Run(temp, TestSupport.Cli, "context", ".");
-                TestSupport.Run(temp, TestSupport.Cli, "context", "--session", "session-a");
-                TestSupport.Run(temp, TestSupport.Cli, "context", "--session", "session-b", "--node", "_repolore/sessions/session-b/investigation.md");
-                TestSupport.Run(temp, TestSupport.Cli, "path", ".");
-                TestSupport.Run(temp, TestSupport.Cli, "tree");
-                TestSupport.Run(temp, TestSupport.Cli, "tree", "--start", "_repolore/sessions/");
-                TestSupport.Run(temp, TestSupport.Cli, "context", "--session", "session-missing");
-                TestRunner.Equal(before, TestSupport.Snapshot(temp));
-            });
+            var before = TestSupport.Snapshot(temp);
+            TestSupport.Run(temp, TestSupport.Cli, "context", ".");
+            TestSupport.Run(temp, TestSupport.Cli, "context", "--session", "session-a");
+            TestSupport.Run(temp, TestSupport.Cli, "context", "--session", "session-b", "--node", "_repolore/sessions/session-b/investigation.md");
+            TestSupport.Run(temp, TestSupport.Cli, "path", ".");
+            TestSupport.Run(temp, TestSupport.Cli, "tree");
+            TestSupport.Run(temp, TestSupport.Cli, "tree", "--start", "_repolore/sessions/");
+            TestSupport.Run(temp, TestSupport.Cli, "context", "--session", "session-missing");
+            TestSupport.Snapshot(temp).Should().Be(before);
         });
     }
 

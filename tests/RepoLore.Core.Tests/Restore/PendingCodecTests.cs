@@ -1,73 +1,75 @@
+using FluentAssertions;
 using RepoLore.Core.Json;
 using RepoLore.Core.Restore;
 using RepoLore.Core.Snapshot;
-using RepoLore.Core.Tests;
+using Xunit;
 
 namespace RepoLore.Core.Tests.Restore;
 
-public static class PendingCodecTests
+public class PendingCodecTests
 {
-    public static void Run()
+    [Fact]
+    public void Encode_decode_round_trip_preserves_every_field()
     {
-        TestRunner.Check("encode/decode round-trip preserves every field", () =>
-        {
-            var transaction = new PendingTransaction(
-                HistoryVersion.Current,
-                targetId: 7,
-                preOperationId: 3,
-                formatVersion: 1,
-                historyEnabled: true,
-                maxBytes: 1234,
-                excludeRules: new[] { "_repolore/sessions/a/" },
-                plan: new[]
-                {
-                    new PendingPlanEntry("_repolore/a.md", "oldHash", "newHash"),
-                    new PendingPlanEntry("_repolore/b.md", null, "newHash"),
-                    new PendingPlanEntry("_repolore/c.md", "oldHash", null)
-                });
+        var transaction = new PendingTransaction(
+            HistoryVersion.Current,
+            targetId: 7,
+            preOperationId: 3,
+            formatVersion: 1,
+            historyEnabled: true,
+            maxBytes: 1234,
+            excludeRules: new[] { "_repolore/sessions/a/" },
+            plan: new[]
+            {
+                new PendingPlanEntry("_repolore/a.md", "oldHash", "newHash"),
+                new PendingPlanEntry("_repolore/b.md", null, "newHash"),
+                new PendingPlanEntry("_repolore/c.md", "oldHash", null)
+            });
 
-            var decoded = PendingCodec.Decode(PendingCodec.Encode(transaction));
+        var decoded = PendingCodec.Decode(PendingCodec.Encode(transaction));
 
-            TestRunner.Equal(HistoryVersion.Current, decoded.HistoryVersion);
-            TestRunner.Equal(7L, decoded.TargetId);
-            TestRunner.Equal(3L, decoded.PreOperationId);
-            TestRunner.Equal(1, decoded.FormatVersion);
-            TestRunner.Equal(true, decoded.HistoryEnabled);
-            TestRunner.Equal(1234L, decoded.MaxBytes);
-            TestRunner.Equal(1, decoded.ExcludeRules.Count);
-            TestRunner.Equal("_repolore/sessions/a/", decoded.ExcludeRules[0]);
-            TestRunner.Equal(3, decoded.Plan.Count);
-            TestRunner.Equal("_repolore/a.md", decoded.Plan[0].Path);
-            TestRunner.Equal("oldHash", decoded.Plan[0].Before);
-            TestRunner.Equal("newHash", decoded.Plan[0].After);
-            TestRunner.Equal(null, decoded.Plan[1].Before);
-            TestRunner.Equal(null, decoded.Plan[2].After);
-        });
+        decoded.HistoryVersion.Should().Be(HistoryVersion.Current);
+        decoded.TargetId.Should().Be(7L);
+        decoded.PreOperationId.Should().Be(3L);
+        decoded.FormatVersion.Should().Be(1);
+        decoded.HistoryEnabled.Should().BeTrue();
+        decoded.MaxBytes.Should().Be(1234L);
+        decoded.ExcludeRules.Should().HaveCount(1);
+        decoded.ExcludeRules[0].Should().Be("_repolore/sessions/a/");
+        decoded.Plan.Should().HaveCount(3);
+        decoded.Plan[0].Path.Should().Be("_repolore/a.md");
+        decoded.Plan[0].Before.Should().Be("oldHash");
+        decoded.Plan[0].After.Should().Be("newHash");
+        decoded.Plan[1].Before.Should().BeNull();
+        decoded.Plan[2].After.Should().BeNull();
+    }
 
-        TestRunner.Check("non-object and missing-field records are rejected", () =>
-        {
-            TestRunner.Throws<PendingFormatException>(() => PendingCodec.Decode(JsonParser.Parse("[1,2]")));
-            TestRunner.Throws<PendingFormatException>(() => PendingCodec.Decode(JsonParser.Parse("{}")));
-            TestRunner.Throws<PendingFormatException>(() => PendingCodec.Decode(JsonParser.Parse("{\"historyVersion\":1}")));
-        });
+    [Fact]
+    public void Non_object_and_missing_field_records_are_rejected()
+    {
+        new Action(() => PendingCodec.Decode(JsonParser.Parse("[1,2]"))).Should().Throw<PendingFormatException>();
+        new Action(() => PendingCodec.Decode(JsonParser.Parse("{}"))).Should().Throw<PendingFormatException>();
+        new Action(() => PendingCodec.Decode(JsonParser.Parse("{\"historyVersion\":1}"))).Should().Throw<PendingFormatException>();
+    }
 
-        TestRunner.Check("wrong types and unknown versions are rejected", () =>
-        {
-            TestRunner.Throws<PendingFormatException>(() => PendingCodec.Decode(With(Valid(), "historyVersion", new JsonStringValue("1"))));
-            TestRunner.Throws<PendingFormatException>(() => PendingCodec.Decode(With(Valid(), "historyVersion", new JsonNumberValue("2"))));
-            TestRunner.Throws<PendingFormatException>(() => PendingCodec.Decode(With(Valid(), "targetId", new JsonStringValue("3"))));
-            TestRunner.Throws<PendingFormatException>(() => PendingCodec.Decode(With(Valid(), "preOperationId", new JsonNumberValue("-1"))));
-            TestRunner.Throws<PendingFormatException>(() => PendingCodec.Decode(With(Valid(), "plan", new JsonStringValue("x"))));
-        });
+    [Fact]
+    public void Wrong_types_and_unknown_versions_are_rejected()
+    {
+        new Action(() => PendingCodec.Decode(With(Valid(), "historyVersion", new JsonStringValue("1")))).Should().Throw<PendingFormatException>();
+        new Action(() => PendingCodec.Decode(With(Valid(), "historyVersion", new JsonNumberValue("2")))).Should().Throw<PendingFormatException>();
+        new Action(() => PendingCodec.Decode(With(Valid(), "targetId", new JsonStringValue("3")))).Should().Throw<PendingFormatException>();
+        new Action(() => PendingCodec.Decode(With(Valid(), "preOperationId", new JsonNumberValue("-1")))).Should().Throw<PendingFormatException>();
+        new Action(() => PendingCodec.Decode(With(Valid(), "plan", new JsonStringValue("x")))).Should().Throw<PendingFormatException>();
+    }
 
-        TestRunner.Check("malformed config and plan entries are rejected", () =>
-        {
-            TestRunner.Throws<PendingFormatException>(() => PendingCodec.Decode(With(Valid(), "config", new JsonNumberValue("0"))));
-            TestRunner.Throws<PendingFormatException>(() => PendingCodec.Decode(WithConfigField("maxBytes", new JsonNumberValue("-1"))));
-            TestRunner.Throws<PendingFormatException>(() => PendingCodec.Decode(WithConfigField("exclude", new JsonStringValue("a"))));
-            TestRunner.Throws<PendingFormatException>(() => PendingCodec.Decode(With(Valid(), "plan", JsonParser.Parse("[1]"))));
-            TestRunner.Throws<PendingFormatException>(() => PendingCodec.Decode(With(Valid(), "plan", JsonParser.Parse("[{\"path\":\"a\",\"before\":1}]"))));
-        });
+    [Fact]
+    public void Malformed_config_and_plan_entries_are_rejected()
+    {
+        new Action(() => PendingCodec.Decode(With(Valid(), "config", new JsonNumberValue("0")))).Should().Throw<PendingFormatException>();
+        new Action(() => PendingCodec.Decode(WithConfigField("maxBytes", new JsonNumberValue("-1")))).Should().Throw<PendingFormatException>();
+        new Action(() => PendingCodec.Decode(WithConfigField("exclude", new JsonStringValue("a")))).Should().Throw<PendingFormatException>();
+        new Action(() => PendingCodec.Decode(With(Valid(), "plan", JsonParser.Parse("[1]")))).Should().Throw<PendingFormatException>();
+        new Action(() => PendingCodec.Decode(With(Valid(), "plan", JsonParser.Parse("[{\"path\":\"a\",\"before\":1}]")))).Should().Throw<PendingFormatException>();
     }
 
     private static JsonObject Valid()

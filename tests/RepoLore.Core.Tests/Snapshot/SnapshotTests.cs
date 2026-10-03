@@ -1,98 +1,100 @@
+using FluentAssertions;
 using RepoLore.Core.Json;
 using RepoLore.Core.Snapshot;
-using RepoLore.Core.Tests;
+using Xunit;
 
 namespace RepoLore.Core.Tests.Snapshot;
 
-public static class ManifestIdTests
+public class ManifestIdTests
 {
-    public static void Run()
+    [Fact]
+    public void Format_and_parse_round_trip()
     {
-        TestRunner.Check("format and parse round-trip", () =>
-        {
-            TestRunner.Equal("0000000000000001", ManifestId.Format(1));
-            TestRunner.Equal("0000000000000042", ManifestId.Format(42));
+        ManifestId.Format(1).Should().Be("0000000000000001");
+        ManifestId.Format(42).Should().Be("0000000000000042");
 
-            TestRunner.True(ManifestId.TryParse("0000000000000001.json", out var one));
-            TestRunner.Equal(1L, one);
-            TestRunner.True(ManifestId.TryParse("0000000000000042.json", out var fortyTwo));
-            TestRunner.Equal(42L, fortyTwo);
-        });
+        ManifestId.TryParse("0000000000000001.json", out var one).Should().BeTrue();
+        one.Should().Be(1L);
+        ManifestId.TryParse("0000000000000042.json", out var fortyTwo).Should().BeTrue();
+        fortyTwo.Should().Be(42L);
+    }
 
-        TestRunner.Check("non-manifest names are rejected", () =>
-        {
-            TestRunner.True(!ManifestId.TryParse("0000000000000001", out _));
-            TestRunner.True(!ManifestId.TryParse("1.json", out _));
-            TestRunner.True(!ManifestId.TryParse("000000000000000x.json", out _));
-            TestRunner.True(!ManifestId.TryParse("0000000000000001.tmp-abc", out _));
-            TestRunner.True(!ManifestId.TryParse("00000000000000001.json", out _));
-            TestRunner.True(!ManifestId.TryParse("pending.json", out _));
-        });
+    [Fact]
+    public void Non_manifest_names_are_rejected()
+    {
+        ManifestId.TryParse("0000000000000001", out _).Should().BeFalse();
+        ManifestId.TryParse("1.json", out _).Should().BeFalse();
+        ManifestId.TryParse("000000000000000x.json", out _).Should().BeFalse();
+        ManifestId.TryParse("0000000000000001.tmp-abc", out _).Should().BeFalse();
+        ManifestId.TryParse("00000000000000001.json", out _).Should().BeFalse();
+        ManifestId.TryParse("pending.json", out _).Should().BeFalse();
     }
 }
 
-public static class ManifestCodecTests
+public class ManifestCodecTests
 {
-    public static void Run()
+    [Fact]
+    public void Encode_decode_round_trip_preserves_every_field()
     {
-        TestRunner.Check("encode/decode round-trip preserves every field", () =>
+        var scope = new CaptureScope(true, 209715200, new[] { "_repolore/sessions/a/" }, CaptureScope.RepoLoreJsonPresent);
+        var manifest = new CheckpointManifest(7, "2026-09-27T11:00:00.0000000+00:00", HistoryVersion.Current, 1, scope, new[]
         {
-            var scope = new CaptureScope(true, 209715200, new[] { "_repolore/sessions/a/" }, CaptureScope.RepoLoreJsonPresent);
-            var manifest = new CheckpointManifest(7, "2026-09-27T11:00:00.0000000+00:00", HistoryVersion.Current, 1, scope, new[]
-            {
-                new FileEntry("_repolore/root.md", "abc123", 12),
-                new FileEntry("_repolore/sparse-tree/src/src.md", "def456", 34)
-            });
-
-            var decoded = ManifestCodec.Decode(ManifestCodec.Encode(manifest));
-
-            TestRunner.Equal(7L, decoded.Id);
-            TestRunner.Equal("2026-09-27T11:00:00.0000000+00:00", decoded.Timestamp);
-            TestRunner.Equal(HistoryVersion.Current, decoded.HistoryVersion);
-            TestRunner.Equal(1, decoded.KnowledgeFormat);
-            TestRunner.Equal(true, decoded.Scope.HistoryEnabled);
-            TestRunner.Equal(209715200L, decoded.Scope.MaxBytes);
-            TestRunner.Equal(CaptureScope.RepoLoreJsonPresent, decoded.Scope.RepoLoreJsonStatus);
-            TestRunner.Equal(1, decoded.Scope.ExcludeRules.Count);
-            TestRunner.Equal("_repolore/sessions/a/", decoded.Scope.ExcludeRules[0]);
-            TestRunner.Equal(2, decoded.Files.Count);
-            TestRunner.Equal("_repolore/root.md", decoded.Files[0].Path);
-            TestRunner.Equal("abc123", decoded.Files[0].Hash);
-            TestRunner.Equal(12L, decoded.Files[0].Size);
+            new FileEntry("_repolore/root.md", "abc123", 12),
+            new FileEntry("_repolore/sparse-tree/src/src.md", "def456", 34)
         });
 
-        TestRunner.Check("non-object and missing-field manifests are rejected", () =>
-        {
-            TestRunner.Throws<ManifestFormatException>(() => ManifestCodec.Decode(JsonParser.Parse("[1,2]")));
-            TestRunner.Throws<ManifestFormatException>(() => ManifestCodec.Decode(JsonParser.Parse("{}")));
-            TestRunner.Throws<ManifestFormatException>(() => ManifestCodec.Decode(JsonParser.Parse("{\"historyVersion\":1}")));
-        });
+        var decoded = ManifestCodec.Decode(ManifestCodec.Encode(manifest));
 
-        TestRunner.Check("wrong types and unknown versions are rejected", () =>
-        {
-            TestRunner.Throws<ManifestFormatException>(() => ManifestCodec.Decode(With(Valid(), "historyVersion", new JsonStringValue("1"))));
-            TestRunner.Throws<ManifestFormatException>(() => ManifestCodec.Decode(With(Valid(), "historyVersion", new JsonNumberValue("2"))));
-            TestRunner.Throws<ManifestFormatException>(() => ManifestCodec.Decode(With(Valid(), "id", new JsonStringValue("3"))));
-            TestRunner.Throws<ManifestFormatException>(() => ManifestCodec.Decode(With(Valid(), "id", new JsonNumberValue("-1"))));
-            TestRunner.Throws<ManifestFormatException>(() => ManifestCodec.Decode(With(Valid(), "timestamp", new JsonNumberValue("0"))));
-            TestRunner.Throws<ManifestFormatException>(() => ManifestCodec.Decode(With(Valid(), "files", new JsonStringValue("x"))));
-        });
+        decoded.Id.Should().Be(7L);
+        decoded.Timestamp.Should().Be("2026-09-27T11:00:00.0000000+00:00");
+        decoded.HistoryVersion.Should().Be(HistoryVersion.Current);
+        decoded.KnowledgeFormat.Should().Be(1);
+        decoded.Scope.HistoryEnabled.Should().BeTrue();
+        decoded.Scope.MaxBytes.Should().Be(209715200L);
+        decoded.Scope.RepoLoreJsonStatus.Should().Be(CaptureScope.RepoLoreJsonPresent);
+        decoded.Scope.ExcludeRules.Should().HaveCount(1);
+        decoded.Scope.ExcludeRules[0].Should().Be("_repolore/sessions/a/");
+        decoded.Files.Should().HaveCount(2);
+        decoded.Files[0].Path.Should().Be("_repolore/root.md");
+        decoded.Files[0].Hash.Should().Be("abc123");
+        decoded.Files[0].Size.Should().Be(12L);
+    }
 
-        TestRunner.Check("malformed scope is rejected", () =>
-        {
-            TestRunner.Throws<ManifestFormatException>(() => ManifestCodec.Decode(With(Valid(), "scope", new JsonNumberValue("0"))));
-            TestRunner.Throws<ManifestFormatException>(() => ManifestCodec.Decode(WithScopeField("maxBytes", new JsonNumberValue("-1"))));
-            TestRunner.Throws<ManifestFormatException>(() => ManifestCodec.Decode(WithScopeField("repoloreJson", new JsonStringValue("weird"))));
-            TestRunner.Throws<ManifestFormatException>(() => ManifestCodec.Decode(WithScopeField("historyEnabled", new JsonStringValue("yes"))));
-            TestRunner.Throws<ManifestFormatException>(() => ManifestCodec.Decode(WithScopeField("exclude", new JsonStringValue("a"))));
-        });
+    [Fact]
+    public void Non_object_and_missing_field_manifests_are_rejected()
+    {
+        new Action(() => ManifestCodec.Decode(JsonParser.Parse("[1,2]"))).Should().Throw<ManifestFormatException>();
+        new Action(() => ManifestCodec.Decode(JsonParser.Parse("{}"))).Should().Throw<ManifestFormatException>();
+        new Action(() => ManifestCodec.Decode(JsonParser.Parse("{\"historyVersion\":1}"))).Should().Throw<ManifestFormatException>();
+    }
 
-        TestRunner.Check("malformed file entries are rejected", () =>
-        {
-            TestRunner.Throws<ManifestFormatException>(() => ManifestCodec.Decode(With(Valid(), "files", JsonParser.Parse("[{\"path\":\"a\",\"hash\":\"h\",\"size\":-1}]"))));
-            TestRunner.Throws<ManifestFormatException>(() => ManifestCodec.Decode(With(Valid(), "files", JsonParser.Parse("[1]"))));
-            TestRunner.Throws<ManifestFormatException>(() => ManifestCodec.Decode(With(Valid(), "files", JsonParser.Parse("[{\"path\":\"a\"}]"))));
-        });
+    [Fact]
+    public void Wrong_types_and_unknown_versions_are_rejected()
+    {
+        new Action(() => ManifestCodec.Decode(With(Valid(), "historyVersion", new JsonStringValue("1")))).Should().Throw<ManifestFormatException>();
+        new Action(() => ManifestCodec.Decode(With(Valid(), "historyVersion", new JsonNumberValue("2")))).Should().Throw<ManifestFormatException>();
+        new Action(() => ManifestCodec.Decode(With(Valid(), "id", new JsonStringValue("3")))).Should().Throw<ManifestFormatException>();
+        new Action(() => ManifestCodec.Decode(With(Valid(), "id", new JsonNumberValue("-1")))).Should().Throw<ManifestFormatException>();
+        new Action(() => ManifestCodec.Decode(With(Valid(), "timestamp", new JsonNumberValue("0")))).Should().Throw<ManifestFormatException>();
+        new Action(() => ManifestCodec.Decode(With(Valid(), "files", new JsonStringValue("x")))).Should().Throw<ManifestFormatException>();
+    }
+
+    [Fact]
+    public void Malformed_scope_is_rejected()
+    {
+        new Action(() => ManifestCodec.Decode(With(Valid(), "scope", new JsonNumberValue("0")))).Should().Throw<ManifestFormatException>();
+        new Action(() => ManifestCodec.Decode(WithScopeField("maxBytes", new JsonNumberValue("-1")))).Should().Throw<ManifestFormatException>();
+        new Action(() => ManifestCodec.Decode(WithScopeField("repoloreJson", new JsonStringValue("weird")))).Should().Throw<ManifestFormatException>();
+        new Action(() => ManifestCodec.Decode(WithScopeField("historyEnabled", new JsonStringValue("yes")))).Should().Throw<ManifestFormatException>();
+        new Action(() => ManifestCodec.Decode(WithScopeField("exclude", new JsonStringValue("a")))).Should().Throw<ManifestFormatException>();
+    }
+
+    [Fact]
+    public void Malformed_file_entries_are_rejected()
+    {
+        new Action(() => ManifestCodec.Decode(With(Valid(), "files", JsonParser.Parse("[{\"path\":\"a\",\"hash\":\"h\",\"size\":-1}]")))).Should().Throw<ManifestFormatException>();
+        new Action(() => ManifestCodec.Decode(With(Valid(), "files", JsonParser.Parse("[1]")))).Should().Throw<ManifestFormatException>();
+        new Action(() => ManifestCodec.Decode(With(Valid(), "files", JsonParser.Parse("[{\"path\":\"a\"}]")))).Should().Throw<ManifestFormatException>();
     }
 
     private static JsonObject Valid()
@@ -129,59 +131,61 @@ public static class ManifestCodecTests
     }
 }
 
-public static class SnapshotDifferTests
+public class SnapshotDifferTests
 {
     private static readonly CaptureScope Scope = new(true, 100, new List<string>(), CaptureScope.RepoLoreJsonPresent);
 
-    public static void Run()
+    [Fact]
+    public void First_checkpoint_is_never_a_no_op_and_reports_all_added()
     {
-        TestRunner.Check("first checkpoint is never a no-op and reports all added", () =>
-        {
-            var diff = SnapshotDiffer.Compare(null, Scope, Files(("_repolore/root.md", "h1"), ("_repolore/a.md", "h2")));
-            TestRunner.True(!diff.IsNoOp);
-            TestRunner.Equal("_repolore/a.md,_repolore/root.md", string.Join(',', diff.Added));
-            TestRunner.Equal(0, diff.Changed.Count);
-            TestRunner.Equal(0, diff.Removed.Count);
-        });
+        var diff = SnapshotDiffer.Compare(null, Scope, Files(("_repolore/root.md", "h1"), ("_repolore/a.md", "h2")));
+        diff.IsNoOp.Should().BeFalse();
+        string.Join(',', diff.Added).Should().Be("_repolore/a.md,_repolore/root.md");
+        diff.Changed.Should().HaveCount(0);
+        diff.Removed.Should().HaveCount(0);
+    }
 
-        TestRunner.Check("unchanged files and scope are a no-op", () =>
-        {
-            var previous = Manifest(Files(("_repolore/root.md", "h1")));
-            var diff = SnapshotDiffer.Compare(previous, Scope, Files(("_repolore/root.md", "h1")));
-            TestRunner.True(diff.IsNoOp);
-        });
+    [Fact]
+    public void Unchanged_files_and_scope_are_a_no_op()
+    {
+        var previous = Manifest(Files(("_repolore/root.md", "h1")));
+        var diff = SnapshotDiffer.Compare(previous, Scope, Files(("_repolore/root.md", "h1")));
+        diff.IsNoOp.Should().BeTrue();
+    }
 
-        TestRunner.Check("additions, changes, and removals are classified", () =>
-        {
-            var previous = Manifest(Files(("a.md", "hA"), ("b.md", "hB"), ("c.md", "hC")));
-            var diff = SnapshotDiffer.Compare(previous, Scope, Files(("a.md", "hA2"), ("b.md", "hB"), ("d.md", "hD")));
-            TestRunner.True(!diff.IsNoOp);
-            TestRunner.Equal("d.md", string.Join(',', diff.Added));
-            TestRunner.Equal("a.md", string.Join(',', diff.Changed));
-            TestRunner.Equal("c.md", string.Join(',', diff.Removed));
-        });
+    [Fact]
+    public void Additions_changes_and_removals_are_classified()
+    {
+        var previous = Manifest(Files(("a.md", "hA"), ("b.md", "hB"), ("c.md", "hC")));
+        var diff = SnapshotDiffer.Compare(previous, Scope, Files(("a.md", "hA2"), ("b.md", "hB"), ("d.md", "hD")));
+        diff.IsNoOp.Should().BeFalse();
+        string.Join(',', diff.Added).Should().Be("d.md");
+        string.Join(',', diff.Changed).Should().Be("a.md");
+        string.Join(',', diff.Removed).Should().Be("c.md");
+    }
 
-        TestRunner.Check("a scope-only change is recorded even when hashes match", () =>
-        {
-            var previous = Manifest(Files(("a.md", "hA")));
-            var wider = new CaptureScope(true, 200, new List<string>(), CaptureScope.RepoLoreJsonPresent);
-            var diff = SnapshotDiffer.Compare(previous, wider, Files(("a.md", "hA")));
-            TestRunner.True(!diff.IsNoOp);
-            TestRunner.Equal(0, diff.Added.Count);
-            TestRunner.Equal(0, diff.Changed.Count);
-            TestRunner.Equal(0, diff.Removed.Count);
-        });
+    [Fact]
+    public void A_scope_only_change_is_recorded_even_when_hashes_match()
+    {
+        var previous = Manifest(Files(("a.md", "hA")));
+        var wider = new CaptureScope(true, 200, new List<string>(), CaptureScope.RepoLoreJsonPresent);
+        var diff = SnapshotDiffer.Compare(previous, wider, Files(("a.md", "hA")));
+        diff.IsNoOp.Should().BeFalse();
+        diff.Added.Should().HaveCount(0);
+        diff.Changed.Should().HaveCount(0);
+        diff.Removed.Should().HaveCount(0);
+    }
 
-        TestRunner.Check("exclude-rule and repoloreJson status changes are scope changes", () =>
-        {
-            var previous = Manifest(Files(("a.md", "hA")));
+    [Fact]
+    public void Exclude_rule_and_repoloreJson_status_changes_are_scope_changes()
+    {
+        var previous = Manifest(Files(("a.md", "hA")));
 
-            var excluded = new CaptureScope(true, 100, new[] { "_repolore/sessions/x/" }, CaptureScope.RepoLoreJsonPresent);
-            TestRunner.True(!SnapshotDiffer.Compare(previous, excluded, Files(("a.md", "hA"))).IsNoOp);
+        var excluded = new CaptureScope(true, 100, new[] { "_repolore/sessions/x/" }, CaptureScope.RepoLoreJsonPresent);
+        SnapshotDiffer.Compare(previous, excluded, Files(("a.md", "hA"))).IsNoOp.Should().BeFalse();
 
-            var absent = new CaptureScope(true, 100, new List<string>(), CaptureScope.RepoLoreJsonAbsent);
-            TestRunner.True(!SnapshotDiffer.Compare(previous, absent, Files(("a.md", "hA"))).IsNoOp);
-        });
+        var absent = new CaptureScope(true, 100, new List<string>(), CaptureScope.RepoLoreJsonAbsent);
+        SnapshotDiffer.Compare(previous, absent, Files(("a.md", "hA"))).IsNoOp.Should().BeFalse();
     }
 
     private static IReadOnlyList<FileEntry> Files(params (string Path, string Hash)[] entries)

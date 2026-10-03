@@ -1,47 +1,48 @@
+using FluentAssertions;
 using RepoLore.Core.Context;
-using RepoLore.Core.Tests;
+using Xunit;
 
 namespace RepoLore.Core.Tests.Context;
 
-public static class BlockEstimatorTests
+public class BlockEstimatorTests
 {
-    public static void Run()
+    [Fact]
+    public void Block_render_and_charge_use_the_canonical_format()
     {
-        TestRunner.Check("block render and charge use the canonical format", () =>
-        {
-            var block = new ContextBlock("p", "durable", "t", 0);
-            TestRunner.Equal("---\n## p [durable]\n\nt\n", block.Render());
+        var block = new ContextBlock("p", "durable", "t", 0);
+        block.Render().Should().Be("---\n## p [durable]\n\nt\n");
 
-            var length = "---\n## p [durable]\n\nt\n".Length;
-            TestRunner.Equal((length + 3) / 4, BlockEstimator.ChargeFor("p", "durable", "t"));
-        });
+        var length = "---\n## p [durable]\n\nt\n".Length;
+        BlockEstimator.ChargeFor("p", "durable", "t").Should().Be((length + 3) / 4);
+    }
 
-        TestRunner.Check("estimator skips a non-fitting note and continues", () =>
-        {
-            var small1 = new ContextNote("a", "durable", "A");
-            var big = new ContextNote("b", "durable", new string('x', 400));
-            var small2 = new ContextNote("c", "durable", "C");
+    [Fact]
+    public void Estimator_skips_a_non_fitting_note_and_continues()
+    {
+        var small1 = new ContextNote("a", "durable", "A");
+        var big = new ContextNote("b", "durable", new string('x', 400));
+        var small2 = new ContextNote("c", "durable", "C");
 
-            var budget = BlockEstimator.ChargeFor("a", "durable", "A")
-                       + BlockEstimator.ChargeFor("c", "durable", "C");
-            TestRunner.True(BlockEstimator.ChargeFor("b", "durable", new string('x', 400)) > budget);
+        var budget = BlockEstimator.ChargeFor("a", "durable", "A")
+                   + BlockEstimator.ChargeFor("c", "durable", "C");
+        BlockEstimator.ChargeFor("b", "durable", new string('x', 400)).Should().BeGreaterThan(budget);
 
-            var estimate = BlockEstimator.Estimate(new[] { small1, big, small2 }, budget);
-            TestRunner.Equal(2, estimate.Included.Count);
-            TestRunner.Equal("a", estimate.Included[0].Path);
-            TestRunner.Equal("c", estimate.Included[1].Path);
-            TestRunner.Equal(1, estimate.Omissions.Count);
-            TestRunner.Equal("b", estimate.Omissions[0].Path);
-            TestRunner.Equal("budget", estimate.Omissions[0].Reason);
-            TestRunner.Equal(budget, estimate.TotalCharge);
-        });
+        var estimate = BlockEstimator.Estimate(new[] { small1, big, small2 }, budget);
+        estimate.Included.Should().HaveCount(2);
+        estimate.Included[0].Path.Should().Be("a");
+        estimate.Included[1].Path.Should().Be("c");
+        estimate.Omissions.Should().HaveCount(1);
+        estimate.Omissions[0].Path.Should().Be("b");
+        estimate.Omissions[0].Reason.Should().Be("budget");
+        estimate.TotalCharge.Should().Be(budget);
+    }
 
-        TestRunner.Check("a budget that fits nothing omits everything", () =>
-        {
-            var note = new ContextNote("a", "durable", "A");
-            var estimate = BlockEstimator.Estimate(new[] { note }, 0);
-            TestRunner.Equal(0, estimate.Included.Count);
-            TestRunner.Equal(1, estimate.Omissions.Count);
-        });
+    [Fact]
+    public void A_budget_that_fits_nothing_omits_everything()
+    {
+        var note = new ContextNote("a", "durable", "A");
+        var estimate = BlockEstimator.Estimate(new[] { note }, 0);
+        estimate.Included.Should().BeEmpty();
+        estimate.Omissions.Should().HaveCount(1);
     }
 }

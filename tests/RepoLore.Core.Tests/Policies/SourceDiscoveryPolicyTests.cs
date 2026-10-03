@@ -1,35 +1,34 @@
+using FluentAssertions;
 using RepoLore.Core.Matching;
 using RepoLore.Core.Policies;
-using RepoLore.Core.Tests;
+using Xunit;
 
 namespace RepoLore.Core.Tests.Policies;
 
-public static class SourceDiscoveryPolicyTests
+public class SourceDiscoveryPolicyTests
 {
-    public static void Run()
+    [Fact]
+    public void Source_discovery_applies_hard_exclusions_defaults_and_user_overrides()
     {
-        TestRunner.Check("source discovery applies hard exclusions, defaults, and user overrides", () =>
-        {
-            var policy = new SourceDiscoveryPolicy();
-            TestRunner.True(policy.IsExcluded(".git/config", false));
-            TestRunner.True(policy.IsExcluded("_repolore/root.md", false));
-            TestRunner.True(policy.IsExcluded("bin/a.dll", false));
-            TestRunner.True(policy.IsExcluded("src/bin/a.dll", false));
-            TestRunner.True(policy.IsExcluded("obj/a.o", false));
-            TestRunner.True(policy.IsExcluded("node_modules/x", false));
-            TestRunner.True(policy.IsExcluded("build/a", false));
-            TestRunner.True(policy.IsExcluded("vendor/a", false));
-            TestRunner.True(!policy.IsExcluded("src/app.cs", false));
-            TestRunner.True(!policy.IsExcluded("readme.md", false));
-            TestRunner.True(!policy.HasNegation);
+        var policy = new SourceDiscoveryPolicy();
+        policy.IsExcluded(".git/config", false).Should().BeTrue();
+        policy.IsExcluded("_repolore/root.md", false).Should().BeTrue();
+        policy.IsExcluded("bin/a.dll", false).Should().BeTrue();
+        policy.IsExcluded("src/bin/a.dll", false).Should().BeTrue();
+        policy.IsExcluded("obj/a.o", false).Should().BeTrue();
+        policy.IsExcluded("node_modules/x", false).Should().BeTrue();
+        policy.IsExcluded("build/a", false).Should().BeTrue();
+        policy.IsExcluded("vendor/a", false).Should().BeTrue();
+        policy.IsExcluded("src/app.cs", false).Should().BeFalse();
+        policy.IsExcluded("readme.md", false).Should().BeFalse();
+        policy.HasNegation.Should().BeFalse();
 
-            var user = RuleSet.Compile(new[] { "!vendor/keep.md", "!.git/config" });
-            var overridden = new SourceDiscoveryPolicy(user);
-            TestRunner.True(overridden.HasNegation);
-            TestRunner.True(!overridden.IsExcluded("vendor/keep.md", false));
-            TestRunner.True(overridden.IsExcluded("vendor/other.md", false));
-            TestRunner.True(overridden.IsExcluded(".git/config", false));
-            TestRunner.True(overridden.IsExcluded("_repolore/root.md", false));
-        });
+        var user = RuleSet.Compile(new[] { "!vendor/keep.md", "!.git/config" });
+        var overridden = new SourceDiscoveryPolicy(user);
+        overridden.HasNegation.Should().BeTrue();
+        overridden.IsExcluded("vendor/keep.md", false).Should().BeFalse();
+        overridden.IsExcluded("vendor/other.md", false).Should().BeTrue();
+        overridden.IsExcluded(".git/config", false).Should().BeTrue();
+        overridden.IsExcluded("_repolore/root.md", false).Should().BeTrue();
     }
 }

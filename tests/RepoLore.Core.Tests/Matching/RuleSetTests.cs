@@ -1,64 +1,67 @@
+using FluentAssertions;
 using RepoLore.Core.Matching;
-using RepoLore.Core.Tests;
+using Xunit;
 
 namespace RepoLore.Core.Tests.Matching;
 
-public static class RuleSetTests
+public class RuleSetTests
 {
-    public static void Run()
+    [Fact]
+    public void Frozen_rule_table_produces_the_authored_decisions()
     {
-        TestRunner.Check("frozen rule table produces the authored decisions", () =>
+        var rulesPath = Path.Combine(AppContext.BaseDirectory, "Fixtures", "ignore-rules.txt");
+        var rules = RuleSet.Compile(File.ReadAllLines(rulesPath));
+
+        var tablePath = Path.Combine(AppContext.BaseDirectory, "Fixtures", "expected-matcher.tsv");
+        var rows = File.ReadAllLines(tablePath).Where(static l => l.Trim().Length > 0).ToArray();
+        rows.Length.Should().BeGreaterThanOrEqualTo(10, $"expected at least 10 rows, got {rows.Length}");
+
+        foreach (var line in rows)
         {
-            var rulesPath = Path.Combine(AppContext.BaseDirectory, "Fixtures", "ignore-rules.txt");
-            var rules = RuleSet.Compile(File.ReadAllLines(rulesPath));
+            var fields = line.Split('\t');
+            fields.Length.Should().Be(3, line);
+            var path = fields[0];
+            var isDirectory = fields[1] == "dir";
+            var expectedExcluded = fields[2] == "exclude";
+            rules.IsExcluded(path, isDirectory).Should().Be(expectedExcluded, line);
+        }
+    }
 
-            var tablePath = Path.Combine(AppContext.BaseDirectory, "Fixtures", "expected-matcher.tsv");
-            var rows = File.ReadAllLines(tablePath).Where(static l => l.Trim().Length > 0).ToArray();
-            TestRunner.True(rows.Length >= 10, $"expected at least 10 rows, got {rows.Length}");
-
-            foreach (var line in rows)
-            {
-                var fields = line.Split('\t');
-                TestRunner.Equal(3, fields.Length, line);
-                var path = fields[0];
-                var isDirectory = fields[1] == "dir";
-                var expectedExcluded = fields[2] == "exclude";
-                TestRunner.Equal(expectedExcluded, rules.IsExcluded(path, isDirectory), line);
-            }
-        });
-
-        TestRunner.Check("invalid rules are rejected with their line numbers", () =>
+    [Fact]
+    public void Invalid_rules_are_rejected_with_their_line_numbers()
+    {
+        foreach (var bad in new[] { "ab**cd", "a**", "**a", "a[bc]", "a\\b", "a//b", "\\x", "!" })
         {
-            foreach (var bad in new[] { "ab**cd", "a**", "**a", "a[bc]", "a\\b", "a//b", "\\x", "!" })
-            {
-                var ex = TestRunner.Capture<RuleSyntaxException>(() => RuleSet.Compile(new[] { "ok.md", bad }), bad);
-                TestRunner.Equal(2, ex.Line, bad);
-                TestRunner.True(ex.Message.Length > 0, bad);
-            }
-        });
+            var ex = new Action(() => RuleSet.Compile(new[] { "ok.md", bad }))
+                .Should().Throw<RuleSyntaxException>().Which;
+            ex.Line.Should().Be(2, bad);
+            ex.Message.Should().NotBeEmpty(bad);
+        }
+    }
 
-        TestRunner.Check("last matching rule wins, so negation order matters", () =>
-        {
-            var reinclude = RuleSet.Compile(new[] { "a/", "!a/keep.md" });
-            TestRunner.True(!reinclude.IsExcluded("a/keep.md", false));
+    [Fact]
+    public void Last_matching_rule_wins_so_negation_order_matters()
+    {
+        var reinclude = RuleSet.Compile(new[] { "a/", "!a/keep.md" });
+        reinclude.IsExcluded("a/keep.md", false).Should().BeFalse();
 
-            var reexclude = RuleSet.Compile(new[] { "!a/keep.md", "a/" });
-            TestRunner.True(reexclude.IsExcluded("a/keep.md", false));
-        });
+        var reexclude = RuleSet.Compile(new[] { "!a/keep.md", "a/" });
+        reexclude.IsExcluded("a/keep.md", false).Should().BeTrue();
+    }
 
-        TestRunner.Check("'**' as a whole segment matches zero or more directories", () =>
-        {
-            var build = RuleSet.Compile(new[] { "**/build/" });
-            TestRunner.True(build.IsExcluded("build", true));
-            TestRunner.True(build.IsExcluded("a/build", true));
-            TestRunner.True(build.IsExcluded("a/b/build/x", false));
-            TestRunner.True(!build.IsExcluded("build", false));
+    [Fact]
+    public void Double_star_as_a_whole_segment_matches_zero_or_more_directories()
+    {
+        var build = RuleSet.Compile(new[] { "**/build/" });
+        build.IsExcluded("build", true).Should().BeTrue();
+        build.IsExcluded("a/build", true).Should().BeTrue();
+        build.IsExcluded("a/b/build/x", false).Should().BeTrue();
+        build.IsExcluded("build", false).Should().BeFalse();
 
-            var zero = RuleSet.Compile(new[] { "a/**/b.md" });
-            TestRunner.True(zero.IsExcluded("a/b.md", false));
-            TestRunner.True(zero.IsExcluded("a/x/b.md", false));
-            TestRunner.True(zero.IsExcluded("a/x/y/b.md", false));
-            TestRunner.True(!zero.IsExcluded("a/x/c.md", false));
-        });
+        var zero = RuleSet.Compile(new[] { "a/**/b.md" });
+        zero.IsExcluded("a/b.md", false).Should().BeTrue();
+        zero.IsExcluded("a/x/b.md", false).Should().BeTrue();
+        zero.IsExcluded("a/x/y/b.md", false).Should().BeTrue();
+        zero.IsExcluded("a/x/c.md", false).Should().BeFalse();
     }
 }

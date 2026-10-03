@@ -6,7 +6,7 @@ Status: **packages 01–08 implemented (01–02 CI-green; 03–08 local evidence
 
 Complete one work package at a time, in dependency order. Each should produce a reviewable change with its own passing gate. A compiling stub, happy-path demonstration, or updated checkbox is not completion. Do not start destructive commands until the preservation gates pass. Preserve unrelated working changes.
 
-Use small test projects (one per shipped assembly) with fixture files and a narrow fault-injecting filesystem wrapper. No large test framework, research program, daemon, or plugin infrastructure. Tests may invoke the CLI as a process; the shipped CLI must not spawn processes. Inject time and IDs rather than asserting wall-clock timestamps or sleeping in tests.
+Use small test projects (one per shipped assembly) with fixture files and a narrow fault-injecting filesystem wrapper. No daemon, plugin, benchmark, or research infrastructure. The shipped projects stay BCL-only, but test projects may reference the approved test stack (xUnit, FluentAssertions, FsCheck, CliWrap, Newtonsoft.Json) — that is a test-only exception and never weakens the shipped binary's boundary. Tests may invoke the CLI as a process; the shipped CLI must not spawn processes. Inject time and IDs rather than asserting wall-clock timestamps or sleeping in tests.
 
 For every work package, leave: the implemented behavior, exact check command and result, relevant fixture names, and any remaining limitation. Update the affected RepoLore note when behavior changes. A failure gate means fix the defect before claiming completion; it does not mean ask the user about a routine implementation choice. If the contract itself cannot be met, document the precise conflict before changing scope.
 
@@ -38,7 +38,7 @@ Create small named fixtures reused below: `minimal-v1`, `two-sessions`, `directo
 
 **Pass:** builds/tests on Windows, Linux, macOS; `version` needs no repository and writes nothing. A temporary forbidden API reference makes the guard fail, then removing it restores green. Inspect the produced runtime dependency list, not only project declarations.
 
-**Fail:** empty handlers return success; tests require network access; public Core package or plugin interfaces appear; CI only tests one OS while claiming all three. No requirement for a separate Guard/Perf/Compat project.
+**Fail:** empty handlers return success; tests require network access *at runtime* (restoring test-framework packages from the pinned feed is build tooling, not a runtime test dependency); public Core package or plugin interfaces appear; CI only tests one OS while claiming all three. No requirement for a separate Guard/Perf/Compat project.
 
 ## 02 — Freeze safe paths and a one-to-one directory mapping
 
@@ -333,3 +333,7 @@ Checks actually run on macOS arm64 with the Rider SDK on PATH (`~/.dotnet`, 10.0
 - `git diff --check` and `cmp method.md _repolore/method.md` — passed; the two method copies remain identical (unchanged).
 
 `init` never inspects source, creates empty nodes, starts a session, regenerates sparse-tree, or rewrites `.gitignore`; it reports the recommended `_repolore/sessions/` and `_repolore/.history/` exclusions. A failed init deletes nothing (the marker remains so retry completes). The repo-root and `_repolore/` method copies in this checkout remain alpha; only the packaged `EmbeddedTemplates.Method` ships the new v1 method, and the checkout's method copies stay unchanged until migration (09). CI/platform validation is not yet run for this package; local evidence only. Package 09 (alpha migration and rollback) is next.
+
+### Test stack — policy change, 2026-10-03
+
+Test projects may now reference an approved test stack: xUnit (`2.9.3`), FluentAssertions (`8.11.0`), FsCheck (`3.4.0`), Newtonsoft.Json (`13.0.4`), and CliWrap (`3.10.5`, Cli tests only). `NuGet.Config` gained a single `nuget.org` source (the `<clear />` remains first). The shipped projects stay BCL-only — the build guard is per-project and unchanged, so test-only references never weaken the shipped boundary. This is staged: the library packages are referenced now; `Microsoft.NET.Test.Sdk` + `xunit.runner.visualstudio` and the `dotnet run` → `dotnet test` switch land with the test rewrite, because the adapter generates its own entry point and cannot coexist with the current hand-rolled `Program.cs` files (CS7022 under `TreatWarningsAsErrors`). Evidence so far: `dotnet restore --locked-mode` resolves all packages; `dotnet build --configuration Release --no-restore` is 0 warnings/0 errors; the three `dotnet run` suites still pass (Core 62/62, Infrastructure 49/49, Cli 45/45). The test-method rewrite and CI update remain outstanding.

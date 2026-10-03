@@ -39,7 +39,7 @@ For each work package:
 4. Update affected durable knowledge and the implementation completion record with the behavior delivered, exact check commands/results, fixture names, and remaining limitations.
 5. Mark the package complete only when its required gates passed. Distinguish local validation from CI/platform checks not yet run. Compilation, a stub returning success, or a documentation edit alone is not completion.
 
-Use small deterministic test projects (one per shipped assembly) with small fixtures, injected time/IDs, and narrow failure injection. Do not introduce a benchmark service, broad research program, speculative framework, or duplicate test infrastructure. After required checks pass, broaden testing only for a specific unresolved risk or regression.
+Use small deterministic test projects (one per shipped assembly) with small fixtures, injected time/IDs, and narrow failure injection. Do not introduce a benchmark service, broad research program, speculative framework, or duplicate test infrastructure. After required checks pass, broaden testing only for a specific unresolved risk or regression. The shipped projects stay BCL-only, but test projects may use the approved test stack (xUnit, FluentAssertions, FsCheck, CliWrap, Newtonsoft.Json); prefer those over a hand-rolled harness for new tests.
 
 ## Boundaries that must survive every change
 

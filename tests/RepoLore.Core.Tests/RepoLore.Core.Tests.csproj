@@ -1,6 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType><IsTestProject>true</IsTestProject></PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="FluentAssertions" Version="8.11.0" />
+    <PackageReference Include="FsCheck" Version="3.4.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="../../src/RepoLore.Core/RepoLore.Core.csproj" />
     <None Include="Fixtures/**/*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

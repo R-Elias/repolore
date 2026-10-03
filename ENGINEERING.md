@@ -8,3 +8,4 @@
 6. No overengineering. Compact dumb code is good code. Do not write 500-line files for simple things.
 7. Keep tests minimal. Do not create endless tests that become debt.
 8. Do not write comments, except for very abstruse parts. Abstruse parts should not exist, so comments should not either.
+9. Shipped code stays dependency-free: the three shipped projects (`RepoLore.Core`, `RepoLore.Infrastructure`, `RepoLore.Cli`) are BCL-only and the build guard rejects any `PackageReference`. Test projects are the one permitted exception: they may reference a small, explicitly approved test stack (xUnit, FluentAssertions, FsCheck, CliWrap, Newtonsoft.Json) to make tests cleaner and stronger. Test-only packages never weaken the shipped binary's privacy or dependency boundary.

@@ -1,6 +1,6 @@
 # First Release — Implementation Work Packages
 
-Status: **packages 01–07 implemented (01–02 CI-green; 03–07 local evidence pending CI)**. Target: a preview followed by v1.0.0 of the single `RepoLore.Cli` NuGet tool. This guide decomposes the [roadmap](roadmap.md); [invariants](../product/invariants.md) and the [session contract](../product/sessions.md) still apply. It resolves earlier open implementation choices below. Do not copy alpha mirror-generation behavior into v1.
+Status: **packages 01–08 implemented (01–02 CI-green; 03–08 local evidence pending CI)**. Target: a preview followed by v1.0.0 of the single `RepoLore.Cli` NuGet tool. This guide decomposes the [roadmap](roadmap.md); [invariants](../product/invariants.md) and the [session contract](../product/sessions.md) still apply. It resolves earlier open implementation choices below. Do not copy alpha mirror-generation behavior into v1.
 
 ## How to execute this plan
 
@@ -209,7 +209,7 @@ Track implementation here or in linked PRs; all entries start incomplete. For ea
 - [x] 05 — Snapshot capture and publication
 - [x] 06 — Retention and mutation ownership
 - [x] 07 — Restore and interrupted-operation recovery
-- [ ] 08 — Initialization and method updates
+- [x] 08 — Initialization and method updates
 - [ ] 09 — Alpha migration and rollback
 - [ ] 10 — Health checks and final CLI contract
 - [ ] 11 — Packaged tool and restricted installation
@@ -319,3 +319,17 @@ Checks actually run on macOS arm64 with the Rider SDK on PATH (`~/.dotnet`, 10.0
 - `git diff --check` and `cmp method.md _repolore/method.md` — passed; the two method copies remain identical.
 
 The shipped CLI performs no network/process/telemetry operations; the boundary guard still passes. Migration (09), health-check findings (10), and the packaged install (11) remain out of scope. CI/platform validation is not yet run for this package; local evidence only. Package 08 (initialization and method updates) is next.
+
+### Package 08 — local evidence, 2026-09-29
+
+Delivered `init` and `init --update-method`. New `RepoLore.Infrastructure.History.InitEngine` (`InitDirKind`, `InitException`, `InitIncompleteException`, `InitResult`) classifies `_repolore/` as absent/empty/alpha/v1 and reuses `CheckpointEngine`/`PendingStore`/`ObjectStore`/`CheckpointStore`; `RepoLore.Cli.Commands.InitCommand` refuses alpha before taking the writer lock. The v1 method and root templates ship as two `const string` values in `RepoLore.Cli.Embedded.EmbeddedTemplates` (a plain constant rather than an embedded resource, since `System.Reflection` is forbidden). Fresh init publishes the `{"formatVersion":1}` marker atomically before any authored template, creates only missing `method.md`/`root.md`/empty `sparse-tree/`, then captures the first checkpoint. `--update-method` reuses the package-07 pending transaction unchanged: pre-op capture, `pending.json` with a single `_repolore/method.md` before/after entry, staged rename, post-checkpoint with the pre-op id pinned, clear pending; interruption reports the recovery id and the existing `restore <pre-operation-id>` route recovers. The [initialization-and-method-updates note](initialization-and-method-updates.md) records responsibilities and the `Encoding.UTF8.GetBytes` build-guard avoidance.
+
+Checks actually run on macOS arm64 with the Rider SDK on PATH (`~/.dotnet`, 10.0.100):
+
+- `dotnet build --configuration Release --no-restore` — passed, 0 warnings and 0 errors (the new Infrastructure/CLI files compile under the boundary guard; no `record` types).
+- `dotnet run --project tests/RepoLore.Infrastructure.Tests --configuration Release --no-build` — passed, **49/49 checks**. New checks (11): empty directory initializes with marker/templates/tree and one baseline; second init changes nothing; preexisting root/config/custom notes survive exactly; first-checkpoint failure is visible (paths reported, no checkpoint) and retryable; alpha content without a marker is refused and never emptied; a user-edited method is never replaced during ordinary init; method update rewrites the method and can be undone to exact old bytes; unchanged embedded bytes are a no-op; method update with disabled history refuses; method update interrupted before write leaves pending and recovers; disabled history reports protection disabled and skips the checkpoint.
+- `dotnet run --project tests/RepoLore.Cli.Tests --configuration Release --no-build` — passed, **45/45 checks**. New checks (7, process-level): empty directory initializes with one baseline and no source placeholders; second init changes nothing; preexisting root/config/custom notes survive; a nonempty alpha sparse-only clone is never emptied (exit 3, no marker written); a user-edited method is never replaced; method update can be undone to exact old bytes via `restore 1`; disabled history creates files and states protection disabled. The existing foundation test that asserted `init` was an unknown command (exit 2) was updated to drop `init` from the rejected-command list; the remaining rejected commands still assert exit 2 and unchanged fixtures.
+- Regression: `tests/RepoLore.Core.Tests` — **62/62 checks** (unchanged; no Core change).
+- `git diff --check` and `cmp method.md _repolore/method.md` — passed; the two method copies remain identical (unchanged).
+
+`init` never inspects source, creates empty nodes, starts a session, regenerates sparse-tree, or rewrites `.gitignore`; it reports the recommended `_repolore/sessions/` and `_repolore/.history/` exclusions. A failed init deletes nothing (the marker remains so retry completes). The repo-root and `_repolore/` method copies in this checkout remain alpha; only the packaged `EmbeddedTemplates.Method` ships the new v1 method, and the checkout's method copies stay unchanged until migration (09). CI/platform validation is not yet run for this package; local evidence only. Package 09 (alpha migration and rollback) is next.

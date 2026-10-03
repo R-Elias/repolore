@@ -23,4 +23,5 @@ return TestRunner.RunAll(() =>
     RetentionEngineTests.Run();
     WriterLockCrashTests.Run();
     RestoreEngineTests.Run();
+    InitEngineTests.Run();
 });

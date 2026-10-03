@@ -40,7 +40,7 @@ public static class ExecutableFoundationTests
                     var before = TestSupport.Snapshot(temp);
                     TestRunner.Equal(0, TestSupport.Run(temp, TestSupport.Cli, "version").Code);
                     TestRunner.Equal(0, TestSupport.Run(temp, TestSupport.Cli, "--help").Code);
-                    foreach (var arguments in new[] { Array.Empty<string>(), new[] { "init" }, new[] { "version", "--unknown" }, new[] { "version", "version" } })
+                    foreach (var arguments in new[] { Array.Empty<string>(), new[] { "version", "--unknown" }, new[] { "version", "version" } })
                     {
                         var result = TestSupport.Run(temp, new[] { TestSupport.Cli }.Concat(arguments).ToArray());
                         TestRunner.Equal(2, result.Code);

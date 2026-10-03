@@ -6,4 +6,5 @@ return TestRunner.RunAll(() =>
     DurableSessionContextTests.Run();
     HistoryTests.Run();
     RestoreTests.Run();
+    InitTests.Run();
 });

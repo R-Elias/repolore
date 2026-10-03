@@ -149,6 +149,52 @@ public static class Renderer
         }
     }
 
+    public static void Init(InitResult result, bool json, bool quiet)
+    {
+        var exclusions = new[] { "_repolore/sessions/", "_repolore/.history/" };
+
+        if (json)
+        {
+            var root = new JsonObject();
+            root.Members.Add(new JsonMember("noOp", new JsonBooleanValue(result.WasNoOp)));
+            root.Members.Add(new JsonMember("created", StringArray(result.Created)));
+            root.Members.Add(new JsonMember("historyDisabled", new JsonBooleanValue(result.HistoryDisabled)));
+            root.Members.Add(new JsonMember("checkpointId", result.PublishedId is long id ? Number(id) : new JsonNullValue()));
+            root.Members.Add(new JsonMember("methodUpdated", new JsonBooleanValue(result.MethodUpdated)));
+            root.Members.Add(new JsonMember("recommendedGitExclusions", StringArray(exclusions)));
+            Console.WriteLine(JsonWriter.Write(root));
+            return;
+        }
+
+        if (quiet)
+            return;
+
+        if (result.WasNoOp)
+        {
+            Console.WriteLine("init: nothing to create");
+            return;
+        }
+
+        foreach (var path in result.Created)
+            Console.WriteLine("created " + path);
+
+        if (result.MethodUpdated)
+            Console.WriteLine("updated _repolore/method.md");
+
+        if (result.HistoryDisabled)
+        {
+            Console.WriteLine("history is disabled in _repolore/repolore.json; destructive updates are not protected by checkpoints");
+            return;
+        }
+
+        if (result.CheckpointNoOp)
+            Console.WriteLine("checkpoint: no changes");
+        else if (result.PublishedId is long id)
+            Console.WriteLine($"checkpoint {ManifestId.Format(id)}");
+
+        Console.WriteLine("recommended .gitignore additions: _repolore/sessions/ _repolore/.history/");
+    }
+
     public static void RestorePlan(RestorePlan plan, bool json, bool quiet)
     {
         if (json)

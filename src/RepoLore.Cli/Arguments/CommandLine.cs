@@ -13,6 +13,7 @@ public sealed class CommandLine
     public string? TreeStart { get; set; }
     public string? RestorePath { get; set; }
     public bool DryRun { get; set; }
+    public bool UpdateMethod { get; set; }
     public bool Json { get; set; }
     public bool Quiet { get; set; }
     public bool Help { get; set; }
@@ -75,6 +76,10 @@ public sealed class CommandLine
                     break;
                 case "--dry-run":
                     cl.DryRun = true;
+                    cl.SawOption = true;
+                    break;
+                case "--update-method":
+                    cl.UpdateMethod = true;
                     cl.SawOption = true;
                     break;
                 default:

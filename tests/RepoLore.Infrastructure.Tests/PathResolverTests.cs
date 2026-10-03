@@ -1,71 +1,70 @@
 using RepoLore.Core.Mapping;
 using RepoLore.Infrastructure;
+using FluentAssertions;
+using Xunit;
 
 namespace RepoLore.Infrastructure.Tests;
 
-public static class PathResolverTests
+public class PathResolverTests
 {
-    public static void Run()
+    [Fact]
+    public void Resolver_rejects_escapes_rooted_unsafe_paths_and_symlink_traversal()
     {
-        TestRunner.Check("resolver rejects escapes, rooted/unsafe paths, and symlink traversal", () =>
+        TempDir.WithTemp(temp =>
         {
-            WithTemp(temp =>
-            {
-                var root = Path.Combine(temp, "repo");
-                var outside = Path.Combine(temp, "repo-other");
-                Directory.CreateDirectory(root);
-                Directory.CreateDirectory(outside);
-                File.WriteAllText(Path.Combine(outside, "sentinel.txt"), "OUTSIDE_SENTINEL\r\n");
+            var root = Path.Combine(temp, "repo");
+            var outside = Path.Combine(temp, "repo-other");
+            Directory.CreateDirectory(root);
+            Directory.CreateDirectory(outside);
+            File.WriteAllText(Path.Combine(outside, "sentinel.txt"), "OUTSIDE_SENTINEL\r\n");
 
-                var resolver = new RepositoryPathResolver(root);
-                TestRunner.Equal(Path.Combine(root, "a", "b.md"), resolver.Resolve("a/b.md"));
+            var resolver = new RepositoryPathResolver(root);
+            resolver.Resolve("a/b.md").Should().Be(Path.Combine(root, "a", "b.md"));
 
-                foreach (var bad in new[] { "..", "a/../b", "a//b", "a\\b", "C:foo", "/abs/path", "." })
-                    TestRunner.Throws<PathResolutionException>(() => resolver.Resolve(bad), bad);
+            foreach (var bad in new[] { "..", "a/../b", "a//b", "a\\b", "C:foo", "/abs/path", "." })
+                new Action(() => resolver.Resolve(bad)).Should().Throw<PathResolutionException>(bad);
 
-                var link = Path.Combine(root, "link");
-                Directory.CreateSymbolicLink(link, outside);
-                TestRunner.Throws<PathResolutionException>(() => resolver.Resolve("link/sentinel.txt"), "symlink ancestor");
+            var link = Path.Combine(root, "link");
+            Directory.CreateSymbolicLink(link, outside);
+            new Action(() => resolver.Resolve("link/sentinel.txt")).Should().Throw<PathResolutionException>("symlink ancestor");
 
-                TestRunner.Equal("OUTSIDE_SENTINEL", File.ReadAllText(Path.Combine(outside, "sentinel.txt")).Replace("\r\n", "\n").TrimEnd('\n'));
-            });
-        });
-
-        TestRunner.Check("write alias detection agrees with the destination filesystem", () =>
-        {
-            WithTemp(temp =>
-            {
-                var dir = Path.Combine(temp, "_repolore", "sparse-tree", "src");
-                Directory.CreateDirectory(dir);
-                File.WriteAllText(Path.Combine(dir, "Foo.md"), "ALIAS_SENTINEL");
-                var resolver = new RepositoryPathResolver(temp);
-
-                var fsAliases = File.Exists(Path.Combine(dir, "foo.md"));
-                var refused = false;
-                try { resolver.ResolveForWrite("_repolore/sparse-tree/src/foo.md"); }
-                catch (PathResolutionException) { refused = true; }
-                TestRunner.Equal(fsAliases, refused, "resolver must agree with filesystem alias behavior");
-
-                TestRunner.Equal(Path.Combine(dir, "bar.md"), resolver.ResolveForWrite("_repolore/sparse-tree/src/bar.md"));
-            });
-        });
-
-        TestRunner.Check("over-long mapped names are refused, not truncated", () =>
-        {
-            WithTemp(temp =>
-            {
-                Directory.CreateDirectory(Path.Combine(temp, "_repolore", "sparse-tree"));
-                var resolver = new RepositoryPathResolver(temp);
-
-                var longName = new string('a', 253);
-                var note = KnowledgePathMapper.MapDirectoryNote(longName + "/");
-                TestRunner.Throws<PathResolutionException>(() => resolver.ResolveForWrite("_repolore/sparse-tree/" + note), "over-long note name");
-
-                TestRunner.Equal(Path.Combine(temp, "_repolore", "sparse-tree", "ok.md"),
-                      resolver.ResolveForWrite("_repolore/sparse-tree/ok.md"));
-            });
+            File.ReadAllText(Path.Combine(outside, "sentinel.txt")).Replace("\r\n", "\n").TrimEnd('\n').Should().Be("OUTSIDE_SENTINEL");
         });
     }
 
-    private static void WithTemp(Action<string> action) => TestSupport.WithTemp(action);
+    [Fact]
+    public void Write_alias_detection_agrees_with_the_destination_filesystem()
+    {
+        TempDir.WithTemp(temp =>
+        {
+            var dir = Path.Combine(temp, "_repolore", "sparse-tree", "src");
+            Directory.CreateDirectory(dir);
+            File.WriteAllText(Path.Combine(dir, "Foo.md"), "ALIAS_SENTINEL");
+            var resolver = new RepositoryPathResolver(temp);
+
+            var fsAliases = File.Exists(Path.Combine(dir, "foo.md"));
+            var refused = false;
+            try { resolver.ResolveForWrite("_repolore/sparse-tree/src/foo.md"); }
+            catch (PathResolutionException) { refused = true; }
+            refused.Should().Be(fsAliases, "resolver must agree with filesystem alias behavior");
+
+            resolver.ResolveForWrite("_repolore/sparse-tree/src/bar.md").Should().Be(Path.Combine(dir, "bar.md"));
+        });
+    }
+
+    [Fact]
+    public void Over_long_mapped_names_are_refused_not_truncated()
+    {
+        TempDir.WithTemp(temp =>
+        {
+            Directory.CreateDirectory(Path.Combine(temp, "_repolore", "sparse-tree"));
+            var resolver = new RepositoryPathResolver(temp);
+
+            var longName = new string('a', 253);
+            var note = KnowledgePathMapper.MapDirectoryNote(longName + "/");
+            new Action(() => resolver.ResolveForWrite("_repolore/sparse-tree/" + note)).Should().Throw<PathResolutionException>("over-long note name");
+
+            resolver.ResolveForWrite("_repolore/sparse-tree/ok.md").Should().Be(Path.Combine(temp, "_repolore", "sparse-tree", "ok.md"));
+        });
+    }
 }

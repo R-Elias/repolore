@@ -1,234 +1,250 @@
+using FluentAssertions;
 using RepoLore.Core.Configuration;
 using RepoLore.Infrastructure.History;
-using RepoLore.Infrastructure.Tests;
+using Xunit;
 
 namespace RepoLore.Infrastructure.Tests.History;
 
-public static class RestoreEngineTests
+public class RestoreEngineTests
 {
     private const string Root = "_repolore/root.md";
     private const string A = "_repolore/architecture/a.md";
     private const string B = "_repolore/architecture/b.md";
     private const string C = "_repolore/architecture/c.md";
 
-    public static void Run()
+    [Fact]
+    public void Restore_to_an_old_snapshot_then_restore_its_pre_operation_id_undoes_it_byte_for_byte()
     {
-        TestRunner.Check("restore to an old snapshot then restore its pre-operation id undoes it byte-for-byte", () =>
+        WithRepo(temp =>
         {
-            WithRepo(temp =>
-            {
-                Capture(temp).Capture(Load(temp)); // id 1: ROOT, A, B
+            Capture(temp).Capture(Load(temp)); // id 1: ROOT, A, B
 
-                Write(temp, A, "A_EDITED");
-                Write(temp, C, "C");
-                Delete(temp, B);
-                Capture(temp).Capture(Load(temp)); // id 2: edited state
+            Write(temp, A, "A_EDITED");
+            Write(temp, C, "C");
+            Delete(temp, B);
+            Capture(temp).Capture(Load(temp)); // id 2: edited state
 
-                var restore = Restore(temp).Apply(Load(temp), 1);
-                TestRunner.True(!restore.WasNoOp);
-                TestRunner.Equal("A", Read(temp, A));
-                TestRunner.Equal("B", Read(temp, B));
-                TestRunner.True(!Exists(temp, C));
-                TestRunner.Equal("ROOT", Read(temp, Root));
+            var restore = Restore(temp).Apply(Load(temp), 1);
+            restore.WasNoOp.Should().BeFalse();
+            Read(temp, A).Should().Be("A");
+            Read(temp, B).Should().Be("B");
+            Exists(temp, C).Should().BeFalse();
+            Read(temp, Root).Should().Be("ROOT");
 
-                var undo = Restore(temp).Apply(Load(temp), 2);
-                TestRunner.True(!undo.WasNoOp);
-                TestRunner.Equal("A_EDITED", Read(temp, A));
-                TestRunner.Equal("C", Read(temp, C));
-                TestRunner.True(!Exists(temp, B));
-            });
+            var undo = Restore(temp).Apply(Load(temp), 2);
+            undo.WasNoOp.Should().BeFalse();
+            Read(temp, A).Should().Be("A_EDITED");
+            Read(temp, C).Should().Be("C");
+            Exists(temp, B).Should().BeFalse();
         });
+    }
 
-        TestRunner.Check("an excluded file stays untouched", () =>
+    [Fact]
+    public void An_excluded_file_stays_untouched()
+    {
+        WithRepo(temp =>
         {
-            WithRepo(temp =>
-            {
-                Capture(temp).Capture(Load(temp)); // id 1
+            Capture(temp).Capture(Load(temp)); // id 1
 
-                Write(temp, A, "A_EDITED");
-                Write(temp, B, "B_EDITED");
-                Capture(temp).Capture(Load(temp)); // id 2
+            Write(temp, A, "A_EDITED");
+            Write(temp, B, "B_EDITED");
+            Capture(temp).Capture(Load(temp)); // id 2
 
-                SetExclude(temp, new[] { B });
-                Restore(temp).Apply(Load(temp), 1);
+            SetExclude(temp, new[] { B });
+            Restore(temp).Apply(Load(temp), 1);
 
-                TestRunner.Equal("A", Read(temp, A)); // restored
-                TestRunner.Equal("B_EDITED", Read(temp, B)); // excluded, untouched
-            });
+            Read(temp, A).Should().Be("A"); // restored
+            Read(temp, B).Should().Be("B_EDITED"); // excluded, untouched
         });
+    }
 
-        TestRunner.Check("unknown id fails before any mutation", () =>
+    [Fact]
+    public void Unknown_id_fails_before_any_mutation()
+    {
+        WithRepo(temp =>
         {
-            WithRepo(temp =>
-            {
-                Capture(temp).Capture(Load(temp));
-                var ex = TestRunner.Capture<HistoryStoreException>(() => Restore(temp).Apply(Load(temp), 99));
-                TestRunner.True(ex.Message.Contains("unknown", StringComparison.Ordinal), ex.Message);
-                TestRunner.Equal("ROOT", Read(temp, Root));
-                TestRunner.True(!File.Exists(PendingPath(temp)));
-            });
+            Capture(temp).Capture(Load(temp));
+            var ex = new Action(() => Restore(temp).Apply(Load(temp), 99)).Should().Throw<HistoryStoreException>().Which;
+            ex.Message.Should().Contain("unknown");
+            Read(temp, Root).Should().Be("ROOT");
+            File.Exists(PendingPath(temp)).Should().BeFalse();
         });
+    }
 
-        TestRunner.Check("a corrupt target object fails before any mutation", () =>
+    [Fact]
+    public void A_corrupt_target_object_fails_before_any_mutation()
+    {
+        WithRepo(temp =>
         {
-            WithRepo(temp =>
-            {
-                Capture(temp).Capture(Load(temp)); // id 1
-                Write(temp, A, "A_EDITED");
-                Capture(temp).Capture(Load(temp)); // id 2
+            Capture(temp).Capture(Load(temp)); // id 1
+            Write(temp, A, "A_EDITED");
+            Capture(temp).Capture(Load(temp)); // id 2
 
-                CorruptObject(temp, HashOf("A")); // corrupt the original A object
+            CorruptObject(temp, HashOf("A")); // corrupt the original A object
 
-                var ex = TestRunner.Capture<HistoryStoreException>(() => Restore(temp).Apply(Load(temp), 1));
-                TestRunner.True(ex.Message.Contains("corrupt", StringComparison.Ordinal), ex.Message);
-                TestRunner.Equal("A_EDITED", Read(temp, A));
-            });
+            var ex = new Action(() => Restore(temp).Apply(Load(temp), 1)).Should().Throw<HistoryStoreException>().Which;
+            ex.Message.Should().Contain("corrupt");
+            Read(temp, A).Should().Be("A_EDITED");
         });
+    }
 
-        TestRunner.Check("disabled history refuses restore", () =>
+    [Fact]
+    public void Disabled_history_refuses_restore()
+    {
+        TempDir.WithTemp(temp =>
         {
-            TestSupport.WithTemp(temp =>
-            {
-                Directory.CreateDirectory(Path.Combine(temp, "_repolore"));
-                File.WriteAllText(Path.Combine(temp, "_repolore", "repolore.json"), "{\"formatVersion\":1,\"history\":{\"enabled\":false}}");
-                File.WriteAllText(Path.Combine(temp, "_repolore", "root.md"), "ROOT");
-                var ex = TestRunner.Capture<HistoryStoreException>(() => Restore(temp).Apply(Load(temp), 1));
-                TestRunner.True(ex.Message.Contains("disabled", StringComparison.Ordinal), ex.Message);
-            });
+            Directory.CreateDirectory(Path.Combine(temp, "_repolore"));
+            File.WriteAllText(Path.Combine(temp, "_repolore", "repolore.json"), "{\"formatVersion\":1,\"history\":{\"enabled\":false}}");
+            File.WriteAllText(Path.Combine(temp, "_repolore", "root.md"), "ROOT");
+            var ex = new Action(() => Restore(temp).Apply(Load(temp), 1)).Should().Throw<HistoryStoreException>().Which;
+            ex.Message.Should().Contain("disabled");
         });
+    }
 
-        TestRunner.Check("a no-op restore creates no pending and no new checkpoint", () =>
+    [Fact]
+    public void A_no_op_restore_creates_no_pending_and_no_new_checkpoint()
+    {
+        WithRepo(temp =>
         {
-            WithRepo(temp =>
-            {
-                Capture(temp).Capture(Load(temp)); // id 1
-                var result = Restore(temp).Apply(Load(temp), 1);
-                TestRunner.True(result.WasNoOp);
-                TestRunner.True(!File.Exists(PendingPath(temp)));
-                TestRunner.Equal(1L, HighestId(temp));
-            });
+            Capture(temp).Capture(Load(temp)); // id 1
+            var result = Restore(temp).Apply(Load(temp), 1);
+            result.WasNoOp.Should().BeTrue();
+            File.Exists(PendingPath(temp)).Should().BeFalse();
+            HighestId(temp).Should().Be(1L);
         });
+    }
 
-        TestRunner.Check("failure before the first replacement reports the pre-operation id and recovers", () =>
+    [Fact]
+    public void Failure_before_the_first_replacement_reports_the_pre_operation_id_and_recovers()
+    {
+        WithTempWithTwoCaptures(temp =>
         {
-            WithTempWithTwoCaptures(temp =>
-            {
-                var ex = TestRunner.Capture<RestoreException>(() =>
-                    Restore(temp).Apply(Load(temp), 1, beforeFirstReplacement: () => throw new InvalidOperationException("injected")));
+            var ex = new Action(() =>
+                Restore(temp).Apply(Load(temp), 1, beforeFirstReplacement: () => throw new InvalidOperationException("injected")))
+                .Should().Throw<RestoreException>().Which;
 
-                TestRunner.Equal(2L, ex.RecoveryId);
-                TestRunner.True(File.Exists(PendingPath(temp)));
-                TestRunner.Equal("A2", Read(temp, A));
-                TestRunner.Equal("B2", Read(temp, B));
+            ex.RecoveryId.Should().Be(2L);
+            File.Exists(PendingPath(temp)).Should().BeTrue();
+            Read(temp, A).Should().Be("A2");
+            Read(temp, B).Should().Be("B2");
 
-                Recover(temp, 2L);
-                TestRunner.True(!File.Exists(PendingPath(temp)));
-            });
+            Recover(temp, 2L);
+            File.Exists(PendingPath(temp)).Should().BeFalse();
         });
+    }
 
-        TestRunner.Check("failure between two replacements reports the same recovery id and recovers", () =>
+    [Fact]
+    public void Failure_between_two_replacements_reports_the_same_recovery_id_and_recovers()
+    {
+        WithTempWithTwoCaptures(temp =>
         {
-            WithTempWithTwoCaptures(temp =>
-            {
-                var ex = TestRunner.Capture<RestoreException>(() =>
-                    Restore(temp).Apply(Load(temp), 1, afterFirstReplacement: () => throw new InvalidOperationException("injected")));
+            var ex = new Action(() =>
+                Restore(temp).Apply(Load(temp), 1, afterFirstReplacement: () => throw new InvalidOperationException("injected")))
+                .Should().Throw<RestoreException>().Which;
 
-                TestRunner.Equal(2L, ex.RecoveryId);
-                TestRunner.True(File.Exists(PendingPath(temp)));
+            ex.RecoveryId.Should().Be(2L);
+            File.Exists(PendingPath(temp)).Should().BeTrue();
 
-                Recover(temp, 2L);
-                TestRunner.Equal("A2", Read(temp, A));
-                TestRunner.Equal("B2", Read(temp, B));
-                TestRunner.True(!File.Exists(PendingPath(temp)));
-            });
+            Recover(temp, 2L);
+            Read(temp, A).Should().Be("A2");
+            Read(temp, B).Should().Be("B2");
+            File.Exists(PendingPath(temp)).Should().BeFalse();
         });
+    }
 
-        TestRunner.Check("failure after writes but before the final checkpoint reports the same recovery id and recovers", () =>
+    [Fact]
+    public void Failure_after_writes_but_before_the_final_checkpoint_reports_the_same_recovery_id_and_recovers()
+    {
+        WithTempWithTwoCaptures(temp =>
         {
-            WithTempWithTwoCaptures(temp =>
-            {
-                var ex = TestRunner.Capture<RestoreException>(() =>
-                    Restore(temp).Apply(Load(temp), 1, beforePostCheckpoint: () => throw new InvalidOperationException("injected")));
+            var ex = new Action(() =>
+                Restore(temp).Apply(Load(temp), 1, beforePostCheckpoint: () => throw new InvalidOperationException("injected")))
+                .Should().Throw<RestoreException>().Which;
 
-                TestRunner.Equal(2L, ex.RecoveryId);
-                TestRunner.True(File.Exists(PendingPath(temp)));
-                TestRunner.Equal("A", Read(temp, A)); // writes already applied
-                TestRunner.Equal("B", Read(temp, B));
+            ex.RecoveryId.Should().Be(2L);
+            File.Exists(PendingPath(temp)).Should().BeTrue();
+            Read(temp, A).Should().Be("A"); // writes already applied
+            Read(temp, B).Should().Be("B");
 
-                Recover(temp, 2L);
-                TestRunner.Equal("A2", Read(temp, A));
-                TestRunner.Equal("B2", Read(temp, B));
-                TestRunner.True(!File.Exists(PendingPath(temp)));
-            });
+            Recover(temp, 2L);
+            Read(temp, A).Should().Be("A2");
+            Read(temp, B).Should().Be("B2");
+            File.Exists(PendingPath(temp)).Should().BeFalse();
         });
+    }
 
-        TestRunner.Check("restart and recover restores the exact before-state", () =>
+    [Fact]
+    public void Restart_and_recover_restores_the_exact_before_state()
+    {
+        WithTempWithTwoCaptures(temp =>
         {
-            WithTempWithTwoCaptures(temp =>
-            {
-                var ex = TestRunner.Capture<RestoreException>(() =>
-                    Restore(temp).Apply(Load(temp), 1, beforePostCheckpoint: () => throw new InvalidOperationException("injected")));
+            var ex = new Action(() =>
+                Restore(temp).Apply(Load(temp), 1, beforePostCheckpoint: () => throw new InvalidOperationException("injected")))
+                .Should().Throw<RestoreException>().Which;
 
-                TestRunner.Equal(2L, ex.RecoveryId);
+            ex.RecoveryId.Should().Be(2L);
 
-                // fresh engine simulates a restart; recover via the recorded pre-operation id
-                var recovered = Restore(temp).Recover(2L);
-                TestRunner.True(recovered.WasRecovery);
-                TestRunner.Equal("A2", Read(temp, A));
-                TestRunner.Equal("B2", Read(temp, B));
-                TestRunner.True(!File.Exists(PendingPath(temp)));
-            });
+            // fresh engine simulates a restart; recover via the recorded pre-operation id
+            var recovered = Restore(temp).Recover(2L);
+            recovered.WasRecovery.Should().BeTrue();
+            Read(temp, A).Should().Be("A2");
+            Read(temp, B).Should().Be("B2");
+            File.Exists(PendingPath(temp)).Should().BeFalse();
         });
+    }
 
-        TestRunner.Check("a fresh unrelated edit during recovery is detected, not overwritten", () =>
+    [Fact]
+    public void A_fresh_unrelated_edit_during_recovery_is_detected_not_overwritten()
+    {
+        WithTempWithTwoCaptures(temp =>
         {
-            WithTempWithTwoCaptures(temp =>
-            {
-                TestRunner.Capture<RestoreException>(() =>
-                    Restore(temp).Apply(Load(temp), 1, beforePostCheckpoint: () => throw new InvalidOperationException("injected")));
+            new Action(() =>
+                Restore(temp).Apply(Load(temp), 1, beforePostCheckpoint: () => throw new InvalidOperationException("injected")))
+                .Should().Throw<RestoreException>();
 
-                Write(temp, A, "A_FRESH_EDIT");
+            Write(temp, A, "A_FRESH_EDIT");
 
-                var ex = TestRunner.Capture<HistoryStoreException>(() => Restore(temp).Recover(2L));
-                TestRunner.True(ex.Message.Contains("edited", StringComparison.Ordinal), ex.Message);
-                TestRunner.Equal("A_FRESH_EDIT", Read(temp, A)); // untouched
-                TestRunner.True(File.Exists(PendingPath(temp))); // still pending, retryable
-            });
+            var ex = new Action(() => Restore(temp).Recover(2L)).Should().Throw<HistoryStoreException>().Which;
+            ex.Message.Should().Contain("edited");
+            Read(temp, A).Should().Be("A_FRESH_EDIT"); // untouched
+            File.Exists(PendingPath(temp)).Should().BeTrue(); // still pending, retryable
         });
+    }
 
-        TestRunner.Check("--path restores one file and leaves the rest untouched", () =>
+    [Fact]
+    public void Path_selector_restores_one_file_and_leaves_the_rest_untouched()
+    {
+        WithTempWithTwoCaptures(temp =>
         {
-            WithTempWithTwoCaptures(temp =>
-            {
-                Restore(temp).Apply(Load(temp), 1, A);
-                TestRunner.Equal("A", Read(temp, A));
-                TestRunner.Equal("B2", Read(temp, B));
-            });
+            Restore(temp).Apply(Load(temp), 1, A);
+            Read(temp, A).Should().Be("A");
+            Read(temp, B).Should().Be("B2");
         });
+    }
 
-        TestRunner.Check("restore preflights the protected set against the budget before mutating", () =>
+    [Fact]
+    public void Restore_preflights_the_protected_set_against_the_budget_before_mutating()
+    {
+        WithRepo(temp =>
         {
-            WithRepo(temp =>
-            {
-                Capture(temp).Capture(Load(temp)); // id 1
-                Write(temp, A, "A2");
-                Write(temp, B, "B2");
-                Capture(temp).Capture(Load(temp)); // id 2
+            Capture(temp).Capture(Load(temp)); // id 1
+            Write(temp, A, "A2");
+            Write(temp, B, "B2");
+            Capture(temp).Capture(Load(temp)); // id 2
 
-                SetMaxBytes(temp, 100);
-                var ex = TestRunner.Capture<HistoryStoreException>(() => Restore(temp).Apply(Load(temp), 1));
-                TestRunner.True(ex.Message.Contains("exceeds", StringComparison.Ordinal), ex.Message);
-                TestRunner.Equal("A2", Read(temp, A));
-                TestRunner.Equal("B2", Read(temp, B));
-                TestRunner.True(!File.Exists(PendingPath(temp)));
-            });
+            SetMaxBytes(temp, 100);
+            var ex = new Action(() => Restore(temp).Apply(Load(temp), 1)).Should().Throw<HistoryStoreException>().Which;
+            ex.Message.Should().Contain("exceeds");
+            Read(temp, A).Should().Be("A2");
+            Read(temp, B).Should().Be("B2");
+            File.Exists(PendingPath(temp)).Should().BeFalse();
         });
     }
 
     private static void Recover(string temp, long id)
     {
         var result = Restore(temp).Recover(id);
-        TestRunner.True(result.WasRecovery);
+        result.WasRecovery.Should().BeTrue();
     }
 
     private static void WithTempWithTwoCaptures(Action<string> action)
@@ -281,7 +297,7 @@ public static class RestoreEngineTests
     private static string HistoryDir(string temp) => Path.Combine(temp, "_repolore", ".history");
 
     private static void WithRepo(Action<string> action) =>
-        TestSupport.WithTemp(temp =>
+        TempDir.WithTemp(temp =>
         {
             Directory.CreateDirectory(Path.Combine(temp, "_repolore", "architecture"));
             File.WriteAllText(Path.Combine(temp, "_repolore", "repolore.json"), "{\"formatVersion\":1}");

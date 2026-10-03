@@ -1,194 +1,205 @@
+using FluentAssertions;
 using RepoLore.Infrastructure.History;
-using RepoLore.Infrastructure.Tests;
+using Xunit;
 
 namespace RepoLore.Infrastructure.Tests.History;
 
-public static class InitEngineTests
+public class InitEngineTests
 {
     private const string MethodTemplate = "METHOD_V1_TEMPLATE";
     private const string RootTemplate = "ROOT_TEMPLATE";
 
-    public static void Run()
+    [Fact]
+    public void Empty_directory_initializes_with_marker_templates_tree_and_one_baseline()
     {
-        TestRunner.Check("empty directory initializes with marker, templates, tree, and one baseline", () =>
+        TempDir.WithTemp(temp =>
         {
-            TestSupport.WithTemp(temp =>
-            {
-                var result = Engine(temp).Run(MethodTemplate, RootTemplate, updateMethod: false);
-                TestRunner.True(!result.WasNoOp);
-                TestRunner.Equal("{\"formatVersion\":1}", File.ReadAllText(Path.Combine(temp, "_repolore", "repolore.json")));
-                TestRunner.Equal(MethodTemplate, File.ReadAllText(Path.Combine(temp, "_repolore", "method.md")));
-                TestRunner.Equal(RootTemplate, File.ReadAllText(Path.Combine(temp, "_repolore", "root.md")));
-                TestRunner.True(Directory.Exists(Path.Combine(temp, "_repolore", "sparse-tree")));
-                TestRunner.Equal(0, Directory.EnumerateFileSystemEntries(Path.Combine(temp, "_repolore", "sparse-tree")).Count());
-                TestRunner.Equal(1L, HighestId(temp));
-            });
+            var result = Engine(temp).Run(MethodTemplate, RootTemplate, updateMethod: false);
+            result.WasNoOp.Should().BeFalse();
+            File.ReadAllText(Path.Combine(temp, "_repolore", "repolore.json")).Should().Be("{\"formatVersion\":1}");
+            File.ReadAllText(Path.Combine(temp, "_repolore", "method.md")).Should().Be(MethodTemplate);
+            File.ReadAllText(Path.Combine(temp, "_repolore", "root.md")).Should().Be(RootTemplate);
+            Directory.Exists(Path.Combine(temp, "_repolore", "sparse-tree")).Should().BeTrue();
+            Directory.EnumerateFileSystemEntries(Path.Combine(temp, "_repolore", "sparse-tree")).Count().Should().Be(0);
+            HighestId(temp).Should().Be(1L);
         });
+    }
 
-        TestRunner.Check("second init changes nothing", () =>
+    [Fact]
+    public void Second_init_changes_nothing()
+    {
+        TempDir.WithTemp(temp =>
         {
-            TestSupport.WithTemp(temp =>
-            {
-                Engine(temp).Run(MethodTemplate, RootTemplate, false);
-                var result = Engine(temp).Run(MethodTemplate, RootTemplate, false);
-                TestRunner.True(result.WasNoOp);
-                TestRunner.Equal(0, result.Created.Count);
-                TestRunner.Equal(1L, HighestId(temp));
-            });
+            Engine(temp).Run(MethodTemplate, RootTemplate, false);
+            var result = Engine(temp).Run(MethodTemplate, RootTemplate, false);
+            result.WasNoOp.Should().BeTrue();
+            result.Created.Should().HaveCount(0);
+            HighestId(temp).Should().Be(1L);
         });
+    }
 
-        TestRunner.Check("preexisting root/config/custom notes survive exactly", () =>
+    [Fact]
+    public void Preexisting_root_config_custom_notes_survive_exactly()
+    {
+        TempDir.WithTemp(temp =>
         {
-            TestSupport.WithTemp(temp =>
-            {
-                Directory.CreateDirectory(Path.Combine(temp, "_repolore", "architecture"));
-                File.WriteAllText(Path.Combine(temp, "_repolore", "repolore.json"), "{\"formatVersion\":1}");
-                File.WriteAllText(Path.Combine(temp, "_repolore", "root.md"), "MY_ROOT");
-                File.WriteAllText(Path.Combine(temp, "_repolore", "architecture", "custom.md"), "MY_CUSTOM");
+            Directory.CreateDirectory(Path.Combine(temp, "_repolore", "architecture"));
+            File.WriteAllText(Path.Combine(temp, "_repolore", "repolore.json"), "{\"formatVersion\":1}");
+            File.WriteAllText(Path.Combine(temp, "_repolore", "root.md"), "MY_ROOT");
+            File.WriteAllText(Path.Combine(temp, "_repolore", "architecture", "custom.md"), "MY_CUSTOM");
 
-                Engine(temp).Run(MethodTemplate, RootTemplate, false);
+            Engine(temp).Run(MethodTemplate, RootTemplate, false);
 
-                TestRunner.Equal("MY_ROOT", File.ReadAllText(Path.Combine(temp, "_repolore", "root.md")));
-                TestRunner.Equal("MY_CUSTOM", File.ReadAllText(Path.Combine(temp, "_repolore", "architecture", "custom.md")));
-                TestRunner.Equal(MethodTemplate, File.ReadAllText(Path.Combine(temp, "_repolore", "method.md")));
-                TestRunner.True(Directory.Exists(Path.Combine(temp, "_repolore", "sparse-tree")));
-            });
+            File.ReadAllText(Path.Combine(temp, "_repolore", "root.md")).Should().Be("MY_ROOT");
+            File.ReadAllText(Path.Combine(temp, "_repolore", "architecture", "custom.md")).Should().Be("MY_CUSTOM");
+            File.ReadAllText(Path.Combine(temp, "_repolore", "method.md")).Should().Be(MethodTemplate);
+            Directory.Exists(Path.Combine(temp, "_repolore", "sparse-tree")).Should().BeTrue();
         });
+    }
 
-        TestRunner.Check("failure creating the first checkpoint is visible and retryable", () =>
+    [Fact]
+    public void Failure_creating_the_first_checkpoint_is_visible_and_retryable()
+    {
+        TempDir.WithTemp(temp =>
         {
-            TestSupport.WithTemp(temp =>
-            {
-                var ex = TestRunner.Capture<InitIncompleteException>(() =>
-                    Engine(temp).Run(MethodTemplate, RootTemplate, false,
-                        beforeFirstCapture: () => throw new InvalidOperationException("injected")));
+            var ex = new Action(() =>
+                Engine(temp).Run(MethodTemplate, RootTemplate, false,
+                    beforeFirstCapture: () => throw new InvalidOperationException("injected")))
+                .Should().Throw<InitIncompleteException>().Which;
 
-                TestRunner.True(ex.Created.Contains("_repolore/repolore.json"));
-                TestRunner.True(ex.Created.Contains("_repolore/method.md"));
-                TestRunner.True(ex.Created.Contains("_repolore/root.md"));
-                TestRunner.Equal(0L, HighestId(temp));
+            ex.Created.Contains("_repolore/repolore.json").Should().BeTrue();
+            ex.Created.Contains("_repolore/method.md").Should().BeTrue();
+            ex.Created.Contains("_repolore/root.md").Should().BeTrue();
+            HighestId(temp).Should().Be(0L);
 
-                Engine(temp).Run(MethodTemplate, RootTemplate, false);
-                TestRunner.Equal(1L, HighestId(temp));
-            });
+            Engine(temp).Run(MethodTemplate, RootTemplate, false);
+            HighestId(temp).Should().Be(1L);
         });
+    }
 
-        TestRunner.Check("alpha content without a marker is refused and never emptied", () =>
+    [Fact]
+    public void Alpha_content_without_a_marker_is_refused_and_never_emptied()
+    {
+        TempDir.WithTemp(temp =>
         {
-            TestSupport.WithTemp(temp =>
-            {
-                Directory.CreateDirectory(Path.Combine(temp, "_repolore", "sparse-tree", "src"));
-                File.WriteAllText(Path.Combine(temp, "_repolore", "root.md"), "ALPHA_ROOT");
-                File.WriteAllText(Path.Combine(temp, "_repolore", "sparse-tree", "src", "src.md"), "ALPHA_NOTE");
+            Directory.CreateDirectory(Path.Combine(temp, "_repolore", "sparse-tree", "src"));
+            File.WriteAllText(Path.Combine(temp, "_repolore", "root.md"), "ALPHA_ROOT");
+            File.WriteAllText(Path.Combine(temp, "_repolore", "sparse-tree", "src", "src.md"), "ALPHA_NOTE");
 
-                TestRunner.Equal(InitDirKind.Alpha, Engine(temp).Classify());
-                var ex = TestRunner.Capture<InitException>(() => Engine(temp).Run(MethodTemplate, RootTemplate, false));
-                TestRunner.True(ex.Message.Contains("migrate", StringComparison.Ordinal), ex.Message);
+            Engine(temp).Classify().Should().Be(InitDirKind.Alpha);
+            var ex = new Action(() => Engine(temp).Run(MethodTemplate, RootTemplate, false)).Should().Throw<InitException>().Which;
+            ex.Message.Should().Contain("migrate");
 
-                TestRunner.Equal("ALPHA_ROOT", File.ReadAllText(Path.Combine(temp, "_repolore", "root.md")));
-                TestRunner.Equal("ALPHA_NOTE", File.ReadAllText(Path.Combine(temp, "_repolore", "sparse-tree", "src", "src.md")));
-            });
+            File.ReadAllText(Path.Combine(temp, "_repolore", "root.md")).Should().Be("ALPHA_ROOT");
+            File.ReadAllText(Path.Combine(temp, "_repolore", "sparse-tree", "src", "src.md")).Should().Be("ALPHA_NOTE");
         });
+    }
 
-        TestRunner.Check("a user-edited method is never replaced during ordinary init", () =>
+    [Fact]
+    public void A_user_edited_method_is_never_replaced_during_ordinary_init()
+    {
+        TempDir.WithTemp(temp =>
         {
-            TestSupport.WithTemp(temp =>
-            {
-                Directory.CreateDirectory(Path.Combine(temp, "_repolore"));
-                File.WriteAllText(Path.Combine(temp, "_repolore", "repolore.json"), "{\"formatVersion\":1}");
-                File.WriteAllText(Path.Combine(temp, "_repolore", "method.md"), "USER_METHOD");
+            Directory.CreateDirectory(Path.Combine(temp, "_repolore"));
+            File.WriteAllText(Path.Combine(temp, "_repolore", "repolore.json"), "{\"formatVersion\":1}");
+            File.WriteAllText(Path.Combine(temp, "_repolore", "method.md"), "USER_METHOD");
 
-                Engine(temp).Run(MethodTemplate, RootTemplate, false);
-                TestRunner.Equal("USER_METHOD", File.ReadAllText(Path.Combine(temp, "_repolore", "method.md")));
-            });
+            Engine(temp).Run(MethodTemplate, RootTemplate, false);
+            File.ReadAllText(Path.Combine(temp, "_repolore", "method.md")).Should().Be("USER_METHOD");
         });
+    }
 
-        TestRunner.Check("method update rewrites the method and can be undone to exact old bytes", () =>
+    [Fact]
+    public void Method_update_rewrites_the_method_and_can_be_undone_to_exact_old_bytes()
+    {
+        TempDir.WithTemp(temp =>
         {
-            TestSupport.WithTemp(temp =>
-            {
-                Directory.CreateDirectory(Path.Combine(temp, "_repolore"));
-                File.WriteAllText(Path.Combine(temp, "_repolore", "repolore.json"), "{\"formatVersion\":1}");
-                File.WriteAllText(Path.Combine(temp, "_repolore", "method.md"), "OLD_METHOD");
-                File.WriteAllText(Path.Combine(temp, "_repolore", "root.md"), "ROOT");
+            Directory.CreateDirectory(Path.Combine(temp, "_repolore"));
+            File.WriteAllText(Path.Combine(temp, "_repolore", "repolore.json"), "{\"formatVersion\":1}");
+            File.WriteAllText(Path.Combine(temp, "_repolore", "method.md"), "OLD_METHOD");
+            File.WriteAllText(Path.Combine(temp, "_repolore", "root.md"), "ROOT");
 
-                var result = Engine(temp).Run(MethodTemplate, RootTemplate, updateMethod: true);
-                TestRunner.True(result.MethodUpdated);
-                TestRunner.Equal(MethodTemplate, File.ReadAllText(Path.Combine(temp, "_repolore", "method.md")));
-                TestRunner.True(!File.Exists(PendingPath(temp)));
+            var result = Engine(temp).Run(MethodTemplate, RootTemplate, updateMethod: true);
+            result.MethodUpdated.Should().BeTrue();
+            File.ReadAllText(Path.Combine(temp, "_repolore", "method.md")).Should().Be(MethodTemplate);
+            File.Exists(PendingPath(temp)).Should().BeFalse();
 
-                var restored = new RestoreEngine(temp, HistoryDir(temp), Clock()).Apply(HistoryConfigLoader.Load(temp), 1);
-                TestRunner.True(!restored.WasNoOp);
-                TestRunner.Equal("OLD_METHOD", File.ReadAllText(Path.Combine(temp, "_repolore", "method.md")));
-            });
+            var restored = new RestoreEngine(temp, HistoryDir(temp), Clock()).Apply(HistoryConfigLoader.Load(temp), 1);
+            restored.WasNoOp.Should().BeFalse();
+            File.ReadAllText(Path.Combine(temp, "_repolore", "method.md")).Should().Be("OLD_METHOD");
         });
+    }
 
-        TestRunner.Check("unchanged embedded method bytes are a no-op", () =>
+    [Fact]
+    public void Unchanged_embedded_method_bytes_are_a_no_op()
+    {
+        TempDir.WithTemp(temp =>
         {
-            TestSupport.WithTemp(temp =>
-            {
-                Directory.CreateDirectory(Path.Combine(temp, "_repolore", "sparse-tree"));
-                File.WriteAllText(Path.Combine(temp, "_repolore", "repolore.json"), "{\"formatVersion\":1}");
-                File.WriteAllText(Path.Combine(temp, "_repolore", "method.md"), MethodTemplate);
-                File.WriteAllText(Path.Combine(temp, "_repolore", "root.md"), RootTemplate);
+            Directory.CreateDirectory(Path.Combine(temp, "_repolore", "sparse-tree"));
+            File.WriteAllText(Path.Combine(temp, "_repolore", "repolore.json"), "{\"formatVersion\":1}");
+            File.WriteAllText(Path.Combine(temp, "_repolore", "method.md"), MethodTemplate);
+            File.WriteAllText(Path.Combine(temp, "_repolore", "root.md"), RootTemplate);
 
-                var result = Engine(temp).Run(MethodTemplate, RootTemplate, updateMethod: true);
-                TestRunner.True(!result.MethodUpdated);
-                TestRunner.True(result.WasNoOp);
-                TestRunner.True(!File.Exists(PendingPath(temp)));
-            });
+            var result = Engine(temp).Run(MethodTemplate, RootTemplate, updateMethod: true);
+            result.MethodUpdated.Should().BeFalse();
+            result.WasNoOp.Should().BeTrue();
+            File.Exists(PendingPath(temp)).Should().BeFalse();
         });
+    }
 
-        TestRunner.Check("method update with disabled history refuses", () =>
+    [Fact]
+    public void Method_update_with_disabled_history_refuses()
+    {
+        TempDir.WithTemp(temp =>
         {
-            TestSupport.WithTemp(temp =>
-            {
-                Directory.CreateDirectory(Path.Combine(temp, "_repolore"));
-                File.WriteAllText(Path.Combine(temp, "_repolore", "repolore.json"), "{\"formatVersion\":1,\"history\":{\"enabled\":false}}");
-                File.WriteAllText(Path.Combine(temp, "_repolore", "method.md"), "OLD_METHOD");
+            Directory.CreateDirectory(Path.Combine(temp, "_repolore"));
+            File.WriteAllText(Path.Combine(temp, "_repolore", "repolore.json"), "{\"formatVersion\":1,\"history\":{\"enabled\":false}}");
+            File.WriteAllText(Path.Combine(temp, "_repolore", "method.md"), "OLD_METHOD");
 
-                var ex = TestRunner.Capture<InitException>(() => Engine(temp).Run(MethodTemplate, RootTemplate, updateMethod: true));
-                TestRunner.True(ex.Message.Contains("disabled", StringComparison.Ordinal), ex.Message);
-                TestRunner.Equal("OLD_METHOD", File.ReadAllText(Path.Combine(temp, "_repolore", "method.md")));
-            });
+            var ex = new Action(() => Engine(temp).Run(MethodTemplate, RootTemplate, updateMethod: true)).Should().Throw<InitException>().Which;
+            ex.Message.Should().Contain("disabled");
+            File.ReadAllText(Path.Combine(temp, "_repolore", "method.md")).Should().Be("OLD_METHOD");
         });
+    }
 
-        TestRunner.Check("method update interrupted before write leaves pending and recovers", () =>
+    [Fact]
+    public void Method_update_interrupted_before_write_leaves_pending_and_recovers()
+    {
+        TempDir.WithTemp(temp =>
         {
-            TestSupport.WithTemp(temp =>
-            {
-                Directory.CreateDirectory(Path.Combine(temp, "_repolore"));
-                File.WriteAllText(Path.Combine(temp, "_repolore", "repolore.json"), "{\"formatVersion\":1}");
-                File.WriteAllText(Path.Combine(temp, "_repolore", "method.md"), "OLD_METHOD");
-                File.WriteAllText(Path.Combine(temp, "_repolore", "root.md"), "ROOT");
+            Directory.CreateDirectory(Path.Combine(temp, "_repolore"));
+            File.WriteAllText(Path.Combine(temp, "_repolore", "repolore.json"), "{\"formatVersion\":1}");
+            File.WriteAllText(Path.Combine(temp, "_repolore", "method.md"), "OLD_METHOD");
+            File.WriteAllText(Path.Combine(temp, "_repolore", "root.md"), "ROOT");
 
-                var ex = TestRunner.Capture<InitException>(() =>
-                    Engine(temp).Run(MethodTemplate, RootTemplate, updateMethod: true,
-                        beforeFirstReplacement: () => throw new InvalidOperationException("injected")));
+            var ex = new Action(() =>
+                Engine(temp).Run(MethodTemplate, RootTemplate, updateMethod: true,
+                    beforeFirstReplacement: () => throw new InvalidOperationException("injected")))
+                .Should().Throw<InitException>().Which;
 
-                TestRunner.True(ex.RecoveryId is long, "expected a recovery id");
-                TestRunner.True(File.Exists(PendingPath(temp)));
-                TestRunner.Equal("OLD_METHOD", File.ReadAllText(Path.Combine(temp, "_repolore", "method.md")));
+            ex.RecoveryId.Should().NotBeNull("expected a recovery id");
+            File.Exists(PendingPath(temp)).Should().BeTrue();
+            File.ReadAllText(Path.Combine(temp, "_repolore", "method.md")).Should().Be("OLD_METHOD");
 
-                var recovered = new RestoreEngine(temp, HistoryDir(temp), Clock()).Recover(ex.RecoveryId!.Value);
-                TestRunner.True(recovered.WasRecovery);
-                TestRunner.True(!File.Exists(PendingPath(temp)));
-                TestRunner.Equal("OLD_METHOD", File.ReadAllText(Path.Combine(temp, "_repolore", "method.md")));
-            });
+            var recovered = new RestoreEngine(temp, HistoryDir(temp), Clock()).Recover(ex.RecoveryId!.Value);
+            recovered.WasRecovery.Should().BeTrue();
+            File.Exists(PendingPath(temp)).Should().BeFalse();
+            File.ReadAllText(Path.Combine(temp, "_repolore", "method.md")).Should().Be("OLD_METHOD");
         });
+    }
 
-        TestRunner.Check("history disabled init reports protection disabled and skips checkpoint", () =>
+    [Fact]
+    public void History_disabled_init_reports_protection_disabled_and_skips_checkpoint()
+    {
+        TempDir.WithTemp(temp =>
         {
-            TestSupport.WithTemp(temp =>
-            {
-                Directory.CreateDirectory(Path.Combine(temp, "_repolore"));
-                File.WriteAllText(Path.Combine(temp, "_repolore", "repolore.json"), "{\"formatVersion\":1,\"history\":{\"enabled\":false}}");
+            Directory.CreateDirectory(Path.Combine(temp, "_repolore"));
+            File.WriteAllText(Path.Combine(temp, "_repolore", "repolore.json"), "{\"formatVersion\":1,\"history\":{\"enabled\":false}}");
 
-                var result = Engine(temp).Run(MethodTemplate, RootTemplate, false);
-                TestRunner.True(result.HistoryDisabled);
-                TestRunner.Equal(MethodTemplate, File.ReadAllText(Path.Combine(temp, "_repolore", "method.md")));
-                TestRunner.Equal(0L, HighestId(temp));
-            });
+            var result = Engine(temp).Run(MethodTemplate, RootTemplate, false);
+            result.HistoryDisabled.Should().BeTrue();
+            File.ReadAllText(Path.Combine(temp, "_repolore", "method.md")).Should().Be(MethodTemplate);
+            HighestId(temp).Should().Be(0L);
         });
     }
 

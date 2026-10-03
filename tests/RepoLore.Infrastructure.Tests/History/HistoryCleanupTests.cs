@@ -1,146 +1,148 @@
 using System.Text;
+using FluentAssertions;
 using RepoLore.Core.Configuration;
 using RepoLore.Core.Snapshot;
 using RepoLore.Infrastructure.History;
-using RepoLore.Infrastructure.Tests;
+using Xunit;
 
 namespace RepoLore.Infrastructure.Tests.History;
 
-public static class HistoryCleanupTests
+public class HistoryCleanupTests
 {
     private static readonly CaptureScope Scope = new(true, 100, new List<string>(), CaptureScope.RepoLoreJsonPresent);
 
-    public static void Run()
+    [Fact]
+    public void Evicts_the_oldest_manifest_first_and_reclaims_its_object()
     {
-        TestRunner.Check("evicts the oldest manifest first and reclaims its object", () =>
+        TempDir.WithTemp(temp =>
         {
-            TestSupport.WithTemp(temp =>
-            {
-                var history = Path.Combine(temp, ".history");
-                var objects = new ObjectStore(history);
-                var checkpoints = new CheckpointStore(history);
-                objects.EnsureDirectories();
-                checkpoints.EnsureDirectory();
+            var history = Path.Combine(temp, ".history");
+            var objects = new ObjectStore(history);
+            var checkpoints = new CheckpointStore(history);
+            objects.EnsureDirectories();
+            checkpoints.EnsureDirectory();
 
-                var h1 = objects.Store(Encoding.UTF8.GetBytes("a"));
-                var h2 = objects.Store(Encoding.UTF8.GetBytes("bb"));
-                var h3 = objects.Store(Encoding.UTF8.GetBytes("ccc"));
+            var h1 = objects.Store(Encoding.UTF8.GetBytes("a"));
+            var h2 = objects.Store(Encoding.UTF8.GetBytes("bb"));
+            var h3 = objects.Store(Encoding.UTF8.GetBytes("ccc"));
 
-                checkpoints.Publish(Manifest(1, ("a.md", h1, 1)));
-                checkpoints.Publish(Manifest(2, ("b.md", h2, 2)));
-                checkpoints.Publish(Manifest(3, ("c.md", h3, 3)));
+            checkpoints.Publish(Manifest(1, ("a.md", h1, 1)));
+            checkpoints.Publish(Manifest(2, ("b.md", h2, 2)));
+            checkpoints.Publish(Manifest(3, ("c.md", h3, 3)));
 
-                var mb1 = HistoryCleanup.SnapshotBytes(Manifest(1, ("a.md", h1, 1))) - 1;
-                long total = HistoryCleanup.SnapshotBytes(Manifest(1, ("a.md", h1, 1)))
-                    + HistoryCleanup.SnapshotBytes(Manifest(2, ("b.md", h2, 2)))
-                    + HistoryCleanup.SnapshotBytes(Manifest(3, ("c.md", h3, 3)));
+            var mb1 = HistoryCleanup.SnapshotBytes(Manifest(1, ("a.md", h1, 1))) - 1;
+            long total = HistoryCleanup.SnapshotBytes(Manifest(1, ("a.md", h1, 1)))
+                + HistoryCleanup.SnapshotBytes(Manifest(2, ("b.md", h2, 2)))
+                + HistoryCleanup.SnapshotBytes(Manifest(3, ("c.md", h3, 3)));
 
-                var result = new HistoryCleanup(objects, checkpoints).Clean(total - (mb1 + 1));
+            var result = new HistoryCleanup(objects, checkpoints).Clean(total - (mb1 + 1));
 
-                TestRunner.Equal(1, result.Evicted);
-                TestRunner.True(result.BudgetOk);
-                TestRunner.True(!File.Exists(checkpoints.ManifestPath(1)));
-                TestRunner.True(File.Exists(checkpoints.ManifestPath(2)));
-                TestRunner.True(File.Exists(checkpoints.ManifestPath(3)));
-                TestRunner.True(!File.Exists(Path.Combine(objects.ObjectsDirectory, h1)));
-                TestRunner.True(File.Exists(Path.Combine(objects.ObjectsDirectory, h2)));
-                TestRunner.True(File.Exists(Path.Combine(objects.ObjectsDirectory, h3)));
-            });
+            result.Evicted.Should().Be(1);
+            result.BudgetOk.Should().BeTrue();
+            File.Exists(checkpoints.ManifestPath(1)).Should().BeFalse();
+            File.Exists(checkpoints.ManifestPath(2)).Should().BeTrue();
+            File.Exists(checkpoints.ManifestPath(3)).Should().BeTrue();
+            File.Exists(Path.Combine(objects.ObjectsDirectory, h1)).Should().BeFalse();
+            File.Exists(Path.Combine(objects.ObjectsDirectory, h2)).Should().BeTrue();
+            File.Exists(Path.Combine(objects.ObjectsDirectory, h3)).Should().BeTrue();
         });
+    }
 
-        TestRunner.Check("a shared object survives while any manifest references it", () =>
+    [Fact]
+    public void A_shared_object_survives_while_any_manifest_references_it()
+    {
+        TempDir.WithTemp(temp =>
         {
-            TestSupport.WithTemp(temp =>
-            {
-                var history = Path.Combine(temp, ".history");
-                var objects = new ObjectStore(history);
-                var checkpoints = new CheckpointStore(history);
-                objects.EnsureDirectories();
-                checkpoints.EnsureDirectory();
+            var history = Path.Combine(temp, ".history");
+            var objects = new ObjectStore(history);
+            var checkpoints = new CheckpointStore(history);
+            objects.EnsureDirectories();
+            checkpoints.EnsureDirectory();
 
-                var shared = objects.Store(Encoding.UTF8.GetBytes("S"));
-                var only1 = objects.Store(Encoding.UTF8.GetBytes("x"));
-                var only2 = objects.Store(Encoding.UTF8.GetBytes("y"));
+            var shared = objects.Store(Encoding.UTF8.GetBytes("S"));
+            var only1 = objects.Store(Encoding.UTF8.GetBytes("x"));
+            var only2 = objects.Store(Encoding.UTF8.GetBytes("y"));
 
-                var m1 = Manifest(1, ("a.md", shared, 1), ("b.md", only1, 1));
-                var m2 = Manifest(2, ("a.md", shared, 1), ("c.md", only2, 1));
-                checkpoints.Publish(m1);
-                checkpoints.Publish(m2);
+            var m1 = Manifest(1, ("a.md", shared, 1), ("b.md", only1, 1));
+            var m2 = Manifest(2, ("a.md", shared, 1), ("c.md", only2, 1));
+            checkpoints.Publish(m1);
+            checkpoints.Publish(m2);
 
-                long total = HistoryCleanup.SnapshotBytes(m1) + HistoryCleanup.SnapshotBytes(m2) - 1;
-                long mb1 = HistoryCleanup.SnapshotBytes(m1) - 2;
+            long total = HistoryCleanup.SnapshotBytes(m1) + HistoryCleanup.SnapshotBytes(m2) - 1;
+            long mb1 = HistoryCleanup.SnapshotBytes(m1) - 2;
 
-                var result = new HistoryCleanup(objects, checkpoints).Clean(total - (mb1 + 1));
+            var result = new HistoryCleanup(objects, checkpoints).Clean(total - (mb1 + 1));
 
-                TestRunner.Equal(1, result.Evicted);
-                TestRunner.True(!File.Exists(checkpoints.ManifestPath(1)));
-                TestRunner.True(File.Exists(checkpoints.ManifestPath(2)));
-                TestRunner.True(File.Exists(Path.Combine(objects.ObjectsDirectory, shared)));
-                TestRunner.True(!File.Exists(Path.Combine(objects.ObjectsDirectory, only1)));
-                TestRunner.True(File.Exists(Path.Combine(objects.ObjectsDirectory, only2)));
-            });
+            result.Evicted.Should().Be(1);
+            File.Exists(checkpoints.ManifestPath(1)).Should().BeFalse();
+            File.Exists(checkpoints.ManifestPath(2)).Should().BeTrue();
+            File.Exists(Path.Combine(objects.ObjectsDirectory, shared)).Should().BeTrue();
+            File.Exists(Path.Combine(objects.ObjectsDirectory, only1)).Should().BeFalse();
+            File.Exists(Path.Combine(objects.ObjectsDirectory, only2)).Should().BeTrue();
         });
+    }
 
-        TestRunner.Check("the latest manifest is never evicted", () =>
+    [Fact]
+    public void The_latest_manifest_is_never_evicted()
+    {
+        TempDir.WithTemp(temp =>
         {
-            TestSupport.WithTemp(temp =>
-            {
-                var history = Path.Combine(temp, ".history");
-                var objects = new ObjectStore(history);
-                var checkpoints = new CheckpointStore(history);
-                objects.EnsureDirectories();
-                checkpoints.EnsureDirectory();
+            var history = Path.Combine(temp, ".history");
+            var objects = new ObjectStore(history);
+            var checkpoints = new CheckpointStore(history);
+            objects.EnsureDirectories();
+            checkpoints.EnsureDirectory();
 
-                var h1 = objects.Store(Encoding.UTF8.GetBytes("aa"));
-                var h2 = objects.Store(Encoding.UTF8.GetBytes("bb"));
-                checkpoints.Publish(Manifest(1, ("a.md", h1, 2)));
-                checkpoints.Publish(Manifest(2, ("b.md", h2, 2)));
+            var h1 = objects.Store(Encoding.UTF8.GetBytes("aa"));
+            var h2 = objects.Store(Encoding.UTF8.GetBytes("bb"));
+            checkpoints.Publish(Manifest(1, ("a.md", h1, 2)));
+            checkpoints.Publish(Manifest(2, ("b.md", h2, 2)));
 
-                var result = new HistoryCleanup(objects, checkpoints).Clean(1);
+            var result = new HistoryCleanup(objects, checkpoints).Clean(1);
 
-                TestRunner.True(!File.Exists(checkpoints.ManifestPath(1)));
-                TestRunner.True(File.Exists(checkpoints.ManifestPath(2)));
-                TestRunner.True(!result.BudgetOk);
-            });
+            File.Exists(checkpoints.ManifestPath(1)).Should().BeFalse();
+            File.Exists(checkpoints.ManifestPath(2)).Should().BeTrue();
+            result.BudgetOk.Should().BeFalse();
         });
+    }
 
-        TestRunner.Check("a failed delete reports budget not achieved and keeps history valid", () =>
+    [Fact]
+    public void A_failed_delete_reports_budget_not_achieved_and_keeps_history_valid()
+    {
+        TempDir.WithTemp(temp =>
         {
-            TestSupport.WithTemp(temp =>
+            var history = Path.Combine(temp, ".history");
+            var objects = new ObjectStore(history);
+            var checkpoints = new CheckpointStore(history);
+            objects.EnsureDirectories();
+            checkpoints.EnsureDirectory();
+
+            var h1 = objects.Store(Encoding.UTF8.GetBytes("a"));
+            var h2 = objects.Store(Encoding.UTF8.GetBytes("bb"));
+            var m1 = Manifest(1, ("a.md", h1, 1));
+            var m2 = Manifest(2, ("b.md", h2, 2));
+            checkpoints.Publish(m1);
+            checkpoints.Publish(m2);
+
+            var mb1 = HistoryCleanup.SnapshotBytes(m1) - 1;
+            long total = HistoryCleanup.SnapshotBytes(m1) + HistoryCleanup.SnapshotBytes(m2);
+            var failOn = Path.Combine(objects.ObjectsDirectory, h1);
+
+            var cleanup = new HistoryCleanup(objects, checkpoints, path =>
             {
-                var history = Path.Combine(temp, ".history");
-                var objects = new ObjectStore(history);
-                var checkpoints = new CheckpointStore(history);
-                objects.EnsureDirectories();
-                checkpoints.EnsureDirectory();
-
-                var h1 = objects.Store(Encoding.UTF8.GetBytes("a"));
-                var h2 = objects.Store(Encoding.UTF8.GetBytes("bb"));
-                var m1 = Manifest(1, ("a.md", h1, 1));
-                var m2 = Manifest(2, ("b.md", h2, 2));
-                checkpoints.Publish(m1);
-                checkpoints.Publish(m2);
-
-                var mb1 = HistoryCleanup.SnapshotBytes(m1) - 1;
-                long total = HistoryCleanup.SnapshotBytes(m1) + HistoryCleanup.SnapshotBytes(m2);
-                var failOn = Path.Combine(objects.ObjectsDirectory, h1);
-
-                var cleanup = new HistoryCleanup(objects, checkpoints, path =>
-                {
-                    if (path == failOn)
-                        return false;
-                    File.Delete(path);
-                    return true;
-                });
-
-                var result = cleanup.Clean(total - (mb1 + 1));
-
-                TestRunner.Equal(1, result.Evicted);
-                TestRunner.True(!result.BudgetOk);
-                TestRunner.True(File.Exists(failOn));
-                TestRunner.True(!File.Exists(checkpoints.ManifestPath(1)));
-                TestRunner.Equal(2L, checkpoints.ReadHighestCompleted()!.Id);
+                if (path == failOn)
+                    return false;
+                File.Delete(path);
+                return true;
             });
+
+            var result = cleanup.Clean(total - (mb1 + 1));
+
+            result.Evicted.Should().Be(1);
+            result.BudgetOk.Should().BeFalse();
+            File.Exists(failOn).Should().BeTrue();
+            File.Exists(checkpoints.ManifestPath(1)).Should().BeFalse();
+            checkpoints.ReadHighestCompleted()!.Id.Should().Be(2L);
         });
     }
 
@@ -153,80 +155,80 @@ public static class HistoryCleanupTests
     }
 }
 
-public static class RetentionEngineTests
+public class RetentionEngineTests
 {
-    public static void Run()
+    [Fact]
+    public void A_checkpoint_exactly_at_budget_succeeds_and_evicts_the_older_one()
     {
-        TestRunner.Check("a checkpoint exactly at budget succeeds and evicts the older one", () =>
+        WithRepo(temp =>
         {
-            WithRepo(temp =>
-            {
-                var engine = NewEngine(temp);
-                engine.Capture(Load(temp));
+            var engine = NewEngine(temp);
+            engine.Capture(Load(temp));
 
-                var s1 = RetainedBytes(temp);
-                File.WriteAllText(Root(temp), "B");
-                SetMaxBytes(temp, s1);
+            var s1 = RetainedBytes(temp);
+            File.WriteAllText(Root(temp), "B");
+            SetMaxBytes(temp, s1);
 
-                var result = engine.Capture(Load(temp));
+            var result = engine.Capture(Load(temp));
 
-                TestRunner.True(!result.WasNoOp);
-                TestRunner.Equal(2L, result.PublishedId);
-                TestRunner.Equal(2L, HighestId(temp));
-                TestRunner.True(!File.Exists(ManifestPath(temp, 1)));
-                TestRunner.True(File.Exists(ManifestPath(temp, 2)));
-                TestRunner.True(result.Cleanup.BudgetOk);
-                TestRunner.Equal(s1, RetainedBytes(temp));
-            });
+            result.WasNoOp.Should().BeFalse();
+            result.PublishedId.Should().Be(2L);
+            HighestId(temp).Should().Be(2L);
+            File.Exists(ManifestPath(temp, 1)).Should().BeFalse();
+            File.Exists(ManifestPath(temp, 2)).Should().BeTrue();
+            result.Cleanup.BudgetOk.Should().BeTrue();
+            RetainedBytes(temp).Should().Be(s1);
         });
+    }
 
-        TestRunner.Check("a checkpoint one byte over budget fails and leaves prior state usable", () =>
+    [Fact]
+    public void A_checkpoint_one_byte_over_budget_fails_and_leaves_prior_state_usable()
+    {
+        WithRepo(temp =>
         {
-            WithRepo(temp =>
-            {
-                var engine = NewEngine(temp);
-                engine.Capture(Load(temp));
+            var engine = NewEngine(temp);
+            engine.Capture(Load(temp));
 
-                var s1 = RetainedBytes(temp);
-                File.WriteAllText(Root(temp), "AB");
-                SetMaxBytes(temp, s1);
+            var s1 = RetainedBytes(temp);
+            File.WriteAllText(Root(temp), "AB");
+            SetMaxBytes(temp, s1);
 
-                var ex = TestRunner.Capture<HistoryStoreException>(() => engine.Capture(Load(temp)));
+            var ex = new Action(() => engine.Capture(Load(temp))).Should().Throw<HistoryStoreException>().Which;
 
-                TestRunner.True(ex.Message.Contains("exceeds", StringComparison.Ordinal), ex.Message);
-                TestRunner.Equal(1L, HighestId(temp));
-                TestRunner.True(File.Exists(ManifestPath(temp, 1)));
-                TestRunner.Equal("AB", File.ReadAllText(Root(temp)));
-            });
+            ex.Message.Should().Contain("exceeds");
+            HighestId(temp).Should().Be(1L);
+            File.Exists(ManifestPath(temp, 1)).Should().BeTrue();
+            File.ReadAllText(Root(temp)).Should().Be("AB");
         });
+    }
 
-        TestRunner.Check("shrinking the budget evicts older checkpoints on the next capture", () =>
+    [Fact]
+    public void Shrinking_the_budget_evicts_older_checkpoints_on_the_next_capture()
+    {
+        WithRepo(temp =>
         {
-            WithRepo(temp =>
-            {
-                var engine = NewEngine(temp);
-                engine.Capture(Load(temp));
-                File.WriteAllText(Root(temp), "B");
-                engine.Capture(Load(temp));
+            var engine = NewEngine(temp);
+            engine.Capture(Load(temp));
+            File.WriteAllText(Root(temp), "B");
+            engine.Capture(Load(temp));
 
-                var total = RetainedBytes(temp);
-                var mb1 = new FileInfo(ManifestPath(temp, 1)).Length;
-                SetMaxBytes(temp, total - (mb1 + 1));
+            var total = RetainedBytes(temp);
+            var mb1 = new FileInfo(ManifestPath(temp, 1)).Length;
+            SetMaxBytes(temp, total - (mb1 + 1));
 
-                var result = engine.Capture(Load(temp));
+            var result = engine.Capture(Load(temp));
 
-                TestRunner.Equal(3L, result.PublishedId);
-                TestRunner.True(!File.Exists(ManifestPath(temp, 1)));
-                TestRunner.True(!File.Exists(ManifestPath(temp, 2)));
-                TestRunner.True(File.Exists(ManifestPath(temp, 3)));
-                TestRunner.True(result.Cleanup.BudgetOk);
-                TestRunner.True(RetainedBytes(temp) <= total - (mb1 + 1));
-            });
+            result.PublishedId.Should().Be(3L);
+            File.Exists(ManifestPath(temp, 1)).Should().BeFalse();
+            File.Exists(ManifestPath(temp, 2)).Should().BeFalse();
+            File.Exists(ManifestPath(temp, 3)).Should().BeTrue();
+            result.Cleanup.BudgetOk.Should().BeTrue();
+            RetainedBytes(temp).Should().BeLessThanOrEqualTo(total - (mb1 + 1));
         });
     }
 
     private static void WithRepo(Action<string> action) =>
-        TestSupport.WithTemp(temp =>
+        TempDir.WithTemp(temp =>
         {
             Directory.CreateDirectory(Path.Combine(temp, "_repolore"));
             File.WriteAllText(Path.Combine(temp, "_repolore", "repolore.json"), "{\"formatVersion\":1,\"history\":{\"maxBytes\":999,\"exclude\":[\"_repolore/repolore.json\"]}}");

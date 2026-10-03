@@ -1,144 +1,148 @@
+using FluentAssertions;
 using RepoLore.Infrastructure.History;
-using RepoLore.Infrastructure.Tests;
+using Xunit;
 
 namespace RepoLore.Infrastructure.Tests.History;
 
-public static class WriterLockTests
+public class WriterLockTests
 {
-    public static void Run()
+    [Fact]
+    public void The_lock_is_acquired_and_released()
     {
-        TestRunner.Check("the lock is acquired and released", () =>
+        TempDir.WithTemp(temp =>
         {
-            TestSupport.WithTemp(temp =>
-            {
-                var history = Path.Combine(temp, ".history");
-                using (WriterLock.Acquire(history))
-                    TestRunner.True(File.Exists(Path.Combine(history, "write.lock")));
-                using (WriterLock.Acquire(history))
-                    TestRunner.True(true);
-            });
+            var history = Path.Combine(temp, ".history");
+            using (WriterLock.Acquire(history))
+                File.Exists(Path.Combine(history, "write.lock")).Should().BeTrue();
+            using (WriterLock.Acquire(history))
+                true.Should().BeTrue();
         });
+    }
 
-        TestRunner.Check("a second writer is refused", () =>
+    [Fact]
+    public void A_second_writer_is_refused()
+    {
+        TempDir.WithTemp(temp =>
         {
-            TestSupport.WithTemp(temp =>
-            {
-                var history = Path.Combine(temp, ".history");
-                using (WriterLock.Acquire(history))
-                    TestRunner.Throws<WriterLockException>(() => WriterLock.Acquire(history));
-            });
+            var history = Path.Combine(temp, ".history");
+            using (WriterLock.Acquire(history))
+                new Action(() => WriterLock.Acquire(history)).Should().Throw<WriterLockException>();
         });
     }
 }
 
-public static class CheckpointEngineTests
+public class CheckpointEngineTests
 {
     private const string Root = "_repolore/root.md";
     private const string A = "_repolore/architecture/a.md";
 
-    public static void Run()
+    [Fact]
+    public void First_capture_publishes_a_manifest_and_content_objects()
     {
-        TestRunner.Check("first capture publishes a manifest and content objects", () =>
+        WithRepo(temp =>
         {
-            WithRepo(temp =>
-            {
-                var engine = NewEngine(temp);
-                var result = engine.Capture(HistoryConfigLoader.Load(temp));
+            var engine = NewEngine(temp);
+            var result = engine.Capture(HistoryConfigLoader.Load(temp));
 
-                TestRunner.True(!result.WasNoOp);
-                TestRunner.Equal(1L, result.PublishedId);
-                TestRunner.True(result.Added.Contains(A));
-                TestRunner.True(File.Exists(Path.Combine(temp, "_repolore", ".history", "checkpoints", "0000000000000001.json")));
-                TestRunner.Equal(1L, HighestId(temp));
-            });
+            result.WasNoOp.Should().BeFalse();
+            result.PublishedId.Should().Be(1L);
+            result.Added.Contains(A).Should().BeTrue();
+            File.Exists(Path.Combine(temp, "_repolore", ".history", "checkpoints", "0000000000000001.json")).Should().BeTrue();
+            HighestId(temp).Should().Be(1L);
         });
+    }
 
-        TestRunner.Check("unchanged state is a no-op", () =>
+    [Fact]
+    public void Unchanged_state_is_a_no_op()
+    {
+        WithRepo(temp =>
         {
-            WithRepo(temp =>
-            {
-                var engine = NewEngine(temp);
-                engine.Capture(HistoryConfigLoader.Load(temp));
+            var engine = NewEngine(temp);
+            engine.Capture(HistoryConfigLoader.Load(temp));
 
-                var second = engine.Capture(HistoryConfigLoader.Load(temp));
-                TestRunner.True(second.WasNoOp);
-                TestRunner.True(second.PublishedId is null);
-                TestRunner.Equal(1L, HighestId(temp));
-            });
+            var second = engine.Capture(HistoryConfigLoader.Load(temp));
+            second.WasNoOp.Should().BeTrue();
+            second.PublishedId.Should().BeNull();
+            HighestId(temp).Should().Be(1L);
         });
+    }
 
-        TestRunner.Check("add, change, and delete produce distinct manifests", () =>
+    [Fact]
+    public void Add_change_and_delete_produce_distinct_manifests()
+    {
+        WithRepo(temp =>
         {
-            WithRepo(temp =>
-            {
-                var engine = NewEngine(temp);
-                engine.Capture(HistoryConfigLoader.Load(temp));
+            var engine = NewEngine(temp);
+            engine.Capture(HistoryConfigLoader.Load(temp));
 
-                File.WriteAllText(Path.Combine(temp, "_repolore", "architecture", "a.md"), "A_EDITED");
-                File.WriteAllText(Path.Combine(temp, "_repolore", "architecture", "b.md"), "B_NEW");
-                var second = engine.Capture(HistoryConfigLoader.Load(temp));
-                TestRunner.Equal(2L, second.PublishedId);
-                TestRunner.True(second.Changed.Contains(A));
-                TestRunner.True(second.Added.Contains("_repolore/architecture/b.md"));
+            File.WriteAllText(Path.Combine(temp, "_repolore", "architecture", "a.md"), "A_EDITED");
+            File.WriteAllText(Path.Combine(temp, "_repolore", "architecture", "b.md"), "B_NEW");
+            var second = engine.Capture(HistoryConfigLoader.Load(temp));
+            second.PublishedId.Should().Be(2L);
+            second.Changed.Contains(A).Should().BeTrue();
+            second.Added.Contains("_repolore/architecture/b.md").Should().BeTrue();
 
-                File.Delete(Path.Combine(temp, "_repolore", "architecture", "a.md"));
-                var third = engine.Capture(HistoryConfigLoader.Load(temp));
-                TestRunner.Equal(3L, third.PublishedId);
-                TestRunner.True(third.Removed.Contains(A));
-            });
+            File.Delete(Path.Combine(temp, "_repolore", "architecture", "a.md"));
+            var third = engine.Capture(HistoryConfigLoader.Load(temp));
+            third.PublishedId.Should().Be(3L);
+            third.Removed.Contains(A).Should().BeTrue();
         });
+    }
 
-        TestRunner.Check("a file changing between the two capture passes fails without publishing", () =>
+    [Fact]
+    public void A_file_changing_between_the_two_capture_passes_fails_without_publishing()
+    {
+        WithRepo(temp =>
         {
-            WithRepo(temp =>
-            {
-                var engine = NewEngine(temp);
-                var touched = false;
+            var engine = NewEngine(temp);
+            var touched = false;
 
-                var ex = TestRunner.Capture<HistoryStoreException>(() => engine.Capture(HistoryConfigLoader.Load(temp), beforeVerification: () =>
+            var ex = new Action(() => engine.Capture(HistoryConfigLoader.Load(temp), beforeVerification: () =>
+            {
+                if (!touched)
                 {
-                    if (!touched)
-                    {
-                        touched = true;
-                        File.WriteAllText(Path.Combine(temp, "_repolore", "root.md"), "ROOT_CHANGED");
-                    }
-                }));
+                    touched = true;
+                    File.WriteAllText(Path.Combine(temp, "_repolore", "root.md"), "ROOT_CHANGED");
+                }
+            })).Should().Throw<HistoryStoreException>().Which;
 
-                TestRunner.True(ex.Message.Contains("changed while capturing", StringComparison.Ordinal), ex.Message);
-                TestRunner.Equal(0L, HighestId(temp));
-            });
+            ex.Message.Should().Contain("changed while capturing");
+            HighestId(temp).Should().Be(0L);
         });
+    }
 
-        TestRunner.Check("failure before manifest publication leaves the previous checkpoint valid", () =>
+    [Fact]
+    public void Failure_before_manifest_publication_leaves_the_previous_checkpoint_valid()
+    {
+        WithRepo(temp =>
         {
-            WithRepo(temp =>
-            {
-                var engine = NewEngine(temp);
-                engine.Capture(HistoryConfigLoader.Load(temp));
+            var engine = NewEngine(temp);
+            engine.Capture(HistoryConfigLoader.Load(temp));
 
-                File.WriteAllText(Path.Combine(temp, "_repolore", "root.md"), "ROOT_CHANGED");
-                var ex = TestRunner.Capture<HistoryStoreException>(() => engine.Capture(HistoryConfigLoader.Load(temp), beforeManifestPublish: () => throw new HistoryStoreException("injected failure")));
+            File.WriteAllText(Path.Combine(temp, "_repolore", "root.md"), "ROOT_CHANGED");
+            var ex = new Action(() => engine.Capture(HistoryConfigLoader.Load(temp), beforeManifestPublish: () => throw new HistoryStoreException("injected failure")))
+                .Should().Throw<HistoryStoreException>().Which;
 
-                TestRunner.True(ex.Message.Contains("injected failure", StringComparison.Ordinal), ex.Message);
-                TestRunner.Equal(1L, HighestId(temp));
-                TestRunner.Equal("ROOT_CHANGED", File.ReadAllText(Path.Combine(temp, "_repolore", "root.md")));
-            });
+            ex.Message.Should().Contain("injected failure");
+            HighestId(temp).Should().Be(1L);
+            File.ReadAllText(Path.Combine(temp, "_repolore", "root.md")).Should().Be("ROOT_CHANGED");
         });
+    }
 
-        TestRunner.Check("distinct paths with identical bytes share one object", () =>
+    [Fact]
+    public void Distinct_paths_with_identical_bytes_share_one_object()
+    {
+        WithRepo(temp =>
         {
-            WithRepo(temp =>
-            {
-                File.WriteAllText(Path.Combine(temp, "_repolore", "architecture", "c.md"), "SAME");
-                File.WriteAllText(Path.Combine(temp, "_repolore", "architecture", "d.md"), "SAME");
+            File.WriteAllText(Path.Combine(temp, "_repolore", "architecture", "c.md"), "SAME");
+            File.WriteAllText(Path.Combine(temp, "_repolore", "architecture", "d.md"), "SAME");
 
-                var engine = NewEngine(temp);
-                engine.Capture(HistoryConfigLoader.Load(temp));
+            var engine = NewEngine(temp);
+            engine.Capture(HistoryConfigLoader.Load(temp));
 
-                var objects = Directory.EnumerateFiles(Path.Combine(temp, "_repolore", ".history", "objects")).Count();
-                // root.md, repolore.json, a.md, and the shared c.md/d.md -> four distinct contents
-                TestRunner.Equal(4, objects);
-            });
+            var objects = Directory.EnumerateFiles(Path.Combine(temp, "_repolore", ".history", "objects")).Count();
+            // root.md, repolore.json, a.md, and the shared c.md/d.md -> four distinct contents
+            objects.Should().Be(4);
         });
     }
 
@@ -162,7 +166,7 @@ public static class CheckpointEngineTests
 
     private static void WithRepo(Action<string> action)
     {
-        TestSupport.WithTemp(temp =>
+        TempDir.WithTemp(temp =>
         {
             WriteRepo(temp);
             action(temp);

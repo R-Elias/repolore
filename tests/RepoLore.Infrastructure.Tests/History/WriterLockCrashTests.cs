@@ -1,46 +1,45 @@
 using System.Diagnostics;
+using FluentAssertions;
 using RepoLore.Infrastructure.History;
-using RepoLore.Infrastructure.Tests;
+using Xunit;
 
 namespace RepoLore.Infrastructure.Tests.History;
 
-public static class WriterLockCrashTests
+public class WriterLockCrashTests
 {
-    public static void Run()
+    [Fact]
+    public void A_killed_lock_owner_does_not_block_later_writes()
     {
-        TestRunner.Check("a killed lock owner does not block later writes", () =>
+        TempDir.WithTemp(temp =>
         {
-            TestSupport.WithTemp(temp =>
+            var history = Path.Combine(temp, ".history");
+            var ready = Path.Combine(temp, "ready");
+
+            var start = new ProcessStartInfo(Dotnet)
             {
-                var history = Path.Combine(temp, ".history");
-                var ready = Path.Combine(temp, "ready");
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+            };
+            start.Environment["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1";
+            start.ArgumentList.Add(TestHostDll);
+            start.ArgumentList.Add("--hold-lock");
+            start.ArgumentList.Add(history);
+            start.ArgumentList.Add(ready);
 
-                var start = new ProcessStartInfo(Dotnet)
-                {
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                };
-                start.Environment["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1";
-                start.ArgumentList.Add(TestHostDll);
-                start.ArgumentList.Add("--hold-lock");
-                start.ArgumentList.Add(history);
-                start.ArgumentList.Add(ready);
+            using var holder = Process.Start(start) ?? throw new InvalidOperationException("could not start the lock holder");
+            var deadline = DateTime.UtcNow.AddSeconds(30);
+            while (!File.Exists(ready) && DateTime.UtcNow < deadline)
+                Thread.Sleep(50);
 
-                using var holder = Process.Start(start) ?? throw new InvalidOperationException("could not start the lock holder");
-                var deadline = DateTime.UtcNow.AddSeconds(30);
-                while (!File.Exists(ready) && DateTime.UtcNow < deadline)
-                    Thread.Sleep(50);
+            File.Exists(ready).Should().BeTrue("the lock holder did not become ready");
+            new Action(() => WriterLock.Acquire(history)).Should().Throw<WriterLockException>();
 
-                TestRunner.True(File.Exists(ready), "the lock holder did not become ready");
-                TestRunner.Throws<WriterLockException>(() => WriterLock.Acquire(history));
+            holder.Kill(entireProcessTree: true);
+            holder.WaitForExit();
 
-                holder.Kill(entireProcessTree: true);
-                holder.WaitForExit();
-
-                using (WriterLock.Acquire(history))
-                    TestRunner.True(true);
-            });
+            using (WriterLock.Acquire(history))
+                true.Should().BeTrue();
         });
     }
 

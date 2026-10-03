@@ -1,6 +1,6 @@
 namespace RepoLore.Infrastructure.Tests;
 
-public static class TestSupport
+public static class TempDir
 {
     public static void WithTemp(Action<string> action)
     {

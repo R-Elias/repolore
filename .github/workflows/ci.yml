@@ -19,6 +19,6 @@ jobs:
           global-json-file: global.json
       - run: dotnet restore --locked-mode
       - run: dotnet build --no-restore --configuration Release
-      - run: dotnet run --project tests/RepoLore.Core.Tests --no-build --configuration Release
-      - run: dotnet run --project tests/RepoLore.Infrastructure.Tests --no-build --configuration Release
-      - run: dotnet run --project tests/RepoLore.Cli.Tests --no-build --configuration Release
+      - run: dotnet test --no-build --configuration Release tests/RepoLore.Core.Tests
+      - run: dotnet test --no-build --configuration Release tests/RepoLore.Infrastructure.Tests
+      - run: dotnet test --no-build --configuration Release tests/RepoLore.Cli.Tests

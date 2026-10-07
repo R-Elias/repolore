@@ -46,6 +46,9 @@ try
         case "init":
             return InitCommand.Run(cl, Environment.CurrentDirectory);
 
+        case "migrate":
+            return MigrateCommand.Run(cl, Environment.CurrentDirectory);
+
         case null:
             return Usage("missing command");
 
@@ -86,7 +89,7 @@ catch (RestorePlanException ex)
 
 static int Usage(string message)
 {
-    Console.Error.WriteLine("Usage: repolore version | --help | init [--update-method] | path <target> | context [<target>] | tree | checkpoint | history | restore <id>");
+    Console.Error.WriteLine("Usage: repolore version | --help | init [--update-method] | migrate [--check | --dry-run] | path <target> | context [<target>] | tree | checkpoint | history | restore <id>");
     Console.Error.WriteLine(message);
     return ExitCodes.Usage;
 }
@@ -111,6 +114,7 @@ static void PrintHelp()
     Console.WriteLine("  history                                    List completed local recovery checkpoints.");
     Console.WriteLine("  restore <id> [--path <path>] [--dry-run]   Preview or restore a checkpoint within coverage.");
     Console.WriteLine("  init [--update-method]                     Create the missing knowledge base and first checkpoint.");
+    Console.WriteLine("  migrate [--check | --dry-run]              Migrate alpha knowledge to v1 (check, preview, or apply).");
     Console.WriteLine();
     Console.WriteLine("Common options: --repo-root <path>, --json, --quiet, --help");
 }

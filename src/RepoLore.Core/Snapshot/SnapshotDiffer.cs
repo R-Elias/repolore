@@ -64,6 +64,8 @@ public static class SnapshotDiffer
             return false;
         if (!string.Equals(a.RepoLoreJsonStatus, b.RepoLoreJsonStatus, StringComparison.Ordinal))
             return false;
+        if (a.MigrationScope != b.MigrationScope)
+            return false;
         if (a.ExcludeRules.Count != b.ExcludeRules.Count)
             return false;
         for (var i = 0; i < a.ExcludeRules.Count; i++)

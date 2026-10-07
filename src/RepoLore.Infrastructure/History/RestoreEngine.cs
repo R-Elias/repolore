@@ -138,7 +138,7 @@ public sealed class RestoreEngine
     {
         var target = LoadTarget(targetId);
         ValidatePath(path);
-        var plan = RestorePlanner.Plan(target, CollectCurrent(config.HistoryExclude), config, path);
+        var plan = RestorePlanner.Plan(target, CollectCurrent(config.HistoryExclude, target.Scope.MigrationScope), config, path, target.Scope.MigrationScope);
         ValidateTargetObjects(plan);
         return plan;
     }
@@ -159,7 +159,7 @@ public sealed class RestoreEngine
 
         var target = LoadTarget(targetId);
         ValidatePath(path);
-        var plan = RestorePlanner.Plan(target, CollectCurrent(config.HistoryExclude), config, path);
+        var plan = RestorePlanner.Plan(target, CollectCurrent(config.HistoryExclude, target.Scope.MigrationScope), config, path, target.Scope.MigrationScope);
         ValidateTargetObjects(plan);
 
         if (plan.IsNoOp)
@@ -170,7 +170,7 @@ public sealed class RestoreEngine
             ?? throw new HistoryStoreException("no checkpoint exists after the pre-operation capture");
         var preOpManifest = LoadTarget(preOpId);
 
-        var revalidated = RestorePlanner.Plan(target, CollectCurrent(config.HistoryExclude), config, path);
+        var revalidated = RestorePlanner.Plan(target, CollectCurrent(config.HistoryExclude, target.Scope.MigrationScope), config, path, target.Scope.MigrationScope);
         ValidateTargetObjects(revalidated);
         if (revalidated.IsNoOp)
             return new RestoreResult(true, false, null, targetId, 0, 0, 0, 0, EmptyCleanup);
@@ -268,9 +268,11 @@ public sealed class RestoreEngine
         throw new HistoryStoreException($"unknown checkpoint id {targetId}; run 'history' to list available checkpoints");
     }
 
-    private List<FileEntry> CollectCurrent(RuleSet historyExclude)
+    private List<FileEntry> CollectCurrent(RuleSet historyExclude, bool migrationScope)
     {
-        var paths = HistoryEnumerator.EnumerateEligible(_repositoryRoot, historyExclude);
+        var paths = migrationScope
+            ? MigrationEnumerator.EnumerateScope(_repositoryRoot)
+            : HistoryEnumerator.EnumerateEligible(_repositoryRoot, historyExclude);
         var files = new List<FileEntry>(paths.Count);
         foreach (var relative in paths)
         {

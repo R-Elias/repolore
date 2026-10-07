@@ -1,6 +1,6 @@
 # Root — repolore-poc
 
-This repository is the proof of concept of RepoLore: operational memory for developers and coding agents, stored as local Markdown. It contains the method, PowerShell alpha tools, and the .NET CLI foundation: `version`/`--help`, the read-only knowledge commands `path`, `context`, and `tree` (durable path notes plus explicitly selected session notes), the local `checkpoint`/`history` snapshot capture, `restore` with interrupted-operation recovery, and minimal `init`/`init --update-method`. Migration and NuGet installation remain planned.
+This repository is the proof of concept of RepoLore: operational memory for developers and coding agents, stored as local Markdown. It contains the method, PowerShell alpha tools, and the .NET CLI foundation: `version`/`--help`, the read-only knowledge commands `path`, `context`, and `tree` (durable path notes plus explicitly selected session notes), the local `checkpoint`/`history` snapshot capture, `restore` with interrupted-operation recovery, minimal `init`/`init --update-method`, and explicit `migrate` (alpha-to-v1 with `--check`/`--dry-run`). NuGet installation remains planned.
 
 ## Where to start
 
@@ -13,6 +13,8 @@ This repository is the proof of concept of RepoLore: operational memory for deve
 - Work on durable/session context, path/context/tree commands, budget estimation, or session IDs → [durable and session context](roadmap/durable-and-session-context.md).
 - Work on checkpoint/history capture, the writer guard, manifest format, or object storage → [snapshot capture](roadmap/snapshot-capture.md).
 - Work on restore, pending transactions, or interrupted-operation recovery → [restore and recovery](roadmap/restore-and-recovery.md).
+- Work on initializing a checkout or updating the shipped method → [initialization and method updates](roadmap/initialization-and-method-updates.md).
+- Work on migrating alpha knowledge to v1 → [alpha migration and rollback](roadmap/alpha-migration.md).
 - Understand the current alpha method → repository-root `method.md` and its matching `_repolore/method.md` copy.
 - Work on the PowerShell alpha tools → `tools/tools.md` and `_repolore/sparse-tree/tools/tools.md`.
 - Work as an agent → `AGENTS.md` for contract reading order, package execution/gates, alpha/v1 boundaries, and durable-update/session responsibilities.
@@ -29,4 +31,4 @@ The old alpha notes are historical implementation references. The v1 roadmap sup
 
 ## Remaining design work
 
-The [implementation guide](roadmap/implementation-v1.md) resolves path escaping, context ordering/budgets, ignore semantics, history scope/retention, and interrupted recovery. Turn its contracts into the specified fixtures before implementing dependent mutations. Track completion there; packages 01–08 (executable foundation, safe paths and mapping, configuration and coverage policies, durable and session context, snapshot capture and publication, retention and mutation ownership, restore and interrupted-operation recovery, initialization and method updates) are implemented with local checks, with CI/platform gates tracked separately. Migration and verified NuGet installation do not yet exist. Later plugin/distribution releases have no committed version or date.
+The [implementation guide](roadmap/implementation-v1.md) resolves path escaping, context ordering/budgets, ignore semantics, history scope/retention, and interrupted recovery. Turn its contracts into the specified fixtures before implementing dependent mutations. Track completion there; packages 01–09 (executable foundation, safe paths and mapping, configuration and coverage policies, durable and session context, snapshot capture and publication, retention and mutation ownership, restore and interrupted-operation recovery, initialization and method updates, alpha migration and rollback) are implemented with local checks, with CI/platform gates tracked separately. Verified NuGet installation does not yet exist. Later plugin/distribution releases have no committed version or date.

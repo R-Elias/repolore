@@ -210,7 +210,7 @@ Track implementation here or in linked PRs; all entries start incomplete. For ea
 - [x] 06 — Retention and mutation ownership
 - [x] 07 — Restore and interrupted-operation recovery
 - [x] 08 — Initialization and method updates
-- [ ] 09 — Alpha migration and rollback
+- [x] 09 — Alpha migration and rollback
 - [ ] 10 — Health checks and final CLI contract
 - [ ] 11 — Packaged tool and restricted installation
 - [ ] 12 — Dogfood and NuGet preview
@@ -333,6 +333,22 @@ Checks actually run on macOS arm64 with the Rider SDK on PATH (`~/.dotnet`, 10.0
 - `git diff --check` and `cmp method.md _repolore/method.md` — passed; the two method copies remain identical (unchanged).
 
 `init` never inspects source, creates empty nodes, starts a session, regenerates sparse-tree, or rewrites `.gitignore`; it reports the recommended `_repolore/sessions/` and `_repolore/.history/` exclusions. A failed init deletes nothing (the marker remains so retry completes). The repo-root and `_repolore/` method copies in this checkout remain alpha; only the packaged `EmbeddedTemplates.Method` ships the new v1 method, and the checkout's method copies stay unchanged until migration (09). CI/platform validation is not yet run for this package; local evidence only. Package 09 (alpha migration and rollback) is next.
+
+### Package 09 — local evidence, 2026-10-07
+
+Delivered `migrate [--check | --dry-run]` with explicit apply. New pure `RepoLore.Core.Migration` components (`NoteSource`, `NoteVariant`, `MappingStatus`, `MigrationMapping`, `MigrationPlanner`) classify each note mapping; `RepoLore.Infrastructure.History` gains `MigrationEnumerator` (extended physical scope), `MigrationEngine` (`MigrationInventory`/`MigrationResult`/`MigrationException`), and a `migrationScope` tag on `CaptureScope` (encoded only when true, so old manifests decode to false). `RestoreEngine` reads `target.Scope.MigrationScope` to pick the enumerator and skip `history.exclude` filtering, so restoring a migration baseline restores old bytes, removes only migration-created destinations, and restores marker absence. The CLI adds `MigrateCommand`, `--check` parsing, `Renderer.MigratePlan`/`Renderer.Migrate`, and help/usage entries. The [alpha-migration note](alpha-migration.md) records responsibilities.
+
+Classification matches the contract: one useful variant → candidate (copy `tree/`, keep `sparse-tree/`); identical variants → candidate (sparse wins, no copy); differing useful variants → conflict; ambiguous old naming (`foo/bar.md`) → conflict even with a matching source directory. Destination files are never overwritten as "derived": a note already at its destination is a keep. Only `_repolore/root.md` escapes `tree/` to the top-level destination. Non-Markdown/non-UTF-8 legacy files are left in place and reported; empty `tree/` directories are pruned after verified removals; custom and session areas stay unchanged; a `_repolore/sessions/` that does not fit the session layout blocks apply. Conflicts and `--check`/`--dry-run` write nothing; a clean apply checkpoints the migration baseline (extended scope) before mutation, reuses package-07's pending record, and writes the marker last.
+
+Checks actually run on macOS arm64 with the Rider SDK on PATH (`~/.dotnet`, 10.0.100):
+
+- `dotnet build --configuration Release --no-restore` — passed, 0 warnings and 0 errors (new Core `Migration/` and Infrastructure/CLI files compile under the boundary guard; no `record` types).
+- `dotnet test --no-build --configuration Release tests/RepoLore.Core.Tests` — passed, **73/73**. New checks (9): sparse-only keep; local-only tree copy; identical copies single candidate no-copy; differing copies conflict; empty marker ignored when the other variant is useful; ambiguous naming conflict; top-level root keep; tree-root copy to the escaping destination; differing root variants conflict.
+- `dotnet test --no-build --configuration Release tests/RepoLore.Infrastructure.Tests` — passed, **57/57**. New checks (8): sparse-only clone migrates preserving every note and marks v1; local-only tree note copied and legacy `tree/` removed; identical copies keep sparse and drop tree; differing copies conflict and write nothing; non-Markdown legacy left in place and reported; restoring the migration baseline restores old bytes and marker absence; mid-migration failure reports the baseline id and recovers; tree-root note copies to the top-level root.
+- `dotnet test --no-build --configuration Release tests/RepoLore.Cli.Tests` — passed, **51/51**. New checks (6, process-level): migrate applies on `alpha-sparse-only` and marks v1; rerun is a no-op; `alpha-conflict` writes nothing (exit 3); `--check` reports conflict exit 3; `--dry-run` writes nothing; custom and session areas survive unchanged.
+- `git diff --check` and `cmp method.md _repolore/method.md` — passed; the two method copies remain identical (unchanged).
+
+The shipped CLI performs no network/process/telemetry operations; the boundary guard still passes. The real dogfood checkout was not migrated — all fixtures are disposable. The repo-root and `_repolore/` method copies remain alpha (unchanged), consistent with package 08's boundary. CI/platform validation is not yet run for this package; local evidence only. Package 10 (health checks and final CLI contract) is next.
 
 ### Test stack — policy change, 2026-10-03
 

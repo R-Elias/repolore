@@ -1,6 +1,7 @@
 using System.Globalization;
 using RepoLore.Core.Context;
 using RepoLore.Core.Json;
+using RepoLore.Core.Migration;
 using RepoLore.Core.Restore;
 using RepoLore.Core.Snapshot;
 using RepoLore.Infrastructure.History;
@@ -263,6 +264,102 @@ public static class Renderer
 
         Console.WriteLine($"restore complete: {result.Added} added, {result.Replaced} replaced, {result.Deleted} deleted (checkpoint {ManifestId.Format(result.PublishedId!.Value)})");
     }
+
+    public static void MigratePlan(MigrationInventory inventory, IReadOnlyList<MigrationMapping> mappings, bool json, bool quiet, bool dryRun)
+    {
+        if (json)
+        {
+            var root = new JsonObject();
+            var array = new JsonArray();
+            foreach (var mapping in mappings)
+            {
+                var obj = new JsonObject();
+                obj.Members.Add(new JsonMember("status", new JsonStringValue(MappingStatusName(mapping.Status))));
+                obj.Members.Add(new JsonMember("key", new JsonStringValue(mapping.Key)));
+                obj.Members.Add(new JsonMember("destination", new JsonStringValue(mapping.Destination)));
+                if (mapping.SourcePath is not null)
+                    obj.Members.Add(new JsonMember("source", new JsonStringValue(mapping.SourcePath)));
+                if (mapping.Finding is not null)
+                    obj.Members.Add(new JsonMember("finding", new JsonStringValue(mapping.Finding)));
+                array.Items.Add(obj);
+            }
+            root.Members.Add(new JsonMember("mappings", array));
+            root.Members.Add(new JsonMember("legacyToRemove", StringArray(inventory.LegacyToRemove)));
+            root.Members.Add(new JsonMember("unknownFiles", StringArray(inventory.UnknownFiles)));
+            root.Members.Add(new JsonMember("customAreas", StringArray(inventory.CustomAreas)));
+            root.Members.Add(new JsonMember("sessionAreas", StringArray(inventory.SessionAreas)));
+            root.Members.Add(new JsonMember("sessionsNamingConflict", new JsonBooleanValue(inventory.SessionsNamingConflict)));
+            Console.WriteLine(JsonWriter.Write(root));
+            return;
+        }
+
+        if (quiet)
+            return;
+
+        foreach (var mapping in mappings)
+        {
+            switch (mapping.Status)
+            {
+                case MappingStatus.Candidate:
+                    if (mapping.SourcePath is not null)
+                        Console.WriteLine((dryRun ? "copy " : "candidate ") + mapping.SourcePath + " -> " + mapping.Destination);
+                    else
+                        Console.WriteLine((dryRun ? "keep " : "candidate ") + mapping.Destination);
+                    break;
+                case MappingStatus.Conflict:
+                case MappingStatus.Ambiguous:
+                    Console.WriteLine("conflict " + mapping.Destination + ": " + mapping.Finding);
+                    break;
+            }
+        }
+
+        if (dryRun)
+        {
+            foreach (var legacy in inventory.LegacyToRemove)
+                Console.WriteLine("remove " + legacy);
+            Console.WriteLine("create " + MigrationEngine.MarkerPath);
+        }
+
+        foreach (var area in inventory.CustomAreas)
+            Console.WriteLine("unchanged " + area);
+        foreach (var session in inventory.SessionAreas)
+            Console.WriteLine("session " + session);
+        if (inventory.SessionsNamingConflict)
+            Console.WriteLine("conflict _repolore/sessions/ does not match the session layout");
+        foreach (var unknown in inventory.UnknownFiles)
+            Console.WriteLine("left-in-place " + unknown);
+    }
+
+    public static void Migrate(MigrationResult result, bool json, bool quiet)
+    {
+        if (json)
+        {
+            var root = new JsonObject();
+            root.Members.Add(new JsonMember("checkpointId", result.PublishedId is long id ? Number(id) : new JsonNullValue()));
+            root.Members.Add(new JsonMember("created", Number(result.Created)));
+            root.Members.Add(new JsonMember("removed", Number(result.Removed)));
+            root.Members.Add(new JsonMember("leftBehind", StringArray(result.LeftBehind)));
+            Console.WriteLine(JsonWriter.Write(root));
+            return;
+        }
+
+        foreach (var left in result.LeftBehind)
+            Console.Error.WriteLine("repolore: left in place (unknown legacy content): " + left);
+
+        if (quiet)
+            return;
+
+        var checkpoint = result.PublishedId is long published ? ManifestId.Format(published) : "?";
+        Console.WriteLine($"migrated: {result.Created} created, {result.Removed} removed (checkpoint {checkpoint})");
+    }
+
+    private static string MappingStatusName(MappingStatus status) => status switch
+    {
+        MappingStatus.Candidate => "candidate",
+        MappingStatus.Conflict => "conflict",
+        MappingStatus.Ambiguous => "ambiguous",
+        _ => "unknown"
+    };
 
     private static string ActionName(RestoreAction action) => action switch
     {

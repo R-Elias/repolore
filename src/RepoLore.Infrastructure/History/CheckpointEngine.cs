@@ -59,21 +59,21 @@ public sealed class CheckpointEngine
         _clock = clock ?? new Clock();
     }
 
-    public CheckpointResult Capture(RepoLoreConfig config, Action? beforeVerification = null, Action? beforeManifestPublish = null, IReadOnlySet<long>? protectedIds = null)
+    public CheckpointResult Capture(RepoLoreConfig config, Action? beforeVerification = null, Action? beforeManifestPublish = null, IReadOnlySet<long>? protectedIds = null, bool migrationScope = false)
     {
         var historyExclude = config.HistoryExclude;
         _objects.EnsureDirectories();
         _checkpoints.EnsureDirectory();
 
-        var first = Collect(historyExclude, storeObjects: true);
+        var first = Collect(historyExclude, storeObjects: true, migrationScope);
 
         beforeVerification?.Invoke();
 
-        var second = Collect(historyExclude, storeObjects: false);
+        var second = Collect(historyExclude, storeObjects: false, migrationScope);
         if (!SameInventory(first, second))
             throw new HistoryStoreException("files changed while capturing; retry after pausing edits");
 
-        var scope = BuildScope(config, historyExclude);
+        var scope = BuildScope(config, historyExclude, migrationScope);
         var previous = _checkpoints.ReadHighestCompleted();
         var diff = SnapshotDiffer.Compare(previous, scope, first);
 
@@ -97,9 +97,11 @@ public sealed class CheckpointEngine
         return new CheckpointResult(false, nextId, diff.Added, diff.Changed, diff.Removed, first.Count, cleanup);
     }
 
-    private List<FileEntry> Collect(RuleSet historyExclude, bool storeObjects)
+    private List<FileEntry> Collect(RuleSet historyExclude, bool storeObjects, bool migrationScope)
     {
-        var paths = HistoryEnumerator.EnumerateEligible(_repositoryRoot, historyExclude);
+        var paths = migrationScope
+            ? MigrationEnumerator.EnumerateScope(_repositoryRoot)
+            : HistoryEnumerator.EnumerateEligible(_repositoryRoot, historyExclude);
         var files = new List<FileEntry>(paths.Count);
         foreach (var relative in paths)
         {
@@ -111,9 +113,9 @@ public sealed class CheckpointEngine
         return files;
     }
 
-    private CaptureScope BuildScope(RepoLoreConfig config, RuleSet historyExclude)
+    private CaptureScope BuildScope(RepoLoreConfig config, RuleSet historyExclude, bool migrationScope)
     {
-        return new CaptureScope(config.HistoryEnabled, config.HistoryMaxBytes, config.HistoryExcludeRules, RepoLoreJsonStatus(historyExclude));
+        return new CaptureScope(config.HistoryEnabled, config.HistoryMaxBytes, config.HistoryExcludeRules, RepoLoreJsonStatus(historyExclude), migrationScope);
     }
 
     private string RepoLoreJsonStatus(RuleSet historyExclude)

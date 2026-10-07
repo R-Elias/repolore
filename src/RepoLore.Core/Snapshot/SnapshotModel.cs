@@ -25,18 +25,20 @@ public sealed class CaptureScope
     public const string RepoLoreJsonAbsent = "absent";
     public const string RepoLoreJsonExcluded = "excluded";
 
-    public CaptureScope(bool historyEnabled, long maxBytes, IReadOnlyList<string> excludeRules, string repoLoreJsonStatus)
+    public CaptureScope(bool historyEnabled, long maxBytes, IReadOnlyList<string> excludeRules, string repoLoreJsonStatus, bool migrationScope = false)
     {
         HistoryEnabled = historyEnabled;
         MaxBytes = maxBytes;
         ExcludeRules = excludeRules;
         RepoLoreJsonStatus = repoLoreJsonStatus;
+        MigrationScope = migrationScope;
     }
 
     public bool HistoryEnabled { get; }
     public long MaxBytes { get; }
     public IReadOnlyList<string> ExcludeRules { get; }
     public string RepoLoreJsonStatus { get; }
+    public bool MigrationScope { get; }
 }
 
 public sealed class CheckpointManifest

@@ -70,8 +70,16 @@ public sealed class RestorePlan
 
 public static class RestorePlanner
 {
-    public static RestorePlan Plan(CheckpointManifest target, IReadOnlyList<FileEntry> currentFiles, RepoLoreConfig currentConfig, string? path)
+    public static RestorePlan Plan(CheckpointManifest target, IReadOnlyList<FileEntry> currentFiles, RepoLoreConfig currentConfig, string? path, bool migrationScope = false)
     {
+        var saved = ToMap(target.Files);
+        var current = ToMap(currentFiles);
+
+        if (migrationScope)
+            return path is null
+                ? PlanFullMigration(saved, current)
+                : PlanSingleMigration(path, saved, current);
+
         RuleSet savedExclude;
         try
         {
@@ -82,12 +90,65 @@ public static class RestorePlanner
             throw new RestorePlanException($"target checkpoint has an invalid coverage rule (line {ex.Line}): {ex.Message}");
         }
 
-        var saved = ToMap(target.Files);
-        var current = ToMap(currentFiles);
-
         return path is null
             ? PlanFull(saved, current, savedExclude, currentConfig.HistoryExclude)
             : PlanSingle(path, saved, current, savedExclude, currentConfig.HistoryExclude);
+    }
+
+    private static RestorePlan PlanFullMigration(Dictionary<string, FileEntry> saved, Dictionary<string, FileEntry> current)
+    {
+        var candidates = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var path in saved.Keys)
+            candidates.Add(path);
+        foreach (var path in current.Keys)
+            candidates.Add(path);
+
+        var entries = new List<RestorePlanEntry>(candidates.Count);
+        foreach (var path in candidates)
+        {
+            saved.TryGetValue(path, out var savedFile);
+            current.TryGetValue(path, out var currentFile);
+
+            if (savedFile is not null && currentFile is not null)
+            {
+                entries.Add(string.Equals(savedFile.Hash, currentFile.Hash, StringComparison.Ordinal)
+                    ? new RestorePlanEntry(path, RestoreAction.Unchanged, currentFile.Hash, savedFile.Hash, savedFile.Size, "identical in saved and current state")
+                    : new RestorePlanEntry(path, RestoreAction.Replace, currentFile.Hash, savedFile.Hash, savedFile.Size, "content differs from the snapshot"));
+            }
+            else if (savedFile is not null)
+            {
+                entries.Add(new RestorePlanEntry(path, RestoreAction.Add, null, savedFile.Hash, savedFile.Size, "present in snapshot, absent now"));
+            }
+            else
+            {
+                entries.Add(new RestorePlanEntry(path, RestoreAction.Delete, currentFile!.Hash, null, 0, "absent in snapshot, present now"));
+            }
+        }
+
+        return new RestorePlan(entries);
+    }
+
+    private static RestorePlan PlanSingleMigration(string path, Dictionary<string, FileEntry> saved, Dictionary<string, FileEntry> current)
+    {
+        saved.TryGetValue(path, out var savedFile);
+        current.TryGetValue(path, out var currentFile);
+
+        var savedHash = savedFile?.Hash;
+        var currentHash = currentFile?.Hash;
+
+        RestorePlanEntry entry;
+        if (savedHash is not null && currentHash is not null)
+            entry = string.Equals(savedHash, currentHash, StringComparison.Ordinal)
+                ? new RestorePlanEntry(path, RestoreAction.Unchanged, currentHash, savedHash, savedFile!.Size, "identical in saved and current state")
+                : new RestorePlanEntry(path, RestoreAction.Replace, currentHash, savedHash, savedFile!.Size, "content differs from the snapshot");
+        else if (savedHash is not null)
+            entry = new RestorePlanEntry(path, RestoreAction.Add, null, savedHash, savedFile!.Size, "present in snapshot, absent now");
+        else if (currentHash is not null)
+            entry = new RestorePlanEntry(path, RestoreAction.Delete, currentHash, null, 0, "absent in snapshot, present now");
+        else
+            entry = new RestorePlanEntry(path, RestoreAction.Unchanged, null, null, 0, "absent in both saved and current state");
+
+        return new RestorePlan(new[] { entry });
     }
 
     private static RestorePlan PlanFull(

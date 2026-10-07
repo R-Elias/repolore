@@ -57,6 +57,8 @@ public static class ManifestCodec
             exclude.Items.Add(new JsonStringValue(rule));
         scope.Members.Add(new JsonMember("exclude", exclude));
         scope.Members.Add(new JsonMember("repoloreJson", new JsonStringValue(manifest.Scope.RepoLoreJsonStatus)));
+        if (manifest.Scope.MigrationScope)
+            scope.Members.Add(new JsonMember("migrationScope", new JsonBooleanValue(true)));
         root.Members.Add(new JsonMember("scope", scope));
 
         var files = new JsonArray();
@@ -119,7 +121,19 @@ public static class ManifestCodec
         if (repoLoreJson is not (CaptureScope.RepoLoreJsonPresent or CaptureScope.RepoLoreJsonAbsent or CaptureScope.RepoLoreJsonExcluded))
             throw new ManifestFormatException($"manifest scope 'repoloreJson' has an unknown status '{repoLoreJson}'");
 
-        return new CaptureScope(historyEnabled, maxBytes, exclude, repoLoreJson);
+        var migrationScope = ReadOptionalBool(obj, "migrationScope");
+
+        return new CaptureScope(historyEnabled, maxBytes, exclude, repoLoreJson, migrationScope);
+    }
+
+    private static bool ReadOptionalBool(JsonObject obj, string name)
+    {
+        foreach (var member in obj.Members)
+            if (string.Equals(member.Name, name, StringComparison.Ordinal))
+                return member.Value is JsonBooleanValue boolean
+                    ? boolean.Value
+                    : throw new ManifestFormatException($"manifest scope '{name}' must be a boolean");
+        return false;
     }
 
     private static List<FileEntry> ReadFiles(JsonArray array)

@@ -1,6 +1,6 @@
 # RepoLore v1 — Roadmap and Implementation Contract
 
-Status: **Packages 01–10 implemented (01–02 CI-green; 03–10 local evidence pending CI); package 11 (packaged tool) is locally verified on macOS with CI/Linux-blocked-network gates pending; dogfood and release (12–13) remain.** See the [completion record](implementation-v1.md#completion-record) for actual checks and remaining gates. This replaces the previous v0 plan. The first stable release is v1.0.0; preview releases may precede it. CLI versions and knowledge format versions are independent.
+Status: **Packages 01–11 implemented (01–02 and 11 CI-green; 03–10 local evidence, subsequently covered by the green CI matrix as reported); dogfood and release (12–13) remain.** See the [completion record](implementation-v1.md#completion-record) for actual checks and remaining gates. This replaces the previous v0 plan. The first stable release is v1.0.0; preview releases may precede it. CLI versions and knowledge format versions are independent.
 
 Read [product direction](../product/product.md) for the desired experience and release objectives, and [invariants](../product/invariants.md) for non-negotiable rules. This file specifies the product contract. Execute the first release through [implementation work packages](implementation-v1.md): 13 dependency-ordered steps with pitfalls, fixtures, and explicit pass/fail gates. That guide resolves the implementation details referenced below; do not leave them for ad hoc interpretation.
 

@@ -1,6 +1,6 @@
 # First Release — Implementation Work Packages
 
-Status: **packages 01–10 implemented (01–02 CI-green; 03–10 local evidence pending CI); package 11 implemented with macOS evidence only, not yet closed**. Target: a preview followed by v1.0.0 of the single `RepoLore.Cli` NuGet tool. This guide decomposes the [roadmap](roadmap.md); [invariants](../product/invariants.md) and the [session contract](../product/sessions.md) still apply. It resolves earlier open implementation choices below. Do not copy alpha mirror-generation behavior into v1.
+Status: **packages 01–10 implemented (01–02 CI-green; 03–10 local evidence pending CI); package 11 implemented and CI-green (committed as 4ce90ca)**. Target: a preview followed by v1.0.0 of the single `RepoLore.Cli` NuGet tool. This guide decomposes the [roadmap](roadmap.md); [invariants](../product/invariants.md) and the [session contract](../product/sessions.md) still apply. It resolves earlier open implementation choices below. Do not copy alpha mirror-generation behavior into v1.
 
 ## How to execute this plan
 
@@ -212,7 +212,7 @@ Track implementation here or in linked PRs; all entries start incomplete. For ea
 - [x] 08 — Initialization and method updates
 - [x] 09 — Alpha migration and rollback
 - [x] 10 — Health checks and final CLI contract — implemented and validated locally (details below)
-- [ ] 11 — Packaged tool and restricted installation — implemented; macOS evidence local; Windows/Linux and Linux networking-blocked CI gates not yet run, package ID ownership unconfirmed (details below)
+- [x] 11 — Packaged tool and restricted installation — implemented; macOS local evidence plus green Windows/Linux/macOS CI including the Linux networking-blocked smoke; package ID ownership still unconfirmed (details below)
 - [ ] 12 — Dogfood and NuGet preview
 - [ ] 13 — Signed v1.0.0 release
 
@@ -371,7 +371,7 @@ Checks actually run on macOS arm64 with the Rider SDK on PATH (`~/.dotnet`, 10.0
 
 Remaining limitations: CI/platform validation is not yet run for this package (local macOS arm64 only). ReSharper was not run. Percent-encoded and reference-style Markdown links are not validated (documented subset). Health lists entry names under `_repolore/sessions/` through the shared inventory but never opens unselected session files. A repository with no `_repolore/` exits 2, as for every other command. Package 11 (packaged tool and restricted installation) is next.
 
-### Package 11 — local evidence, 2026-10-23 (gate not closed)
+### Package 11 — local evidence, 2026-10-23; CI gate closed
 
 Delivered the packaged tool checks; the [packaging note](packaging-and-installation.md) holds responsibilities, install instructions, and supported environments. `dotnet pack` already produced a working tool; the package work was to make it correct and verified. Changes: real package metadata in `RepoLore.Cli.csproj` (authors `R-Elias`, Apache-2.0 license expression matching `LICENSE`, project/repository URL from the git remote; the SDK placeholders `Package Description`/author `RepoLore.Cli` are gone); `DeterministicSourcePaths=true` in `Directory.Build.props` (the shipped `RepoLore.Cli.dll` embedded `/Users/elias/...` through its pdb path); new `tests/RepoLore.Cli.Tests/Packaging/` (fixture, contents tests, isolated-environment helper, installed-tool tests) and `TestSupport.RunWithEnvironment`; `build/run-without-network.sh`; CI split into a general Cli step, a Packaging step on all three OSes, and a Linux-only networking-blocked repeat. Version stays single-sourced in `Directory.Build.props`; `PackageId`/`ToolCommandName` live once in the Cli csproj.
 
@@ -386,7 +386,9 @@ Checks actually run on macOS arm64, SDK 10.0.100 (`~/.dotnet`, which also has a 
 - NuGet.org read-only lookup (no publish): `api.nuget.org/v3-flatcontainer/repolore.cli/index.json` is 404 and the search API returns 0 hits for `repolore`. This shows nothing is published under the ID; it does **not** confirm account ownership or prefix reservation.
 - `bash -n build/run-without-network.sh` passes and the script refuses on non-Linux (exit 2). The `ci.yml` YAML parses. `git diff --check` and `cmp method.md _repolore/method.md` — passed; method copies untouched and identical. No `.history/` exists in this checkout and no lock file changed.
 
-**Gates not run locally:** Windows and Linux runner passes of the Packaging suite; the Linux install/runtime smoke with networking blocked (`build/run-without-network.sh` and the CI step are written but never executed on Linux; Docker was not running locally, and the `sudo env … DOTNET_ROOT` wrapper is the likeliest place for a first-run CI failure); a bounded network-call trace (not implemented; the roadmap says "if feasible"). Open items: NuGet ID ownership/availability confirmation, `Authors` value, a package readme (package 12). No repository knowledge, history, or checkout files were touched by install/smoke runs; the real checkout was never migrated. ReSharper was not run. Package 11 stays unchecked until CI is green on all three OSes including the blocked-network step.
+**CI gate resolved:** the maintainer reported the CI matrix green after commit 4ce90ca, so the Windows, Linux, and macOS Packaging runs and the Linux networking-blocked step passed. The run itself was not inspected from this environment (`gh` is unavailable), so the run URL and logs are not recorded here. The paragraph below is the pre-CI statement of what was unrun locally, kept as history.
+
+**Gates not run locally (before CI):** Windows and Linux runner passes of the Packaging suite; the Linux install/runtime smoke with networking blocked (`build/run-without-network.sh` and the CI step are written but never executed on Linux; Docker was not running locally, and the `sudo env … DOTNET_ROOT` wrapper is the likeliest place for a first-run CI failure); a bounded network-call trace (not implemented; the roadmap says "if feasible"). Open items: NuGet ID ownership/availability confirmation, `Authors` value, a package readme (package 12). No repository knowledge, history, or checkout files were touched by install/smoke runs; the real checkout was never migrated. ReSharper was not run. Still open after CI: NuGet ID ownership/prefix confirmation (required before publication), the `Authors` value, a package readme, and the network-call trace.
 
 ### Test stack — policy change, 2026-10-03
 

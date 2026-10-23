@@ -41,11 +41,18 @@ Related controls: `InitTests.A_session_folder_created_before_init_makes_init_ref
 
 The journey is not a performance or productivity measurement; no numerical improvement is claimed.
 
-## Dogfood migration of this checkout — prepared, NOT run
+## Dogfood migration of this checkout — run 2026-10-24
 
 Rehearsed on 2026-10-23 on a disposable `git clone` of HEAD (never on this checkout): `migrate --check` exit 1; `--dry-run` plans one `create _repolore/repolore.json` and keeps `root.md` and `sparse-tree/tools/tools.md`; `product/` and `roadmap/` are reported as untouched custom areas. After `migrate`: SHA-256 of all 19 files unchanged (`diff` of before/after manifests empty), `repolore.json` is `{"formatVersion":1}`, `health-check` healthy, second `migrate` is a no-op, `restore 1` (the migration baseline) deleted only the marker and `health-check` reported `migration-needed` again.
 
-Procedure to run only after the maintainer says so:
+**Run on 2026-10-24 with the maintainer's go-ahead, using the actual packed `RepoLore.Cli.0.1.0-preview.1.nupkg` installed from a local-only `<clear/>` feed into a pinned manifest kept outside the checkout** (isolated NuGet/`DOTNET_CLI_HOME` caches, `--repo-root` pointing at the checkout; the checkout got no manifest). Results:
+
+- Backup first, outside the repository and `.history/`: `~/repolore-backups/2026-10-24-pre-migration/` holds `repolore-poc.bundle` (`git bundle verify`: complete history), a copy of `_repolore/`, `method.md`, `.gitignore`, and `uncommitted.diff` (two uncommitted completion-record edits, preserved untouched). SHA-256 manifests of the live and backup `_repolore/` (20 files) were identical.
+- A fresh-clone rehearsal with the installed package gave the same plan as the real checkout: `migrate --check` exit 1 (candidates `root.md`, `sparse-tree/tools/tools.md`), `--dry-run` exit 0 with one `create _repolore/repolore.json`.
+- Applied: `migrated: format marker written, 0 notes copied, 0 legacy files removed (checkpoint 0000000000000002)`; baseline checkpoint 1 is the migration baseline, checkpoint 2 the result. `health-check` healthy, second `migrate` a no-op, `.history/` Gitignored. All 20 pre-existing files are byte-identical to the verified backup state; `repolore.json` is `{"formatVersion":1}`; `git status` shows only the new `repolore.json` plus the two pre-existing uncommitted edits.
+- Not done, deliberately: `init --update-method`, any change to the method bodies, and removing the obsolete `_repolore/tree/` line from `.gitignore`. The method banners (both copies, identical) now say the alpha body is superseded for this checkout. The rollback path (`restore 1`, which removes only the marker) was rehearsed on the clone, not run here.
+
+Original procedure (kept as the reference for a repeat on another knowledge base):
 
 1. `git status` — preserve every uncommitted change; commit or stash deliberately, never discard.
 2. Outside the repository **and outside `_repolore/.history/`**: `git bundle create <backup-dir>/repolore-poc-<date>.bundle --all`, `cp -R _repolore <backup-dir>/_repolore`, `cp method.md .gitignore <backup-dir>/`.
@@ -60,7 +67,7 @@ Procedure to run only after the maintainer says so:
 
 | Item | State |
 |---|---|
-| Package builds, installs from a clean local-only feed, runs the full journey | **Ready**: macOS arm64 locally, and the maintainer reported the Windows/Linux/macOS CI matrix green after the package-12 push (2026-10-24; run not inspected from here). Package 12.5 changes need their own CI run |
+| Package builds, installs from a clean local-only feed, runs the full journey | **Ready**: macOS arm64 locally, and the maintainer reported the Windows/Linux/macOS CI matrix green after the package-12 push (2026-10-24; run not inspected from here). Package 12.5 is also reported green on all three |
 | Contents whitelist, no knowledge/sessions/history/test stack/build paths | **Ready** (readme added deliberately) |
 | User documentation and package readme | **Ready**; NuGet.org rendering of the readme unseen until a publish |
 | `RepoLore.Cli` ID ownership, `RepoLore.` prefix reservation | **Open** — the maintainer reports the name is free on nuget.org (taken only on npm and as a GitHub organization, which do not affect a NuGet ID). An unpublished ID is still unreserved until the first push, and a placeholder push is not allowed; the optional `RepoLore.` prefix reservation is requested through nuget.org after the account exists |
@@ -68,7 +75,7 @@ Procedure to run only after the maintainer says so:
 | Package signing | **Not available**; a preview ships unsigned; v1.0.0 gate (package 13) |
 | Network-call trace of the smoke path | **Not implemented**; static guards, the boundary-guard build, and the Linux networking-blocked run are the evidence |
 | Linux networking-blocked run of the journey | Runs inside that CI step; covered by the reported green matrix |
-| Dogfood migration of this checkout | **Blocked on maintainer approval** |
+| Dogfood migration of this checkout | **Done 2026-10-24** (see the section above); the method-body replacement is still the maintainer's decision |
 | SBOM, checksum file, vulnerability-reporting contact, release notes | Package 13 |
 
 **The preview must state:** it is a preview (`0.1.0-preview.1`); the package is unsigned (NuGet.org adds only its own repository signature after upload, which is not an author signature); it is not enterprise-ready, certified, or a guarantee about what external agents or editors do with content they read; it needs a .NET 10 SDK to install and a .NET 10.0.x runtime; the networking-blocked run is Linux-only and there is no network-call trace; the knowledge format is version 1 and unknown formats are refused. `README.md` and `docs/user-guide.md` already carry the first two statements.

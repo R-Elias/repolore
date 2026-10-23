@@ -52,7 +52,7 @@ and an approved `NuGet.Config` that clears other sources:
 </configuration>
 ```
 
-Then `dotnet tool restore` and `dotnet tool run repolore -- <command>` (or `dotnet repolore`). Commit no credentials. `dotnet tool install RepoLore.Cli --version <v> --local` after `dotnet new tool-manifest` writes the same manifest (verified manually). Global installation (`dotnet tool install --global`) is an individual-user alternative and is **not** exercised by the package tests. This checkout deliberately has no tool manifest: the tool is unpublished and the dogfood adoption awaits the maintainer's approval ([dogfood and preview](dogfood-and-preview.md)).
+Then `dotnet tool restore` and `dotnet tool run repolore -- <command>` (or `dotnet repolore`). Commit no credentials. `dotnet tool install RepoLore.Cli --version <v> --local` after `dotnet new tool-manifest` writes the same manifest (verified manually). Global installation (`dotnet tool install --global`) is an individual-user alternative and is **not** exercised by the package tests. This checkout deliberately has no tool manifest: the tool is unpublished and the checkout was migrated by running the packed tool from a manifest kept outside it ([dogfood and preview](dogfood-and-preview.md)); a committed manifest needs a published version to pin.
 
 ## Checks
 

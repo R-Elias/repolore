@@ -21,6 +21,8 @@ dotnet test --no-build --configuration Release tests/RepoLore.Infrastructure.Tes
 dotnet test --no-build --configuration Release tests/RepoLore.Cli.Tests
 ```
 
+CI splits the Cli suite with a `FullyQualifiedName` filter: the general step excludes `RepoLore.Cli.Tests.Packaging`, which runs as its own step (and again with networking blocked on Linux). See [packaging and installation](packaging-and-installation.md).
+
 Build/test tooling is outside the shipped application's privacy boundary. CI disables SDK telemetry and runs the same checks on Windows, Linux, and macOS. Local results and outstanding platform evidence belong in the [completion record](implementation-v1.md#completion-record).
 
 ## Frozen starting fixtures

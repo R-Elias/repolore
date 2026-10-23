@@ -13,7 +13,11 @@ public static class TestSupport
         ?? Path.GetFullPath(Path.Combine(System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory(),
             "..", "..", "..", OperatingSystem.IsWindows() ? "dotnet.exe" : "dotnet"));
 
-    public static (int Code, string Out, string Error) Run(string cwd, params string[] arguments)
+    public static (int Code, string Out, string Error) Run(string cwd, params string[] arguments) =>
+        RunWithEnvironment(cwd, new Dictionary<string, string>(), arguments);
+
+    public static (int Code, string Out, string Error) RunWithEnvironment(
+        string cwd, IReadOnlyDictionary<string, string> environment, params string[] arguments)
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
         try
@@ -21,9 +25,11 @@ public static class TestSupport
             var result = CliWrap.Cli.Wrap(Dotnet)
                 .WithArguments(arguments)
                 .WithWorkingDirectory(cwd)
-                .WithEnvironmentVariables(env => env
-                    .Set("DOTNET_CLI_TELEMETRY_OPTOUT", "1")
-                    .Set("DOTNET_SKIP_FIRST_TIME_EXPERIENCE", "1"))
+                .WithEnvironmentVariables(env =>
+                {
+                    env.Set("DOTNET_CLI_TELEMETRY_OPTOUT", "1").Set("DOTNET_SKIP_FIRST_TIME_EXPERIENCE", "1");
+                    foreach (var (name, value) in environment) env.Set(name, value);
+                })
                 .WithValidation(CommandResultValidation.None)
                 .ExecuteBufferedAsync(timeout.Token)
                 .GetAwaiter()

@@ -21,4 +21,14 @@ jobs:
       - run: dotnet build --no-restore --configuration Release
       - run: dotnet test --no-build --configuration Release tests/RepoLore.Core.Tests
       - run: dotnet test --no-build --configuration Release tests/RepoLore.Infrastructure.Tests
-      - run: dotnet test --no-build --configuration Release tests/RepoLore.Cli.Tests
+      - run: dotnet test --no-build --configuration Release tests/RepoLore.Cli.Tests --filter "FullyQualifiedName!~RepoLore.Cli.Tests.Packaging"
+      - name: Pack the tool and smoke-test the installed package from a local-only feed
+        run: dotnet test --no-build --configuration Release tests/RepoLore.Cli.Tests --filter "FullyQualifiedName~RepoLore.Cli.Tests.Packaging"
+      - name: Repeat the package smoke with networking blocked (Linux)
+        if: runner.os == 'Linux'
+        run: >
+          sudo env "PATH=$PATH" "DOTNET_ROOT=${DOTNET_ROOT:-$(dirname "$(readlink -f "$(command -v dotnet)")")}"
+          DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
+          bash build/run-without-network.sh
+          dotnet test --no-build --configuration Release tests/RepoLore.Cli.Tests
+          --filter "FullyQualifiedName~RepoLore.Cli.Tests.Packaging"

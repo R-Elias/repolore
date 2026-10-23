@@ -87,6 +87,25 @@ public sealed class MigrationEngine
 
     public InitDirKind Classify() => new InitEngine(_repositoryRoot, _historyDirectory).Classify();
 
+    public IReadOnlyList<string> FindDestinationProblems(IReadOnlyList<MigrationMapping> mappings)
+    {
+        var problems = new List<string>();
+        foreach (var mapping in mappings)
+        {
+            if (!mapping.NeedsCopy)
+                continue;
+            try
+            {
+                _resolver.ResolveForWrite(mapping.Destination);
+            }
+            catch (PathResolutionException ex)
+            {
+                problems.Add(mapping.Destination + ": " + ex.Message);
+            }
+        }
+        return problems;
+    }
+
     public MigrationInventory Inventory()
     {
         var notes = new List<NoteVariant>();
@@ -163,6 +182,10 @@ public sealed class MigrationEngine
         foreach (var mapping in mappings)
             if (mapping.Status != MappingStatus.Candidate)
                 throw new MigrationException("migration has unresolved conflicts; run 'repolore migrate --check' to see them");
+
+        var problems = FindDestinationProblems(mappings);
+        if (problems.Count > 0)
+            throw new MigrationException("migration has unsafe destinations: " + string.Join("; ", problems));
 
         if (_pending.Read() is not null)
             throw new MigrationException("a mutation is already pending; recover it before migrating");

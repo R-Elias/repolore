@@ -31,8 +31,9 @@ public static class MigrateCommand
 
         var inventory = engine.Inventory();
         var mappings = MigrationPlanner.Classify(inventory.Notes);
+        var destinationProblems = engine.FindDestinationProblems(mappings);
 
-        var conflicts = inventory.SessionsNamingConflict;
+        var conflicts = inventory.SessionsNamingConflict || destinationProblems.Count > 0;
         foreach (var mapping in mappings)
             if (mapping.Status != MappingStatus.Candidate)
                 conflicts = true;
@@ -41,13 +42,13 @@ public static class MigrateCommand
 
         if (cl.DryRun || cl.Check)
         {
-            Renderer.MigratePlan(inventory, mappings, cl.Json, cl.Quiet, cl.DryRun);
+            Renderer.MigratePlan(inventory, mappings, destinationProblems, cl.Json, cl.Quiet, cl.DryRun);
             return conflicts ? ExitCodes.Failure : (findings ? ExitCodes.Findings : ExitCodes.Success);
         }
 
         if (conflicts)
         {
-            Renderer.MigratePlan(inventory, mappings, cl.Json, cl.Quiet, dryRun: false);
+            Renderer.MigratePlan(inventory, mappings, destinationProblems, cl.Json, cl.Quiet, dryRun: false);
             Console.Error.WriteLine("repolore: migration blocked by unresolved conflicts; resolve them and re-run");
             return ExitCodes.Failure;
         }

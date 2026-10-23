@@ -57,6 +57,11 @@ and restores marker absence. Rerunning a clean migration is a no-op (already `V1
 
 ## Apply transaction
 
+Before capture, `Apply` (and `--check`/`--dry-run`) preflights every copy destination through
+`FindDestinationProblems` using the shared path resolver, so an escaped destination — a symlinked
+`sparse-tree/` ancestor — is reported as a conflict and refuses without taking the writer lock or
+writing a checkpoint.
+
 `Apply` reuses package-07's pending record unchanged: capture the migration baseline, write
 `pending.json` (baseline id as both target and pre-operation id, plus `plan[{path, before, after}]`
 covering copies, verified legacy removals, and the marker), then stage each write via temp-file

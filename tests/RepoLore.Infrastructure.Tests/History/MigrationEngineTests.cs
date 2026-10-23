@@ -153,6 +153,105 @@ public class MigrationEngineTests
         });
     }
 
+    [Fact]
+    public void Empty_marker_nodes_do_not_become_destinations()
+    {
+        TempDir.WithTemp(temp =>
+        {
+            Write(temp, "_repolore/root.md", "ROOT");
+            Write(temp, "_repolore/tree/src/src.md", "<!-- repolore:empty -->");
+
+            Apply(temp);
+
+            File.Exists(Path.Combine(temp, "_repolore", "sparse-tree", "src", "src.md")).Should().BeFalse();
+            Directory.Exists(Path.Combine(temp, "_repolore", "tree")).Should().BeFalse();
+            Read(temp, "_repolore/repolore.json").Should().Be("{\"formatVersion\":1}");
+        });
+    }
+
+    [Fact]
+    public void Escaped_destination_is_preflighted_and_writes_nothing()
+    {
+        var outside = Path.Combine(Path.GetTempPath(), "repolore-escape-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(outside);
+        try
+        {
+            TempDir.WithTemp(temp =>
+            {
+                Write(temp, "_repolore/root.md", "ROOT");
+                Write(temp, "_repolore/tree/src/src.md", "TREE_ONLY");
+                Directory.CreateDirectory(Path.Combine(temp, "_repolore", "sparse-tree"));
+                Directory.CreateSymbolicLink(Path.Combine(temp, "_repolore", "sparse-tree", "src"), outside);
+
+                var ex = new Action(() => Apply(temp)).Should().Throw<MigrationException>().Which;
+
+                ex.Message.Should().Contain("unsafe destination");
+                File.Exists(Path.Combine(temp, "_repolore", "repolore.json")).Should().BeFalse();
+                Read(temp, "_repolore/tree/src/src.md").Should().Be("TREE_ONLY");
+            });
+        }
+        finally
+        {
+            Directory.Delete(outside, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Session_naming_conflict_blocks_migration_and_writes_nothing()
+    {
+        TempDir.WithTemp(temp =>
+        {
+            Write(temp, "_repolore/root.md", "ROOT");
+            Write(temp, "_repolore/sparse-tree/src/src.md", "NOTE");
+            Write(temp, "_repolore/sessions/notes.md", "NOT_A_SESSION");
+
+            var ex = new Action(() => Apply(temp)).Should().Throw<MigrationException>().Which;
+
+            ex.Message.Should().Contain("session");
+            File.Exists(Path.Combine(temp, "_repolore", "repolore.json")).Should().BeFalse();
+            Read(temp, "_repolore/sessions/notes.md").Should().Be("NOT_A_SESSION");
+        });
+    }
+
+    [Fact]
+    public void Ambiguous_old_naming_blocks_migration_and_writes_nothing()
+    {
+        TempDir.WithTemp(temp =>
+        {
+            Write(temp, "_repolore/root.md", "ROOT");
+            Write(temp, "_repolore/tree/foo/bar.md", "MISNAMED");
+
+            var ex = new Action(() => Apply(temp)).Should().Throw<MigrationException>().Which;
+
+            ex.Message.Should().Contain("conflict");
+            File.Exists(Path.Combine(temp, "_repolore", "repolore.json")).Should().BeFalse();
+            Read(temp, "_repolore/tree/foo/bar.md").Should().Be("MISNAMED");
+        });
+    }
+
+    [Fact]
+    public void Rollback_preserves_custom_and_session_notes_edited_after_migration()
+    {
+        TempDir.WithTemp(temp =>
+        {
+            Write(temp, "_repolore/root.md", "ROOT");
+            Write(temp, "_repolore/tree/src/src.md", "TREE_ONLY");
+            Write(temp, "_repolore/architecture/custom.md", "CUSTOM_ORIGINAL");
+
+            Apply(temp);
+
+            Write(temp, "_repolore/architecture/custom.md", "CUSTOM_EDITED");
+
+            var restored = new RestoreEngine(temp, HistoryDir(temp), Clock()).Apply(HistoryConfigLoader.Load(temp), 1);
+            restored.WasNoOp.Should().BeFalse();
+
+            Read(temp, "_repolore/tree/src/src.md").Should().Be("TREE_ONLY");
+            File.Exists(Path.Combine(temp, "_repolore", "sparse-tree", "src", "src.md")).Should().BeFalse();
+            File.Exists(Path.Combine(temp, "_repolore", "repolore.json")).Should().BeFalse();
+            Read(temp, "_repolore/architecture/custom.md").Should().Be("CUSTOM_EDITED");
+        });
+    }
+
     private static MigrationResult Apply(
         string temp,
         Action? beforeFirstReplacement = null,

@@ -265,7 +265,7 @@ public static class Renderer
         Console.WriteLine($"restore complete: {result.Added} added, {result.Replaced} replaced, {result.Deleted} deleted (checkpoint {ManifestId.Format(result.PublishedId!.Value)})");
     }
 
-    public static void MigratePlan(MigrationInventory inventory, IReadOnlyList<MigrationMapping> mappings, bool json, bool quiet, bool dryRun)
+    public static void MigratePlan(MigrationInventory inventory, IReadOnlyList<MigrationMapping> mappings, IReadOnlyList<string> destinationProblems, bool json, bool quiet, bool dryRun)
     {
         if (json)
         {
@@ -289,6 +289,7 @@ public static class Renderer
             root.Members.Add(new JsonMember("customAreas", StringArray(inventory.CustomAreas)));
             root.Members.Add(new JsonMember("sessionAreas", StringArray(inventory.SessionAreas)));
             root.Members.Add(new JsonMember("sessionsNamingConflict", new JsonBooleanValue(inventory.SessionsNamingConflict)));
+            root.Members.Add(new JsonMember("destinationProblems", StringArray(destinationProblems)));
             Console.WriteLine(JsonWriter.Write(root));
             return;
         }
@@ -312,6 +313,9 @@ public static class Renderer
                     break;
             }
         }
+
+        foreach (var problem in destinationProblems)
+            Console.WriteLine("conflict " + problem);
 
         if (dryRun)
         {

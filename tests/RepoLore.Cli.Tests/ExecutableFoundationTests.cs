@@ -72,7 +72,7 @@ public class ExecutableFoundationTests
             TestSupport.CopyTree(Path.Combine(TestSupport.Repo, "build"), Path.Combine(temp, "build"));
             TestSupport.CopyTree(Path.Combine(TestSupport.Repo, "src"), Path.Combine(temp, "src"));
             var project = Path.Combine(temp, "src", "RepoLore.Cli", "RepoLore.Cli.csproj");
-            var baseline = TestSupport.Run(temp, "build", project, "--configuration", "Release", "--nologo");
+            var baseline = TestSupport.Run(temp, "build", project, "--configuration", "Release", "--nologo", "--disable-build-servers");
             baseline.Code.Should().Be(0);
             var probes = new (string Project, string Code)[]
             {
@@ -92,7 +92,7 @@ public class ExecutableFoundationTests
                 File.WriteAllText(path, "public static class ForbiddenProbe { " + probe.Code + " }");
                 try
                 {
-                    var result = TestSupport.Run(temp, "build", project, "--configuration", "Release", "--no-restore", "--nologo");
+                    var result = TestSupport.Run(temp, "build", project, "--configuration", "Release", "--no-restore", "--nologo", "--disable-build-servers");
                     result.Code.Should().NotBe(0);
                     result.Out.Should().Contain("RLBOUNDARY:");
                 }
@@ -106,12 +106,12 @@ public class ExecutableFoundationTests
             try
             {
                 dependencyProbe.Save(project);
-                var result = TestSupport.Run(temp, "build", project, "--configuration", "Release", "--no-restore", "--nologo");
+                var result = TestSupport.Run(temp, "build", project, "--configuration", "Release", "--no-restore", "--nologo", "--disable-build-servers");
                 result.Code.Should().NotBe(0);
                 result.Out.Should().Contain("RLBOUNDARY: non-BCL runtime references:");
             }
             finally { File.WriteAllText(project, originalProject); }
-            var recovered = TestSupport.Run(temp, "build", project, "--configuration", "Release", "--no-restore", "--nologo");
+            var recovered = TestSupport.Run(temp, "build", project, "--configuration", "Release", "--no-restore", "--nologo", "--disable-build-servers");
             recovered.Code.Should().Be(0);
         });
     }

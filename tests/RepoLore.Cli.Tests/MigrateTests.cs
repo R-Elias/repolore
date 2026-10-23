@@ -96,4 +96,51 @@ public class MigrateTests
             File.ReadAllText(Path.Combine(temp, "_repolore", "sessions", "session-a", "root.md")).Should().Be("SESSION");
         });
     }
+
+    [Fact]
+    public void Migrate_check_reports_an_escaped_destination_with_exit_3()
+    {
+        var outside = Path.Combine(Path.GetTempPath(), "repolore-escape-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(outside);
+        try
+        {
+            TestSupport.WithTemp(temp =>
+            {
+                Directory.CreateDirectory(Path.Combine(temp, "_repolore", "tree", "src"));
+                Directory.CreateDirectory(Path.Combine(temp, "_repolore", "sparse-tree"));
+                File.WriteAllText(Path.Combine(temp, "_repolore", "root.md"), "ROOT");
+                File.WriteAllText(Path.Combine(temp, "_repolore", "tree", "src", "src.md"), "TREE_ONLY");
+                Directory.CreateSymbolicLink(Path.Combine(temp, "_repolore", "sparse-tree", "src"), outside);
+
+                var result = TestSupport.Run(temp, TestSupport.Cli, "migrate", "--check");
+
+                result.Code.Should().Be(3);
+                result.Out.Should().Contain("conflict");
+                File.Exists(Path.Combine(temp, "_repolore", "repolore.json")).Should().BeFalse();
+            });
+        }
+        finally
+        {
+            Directory.Delete(outside, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Migrate_on_a_session_naming_conflict_writes_nothing()
+    {
+        TestSupport.WithTemp(temp =>
+        {
+            Directory.CreateDirectory(Path.Combine(temp, "_repolore", "sparse-tree", "src"));
+            Directory.CreateDirectory(Path.Combine(temp, "_repolore", "sessions"));
+            File.WriteAllText(Path.Combine(temp, "_repolore", "root.md"), "ROOT");
+            File.WriteAllText(Path.Combine(temp, "_repolore", "sparse-tree", "src", "src.md"), "NOTE");
+            File.WriteAllText(Path.Combine(temp, "_repolore", "sessions", "notes.md"), "NOT_A_SESSION");
+
+            var result = TestSupport.Run(temp, TestSupport.Cli, "migrate");
+
+            result.Code.Should().Be(3);
+            File.Exists(Path.Combine(temp, "_repolore", "repolore.json")).Should().BeFalse();
+            File.ReadAllText(Path.Combine(temp, "_repolore", "sessions", "notes.md")).Should().Be("NOT_A_SESSION");
+        });
+    }
 }

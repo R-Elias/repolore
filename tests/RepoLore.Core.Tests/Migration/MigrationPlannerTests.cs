@@ -86,6 +86,23 @@ public class MigrationPlannerTests
     }
 
     [Fact]
+    public void Empty_notes_alone_are_candidates_without_a_copy()
+    {
+        var notes = new[]
+        {
+            V(NoteSource.Tree, "_repolore/tree/src/src.md", "src/src.md", "<!-- repolore:empty -->"),
+            V(NoteSource.Sparse, "_repolore/sparse-tree/src/src.md", "src/src.md", "<!-- repolore:empty -->")
+        };
+
+        var mappings = MigrationPlanner.Classify(notes);
+
+        mappings.Should().ContainSingle();
+        mappings[0].Status.Should().Be(MappingStatus.Candidate);
+        mappings[0].SourcePath.Should().BeNull("empty notes carry no knowledge to copy");
+        mappings[0].NeedsCopy.Should().BeFalse();
+    }
+
+    [Fact]
     public void Ambiguous_old_naming_is_a_conflict_even_when_a_source_directory_exists()
     {
         var notes = new[]

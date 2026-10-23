@@ -48,7 +48,7 @@ public class DurableSessionContextTests
         {
             var result = TestSupport.Run(temp, TestSupport.Cli, "context", "--session", "session-missing");
             result.Code.Should().Be(1);
-            result.Error.Should().Contain("missing-session");
+            result.Error.Should().Contain("invalid-session");
         });
     }
 

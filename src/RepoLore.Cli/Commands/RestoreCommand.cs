@@ -1,6 +1,8 @@
 using RepoLore.Cli.Arguments;
+using RepoLore.Cli.Failures;
 using RepoLore.Cli.Rendering;
 using RepoLore.Cli.Repository;
+using RepoLore.Core.Health;
 using RepoLore.Infrastructure.History;
 
 namespace RepoLore.Cli.Commands;
@@ -9,9 +11,6 @@ public static class RestoreCommand
 {
     public static int Run(CommandLine cl, string cwd)
     {
-        if (cl.Session is not null || cl.Nodes.Count > 0 || cl.IncludeMethod || cl.Strict || cl.TreeStart is not null)
-            throw new UsageException("restore does not take a session, --node, --include-method, --strict, or --start");
-
         var id = ParseRestoreId(cl.Target);
 
         var root = RepositoryRoot.Discover(cl.RepoRoot, cwd);
@@ -37,8 +36,7 @@ public static class RestoreCommand
                 return ExitCodes.Success;
             }
 
-            Console.Error.WriteLine($"repolore: a restore is pending; recover it with: repolore restore {pending.PreOperationId}");
-            return ExitCodes.Failure;
+            throw new CliFailureException(FindingIds.HistoryPending, "an interrupted operation is pending", pending.PreOperationId);
         }
 
         var applyConfig = HistoryConfigLoader.Load(root);

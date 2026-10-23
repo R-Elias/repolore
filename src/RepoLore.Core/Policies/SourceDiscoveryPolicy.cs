@@ -22,10 +22,12 @@ public sealed class SourceDiscoveryPolicy
     };
 
     private readonly RuleSet _hard = RuleSet.Compile(HardExclusions);
+    private readonly RuleSet _user;
     private readonly RuleSet _combined;
 
     public SourceDiscoveryPolicy(RuleSet userRules)
     {
+        _user = userRules;
         _combined = RuleSet.Compile(DefaultExclusions).Append(userRules);
     }
 
@@ -47,4 +49,32 @@ public sealed class SourceDiscoveryPolicy
             return hard;
         return _combined.Evaluate(relativePath, isDirectory);
     }
+
+    public SourceDiscoveryDecision Decide(string relativePath, bool isDirectory)
+    {
+        var hard = _hard.Evaluate(relativePath, isDirectory);
+        if (hard is not null && !hard.Negated)
+            return new SourceDiscoveryDecision(true, "hard-exclusion", hard);
+
+        var rule = _combined.Evaluate(relativePath, isDirectory);
+        if (rule is null)
+            return new SourceDiscoveryDecision(false, "none", null);
+
+        var layer = _user.Rules.Contains(rule) ? "user" : "default";
+        return new SourceDiscoveryDecision(!rule.Negated, layer, rule);
+    }
+}
+
+public sealed class SourceDiscoveryDecision
+{
+    public SourceDiscoveryDecision(bool excluded, string layer, CompiledRule? rule)
+    {
+        Excluded = excluded;
+        Layer = layer;
+        Rule = rule;
+    }
+
+    public bool Excluded { get; }
+    public string Layer { get; }
+    public CompiledRule? Rule { get; }
 }

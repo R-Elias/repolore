@@ -18,7 +18,8 @@ public sealed class CommandLine
     public bool Json { get; set; }
     public bool Quiet { get; set; }
     public bool Help { get; set; }
-    public bool SawOption { get; set; }
+    public string? ExplainPath { get; set; }
+    public HashSet<string> SeenOptions { get; } = new(StringComparer.Ordinal);
 
     public static CommandLine Parse(string[] args)
     {
@@ -29,63 +30,54 @@ public sealed class CommandLine
         for (var i = 0; i < args.Length; i++)
         {
             var arg = args[i];
+            if (arg.StartsWith("--", StringComparison.Ordinal) && !cl.SeenOptions.Add(arg) && arg != "--node")
+                throw new UsageException("duplicate option: " + arg);
             switch (arg)
             {
                 case "--help":
                     cl.Help = true;
-                    cl.SawOption = true;
                     break;
                 case "--json":
                     cl.Json = true;
-                    cl.SawOption = true;
                     break;
                 case "--quiet":
                     cl.Quiet = true;
-                    cl.SawOption = true;
                     break;
                 case "--include-method":
                     cl.IncludeMethod = true;
-                    cl.SawOption = true;
                     break;
                 case "--strict":
                     cl.Strict = true;
-                    cl.SawOption = true;
                     break;
                 case "--session":
                     cl.Session = Value(args, ref i, "--session");
-                    cl.SawOption = true;
                     break;
                 case "--node":
                     cl.Nodes.Add(Value(args, ref i, "--node"));
-                    cl.SawOption = true;
                     break;
                 case "--budget-tokens":
                     cl.Budget = ParseBudget(Value(args, ref i, "--budget-tokens"));
-                    cl.SawOption = true;
                     break;
                 case "--repo-root":
                     cl.RepoRoot = Value(args, ref i, "--repo-root");
-                    cl.SawOption = true;
                     break;
                 case "--start":
                     cl.TreeStart = Value(args, ref i, "--start");
-                    cl.SawOption = true;
                     break;
                 case "--path":
                     cl.RestorePath = Value(args, ref i, "--path");
-                    cl.SawOption = true;
                     break;
                 case "--dry-run":
                     cl.DryRun = true;
-                    cl.SawOption = true;
                     break;
                 case "--update-method":
                     cl.UpdateMethod = true;
-                    cl.SawOption = true;
+                    break;
+                case "--explain":
+                    cl.ExplainPath = Value(args, ref i, "--explain");
                     break;
                 case "--check":
                     cl.Check = true;
-                    cl.SawOption = true;
                     break;
                 default:
                     if (arg.StartsWith("--", StringComparison.Ordinal))
@@ -103,12 +95,6 @@ public sealed class CommandLine
         cl.Command = command;
         cl.Target = positional;
         return cl;
-    }
-
-    public void RejectKnowledgeArguments(string commandName)
-    {
-        if (Target is not null || Session is not null || Nodes.Count > 0 || IncludeMethod || Strict || TreeStart is not null)
-            throw new UsageException(commandName + " takes no arguments");
     }
 
     private static string Value(string[] args, ref int i, string option)

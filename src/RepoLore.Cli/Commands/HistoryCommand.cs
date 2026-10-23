@@ -9,8 +9,6 @@ public static class HistoryCommand
 {
     public static int Run(CommandLine cl, string cwd)
     {
-        cl.RejectKnowledgeArguments("history");
-
         var root = RepositoryRoot.Discover(cl.RepoRoot, cwd);
         var historyDirectory = Path.Combine(root, "_repolore", ".history");
 

@@ -1,5 +1,6 @@
 using System.Globalization;
 using RepoLore.Core.Context;
+using RepoLore.Core.Health;
 using RepoLore.Core.Json;
 using RepoLore.Core.Migration;
 using RepoLore.Core.Restore;
@@ -265,11 +266,13 @@ public static class Renderer
         Console.WriteLine($"restore complete: {result.Added} added, {result.Replaced} replaced, {result.Deleted} deleted (checkpoint {ManifestId.Format(result.PublishedId!.Value)})");
     }
 
-    public static void MigratePlan(MigrationInventory inventory, IReadOnlyList<MigrationMapping> mappings, IReadOnlyList<string> destinationProblems, bool json, bool quiet, bool dryRun)
+    public static void MigratePlan(MigrationInventory inventory, IReadOnlyList<MigrationMapping> mappings, IReadOnlyList<string> destinationProblems, bool blocked, bool json, bool quiet, bool dryRun)
     {
         if (json)
         {
             var root = new JsonObject();
+            root.Members.Add(new JsonMember("migrationNeeded", new JsonBooleanValue(true)));
+            root.Members.Add(new JsonMember("blocked", new JsonBooleanValue(blocked)));
             var array = new JsonArray();
             foreach (var mapping in mappings)
             {
@@ -334,6 +337,15 @@ public static class Renderer
             Console.WriteLine("left-in-place " + unknown);
     }
 
+    public static void MigrateNothing(string reason)
+    {
+        var root = new JsonObject();
+        root.Members.Add(new JsonMember("migrationNeeded", new JsonBooleanValue(false)));
+        root.Members.Add(new JsonMember("blocked", new JsonBooleanValue(false)));
+        root.Members.Add(new JsonMember("reason", new JsonStringValue(reason)));
+        Console.WriteLine(JsonWriter.Write(root));
+    }
+
     public static void Migrate(MigrationResult result, bool json, bool quiet)
     {
         if (json)
@@ -374,9 +386,9 @@ public static class Renderer
         _ => "unknown"
     };
 
-    private static JsonNumberValue Number(long value) => new(value.ToString(CultureInfo.InvariantCulture));
+    internal static JsonNumberValue Number(long value) => new(value.ToString(CultureInfo.InvariantCulture));
 
-    private static JsonArray StringArray(IReadOnlyList<string> values)
+    internal static JsonArray StringArray(IReadOnlyList<string> values)
     {
         var array = new JsonArray();
         foreach (var value in values)
@@ -422,7 +434,7 @@ public static class Renderer
         return array;
     }
 
-    private static JsonArray FindingsArray(List<Finding> findings)
+    internal static JsonArray FindingsArray(List<Finding> findings)
     {
         var array = new JsonArray();
         foreach (var finding in findings)

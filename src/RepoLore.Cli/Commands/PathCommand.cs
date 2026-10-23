@@ -11,6 +11,7 @@ public static class PathCommand
     public static int Run(CommandLine cl, string cwd)
     {
         var root = RepositoryRoot.Discover(cl.RepoRoot, cwd);
+        FormatGate.Require(root);
 
         if (cl.Target is null)
             throw new UsageException("path requires a <target>");

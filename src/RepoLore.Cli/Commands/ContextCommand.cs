@@ -1,4 +1,5 @@
 using RepoLore.Core.Context;
+using RepoLore.Core.Health;
 using RepoLore.Cli.Arguments;
 using RepoLore.Cli.Reading;
 using RepoLore.Cli.Rendering;
@@ -11,6 +12,7 @@ public static class ContextCommand
     public static int Run(CommandLine cl, string cwd)
     {
         var root = RepositoryRoot.Discover(cl.RepoRoot, cwd);
+        FormatGate.Require(root);
 
         if (cl.Session is not null && !SessionId.IsValid(cl.Session, out var sessionFinding))
             throw new UsageException("invalid --session: " + sessionFinding);
@@ -60,17 +62,17 @@ public static class ContextCommand
                     {
                         var isSessionRoot = candidate.Kind == CandidateKind.SessionRoot;
                         findings.Add(new Finding(
-                            isSessionRoot ? "missing-session" : "missing-note",
+                            isSessionRoot ? FindingIds.InvalidSession : FindingIds.MissingNote,
                             candidate.CanonicalPath,
                             isSessionRoot ? $"session '{cl.Session}' does not exist" : "requested note does not exist"));
                     }
                     break;
                 case NoteStatus.Conflict:
-                    findings.Add(new Finding("conflict", candidate.CanonicalPath, resolved.Finding ?? "conflicting copies"));
+                    findings.Add(new Finding(FindingIds.ConflictingAlphaNotes, candidate.CanonicalPath, resolved.Finding ?? "conflicting copies"));
                     hasConflict = true;
                     break;
                 case NoteStatus.InvalidUtf8:
-                    findings.Add(new Finding("invalid-utf8", resolved.Path, resolved.Finding ?? "not valid UTF-8"));
+                    findings.Add(new Finding(FindingIds.InvalidUtf8, resolved.Path, resolved.Finding ?? "not valid UTF-8"));
                     break;
             }
         }

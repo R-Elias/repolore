@@ -10,6 +10,7 @@ public static class TreeCommand
     public static int Run(CommandLine cl, string cwd)
     {
         var root = RepositoryRoot.Discover(cl.RepoRoot, cwd);
+        FormatGate.Require(root);
 
         var start = (cl.TreeStart ?? "_repolore/").TrimEnd('/');
         if (start.Length == 0)

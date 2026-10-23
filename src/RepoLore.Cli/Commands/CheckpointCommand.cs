@@ -1,5 +1,7 @@
 using RepoLore.Cli.Arguments;
+using RepoLore.Cli.Failures;
 using RepoLore.Cli.Rendering;
+using RepoLore.Core.Health;
 using RepoLore.Cli.Repository;
 using RepoLore.Infrastructure.History;
 
@@ -9,16 +11,13 @@ public static class CheckpointCommand
 {
     public static int Run(CommandLine cl, string cwd)
     {
-        cl.RejectKnowledgeArguments("checkpoint");
-
         var root = RepositoryRoot.Discover(cl.RepoRoot, cwd);
         var historyDirectory = Path.Combine(root, "_repolore", ".history");
 
         var config = HistoryConfigLoader.Load(root);
         if (!config.HistoryEnabled)
         {
-            Console.Error.WriteLine("repolore: history is disabled in _repolore/repolore.json; enable it before checkpointing");
-            return ExitCodes.Failure;
+            throw new CliFailureException(ErrorIds.HistoryDisabled, "history is disabled in _repolore/repolore.json; enable it before checkpointing");
         }
 
         using var writerLock = WriterLock.Acquire(historyDirectory);
@@ -26,8 +25,7 @@ public static class CheckpointCommand
         var pending = new PendingStore(historyDirectory).Read();
         if (pending is not null)
         {
-            Console.Error.WriteLine($"repolore: a restore is pending; recover it with: repolore restore {pending.PreOperationId}");
-            return ExitCodes.Failure;
+            throw new CliFailureException(FindingIds.HistoryPending, "an interrupted operation is pending", pending.PreOperationId);
         }
 
         var engine = new CheckpointEngine(root, historyDirectory);

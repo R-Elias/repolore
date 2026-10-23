@@ -1,6 +1,6 @@
 # First Release — Implementation Work Packages
 
-Status: **packages 01–08 implemented (01–02 CI-green; 03–08 local evidence pending CI)**. Target: a preview followed by v1.0.0 of the single `RepoLore.Cli` NuGet tool. This guide decomposes the [roadmap](roadmap.md); [invariants](../product/invariants.md) and the [session contract](../product/sessions.md) still apply. It resolves earlier open implementation choices below. Do not copy alpha mirror-generation behavior into v1.
+Status: **packages 01–10 implemented (01–02 CI-green; 03–10 local evidence pending CI)**. Target: a preview followed by v1.0.0 of the single `RepoLore.Cli` NuGet tool. This guide decomposes the [roadmap](roadmap.md); [invariants](../product/invariants.md) and the [session contract](../product/sessions.md) still apply. It resolves earlier open implementation choices below. Do not copy alpha mirror-generation behavior into v1.
 
 ## How to execute this plan
 
@@ -211,7 +211,7 @@ Track implementation here or in linked PRs; all entries start incomplete. For ea
 - [x] 07 — Restore and interrupted-operation recovery
 - [x] 08 — Initialization and method updates
 - [x] 09 — Alpha migration and rollback
-- [ ] 10 — Health checks and final CLI contract
+- [x] 10 — Health checks and final CLI contract — implemented and validated locally (details below)
 - [ ] 11 — Packaged tool and restricted installation
 - [ ] 12 — Dogfood and NuGet preview
 - [ ] 13 — Signed v1.0.0 release
@@ -350,6 +350,26 @@ Checks actually run on macOS arm64 with the Rider SDK on PATH (`~/.dotnet`, 10.0
 - `git diff --check` and `cmp method.md _repolore/method.md` — passed; the two method copies remain identical (unchanged).
 
 The shipped CLI performs no network/process/telemetry operations; the boundary guard still passes. The real dogfood checkout was not migrated — all fixtures are disposable. The repo-root and `_repolore/` method copies remain alpha (unchanged), consistent with package 08's boundary. CI/platform validation is not yet run for this package; local evidence only. Package 10 (health checks and final CLI contract) is next.
+
+### Package 10 — local evidence, 2026-10-23
+
+Delivered `health-check [--explain <path>] [--session <id>]` and the final CLI contract; the [health and CLI contract note](health-and-cli-contract.md) holds the findings table, exit codes, JSON shapes, and the link subset. New Core `Health/` (`Finding`, `FindingIds`, `MarkdownLinks`, `PolicyExplanation`) and Infrastructure `Health/` (`HealthChecker`, `FormatHealthCheck`, `NoteStructureCheck`, `LinkCheck`, `HistoryHealthCheck`) reuse package 09's inventory/classification, the package 03 matcher and policies, and the package 05–07 stores (read-only). CLI: `CommandRules` (one per-command option table), `CliFailureException`/`ErrorIds`, `ErrorRenderer`, `HealthRenderer`, `FormatGate`; `Program` maps every exception type to a stable error ID.
+
+Behavior changes to earlier packages (all driven by the package-10 contract): context finding IDs `missing-session`/`conflict` became `invalid-session`/`conflicting-alpha-notes`; `ConfigException` carries a `Kind` (malformed/unsupported/policy); `path`/`context`/`tree` now exit 3 on a malformed or unsupported `repolore.json` instead of reading notes (`history` and recovery deliberately do not require a valid marker); `migrate --check` now exits 1 when a clean migration is needed (it returned 0); duplicate singleton options and options a command does not accept are usage errors (previously the last value silently won and some commands ignored foreign flags); `version --json` exists; `init`/`checkpoint`/`restore`/`migrate` failures go through the shared error result instead of ad hoc stderr lines.
+
+Contract interpretations to confirm (the documents are silent or loose, so the choice is recorded rather than hidden): (1) health findings that mean RepoLore cannot trust or interpret state (format, policy, conflicting alpha notes, corrupt/pending/unavailable history) exit 3, all others exit 1, which matches the existing `context` rule that a conflict exits 3 while other findings exit 1; (2) an operational failure under `--json` prints `{"error":{id,message,recoveryId}}` on stdout plus the concise message on stderr; commands whose result document already carries the failure (`health-check`, `context`, blocked `migrate` plans) emit no extra envelope; (3) `--explain` is additive to the findings run, so its exit code still reflects findings. No document conflict was found.
+
+Checks actually run on macOS arm64 with the Rider SDK on PATH (`~/.dotnet`, 10.0.100):
+
+- `dotnet restore --locked-mode --disable-build-servers` — passed; no package or lock-file changes.
+- `dotnet build --configuration Release --no-restore` — passed, 0 warnings and 0 errors (boundary guard intact; no `record` types, no `Regex`, no `System.Uri`).
+- `dotnet test --no-build --configuration Release tests/RepoLore.Core.Tests` — passed, **101/101** (was 74). New: link extraction table (relative/fragment/title/angle/image extracted; web/mail/fragment-only/absolute/stray skipped; code spans and fences skipped; duplicates once), policy explanation (default/user/hard-exclusion layers with rule text, re-inclusion, history coverage independent of discovery, ineligible paths), and config error kinds (malformed/unsupported/policy theory).
+- `dotnet test --no-build --configuration Release tests/RepoLore.Infrastructure.Tests` — passed, **80/80** (was 62). New `HealthCheckerTests` (18 incl. theory rows): healthy base and fresh clone with no history; optional note missing is not a finding, required note missing is; no writes; invalid UTF-8 and broken/escaping links but not web links; invalid note name; orphan note vs excluded-but-existing source directory; alpha conflict plus `migration-needed`; malformed/unsupported/policy configuration; invalid ignore rule with line number; sessions inspected only when selected; missing session/root; durable link into a session; `.history` not a directory; missing object and corrupt manifest; pending record with recovery ID and corrupt pending; explain and escaping explain path.
+- `dotnet test --no-build --configuration Release tests/RepoLore.Cli.Tests` — passed, **101/101** (was 53; the 4-probe build-guard test is included). New `CommandContractTests` and `HealthCheckTests`: per command one normal and one failure case with `--json` asserting exit code, a single parseable JSON document, the error ID or result key, concise stderr without stack frames, and an unchanged tree snapshot (version, path, context, tree, history, restore `--dry-run`, migrate `--check`, health-check, checkpoint, init; failures for usage, corrupt history, unknown restore ID, disabled history, pending record, alpha init, and unsupported format on context/path/checkpoint/tree/restore/migrate); recovery ID in the error result; blocked migrate plan; dry-runs create no `.history` when absent and change nothing when present; 11 unknown/misplaced/duplicated option and extra-argument usage errors; repeated `--node`; help/version outside a repository; the finding and error ID sets and exit classes match the frozen `Fixtures/expected-ids.tsv`. Health checks over `two-sessions` (session B broken link and invalid UTF-8 are invisible unless `--session session-b`), `alpha-conflict` (exit 3), a clean alpha clone (exit 1), a pending record (exit 3), and `--explain` (default rule text, `gitTracking: not evaluated`, escaping path exit 2). `MigrateTests` gained the `--check` exit-1 case; the context test asserts the renamed ID.
+- Manual: `health-check` run against this real checkout (read-only) reported only `migration-needed`, exit 1, and created no `.history/` and changed no tracked file; an unreadable note produced `io-error` exit 3 with no stack trace.
+- `git diff --check` and `cmp method.md _repolore/method.md` — passed; the method copies remain identical (the alpha method text is unchanged).
+
+Remaining limitations: CI/platform validation is not yet run for this package (local macOS arm64 only). ReSharper was not run. Percent-encoded and reference-style Markdown links are not validated (documented subset). Health lists entry names under `_repolore/sessions/` through the shared inventory but never opens unselected session files. A repository with no `_repolore/` exits 2, as for every other command. Package 11 (packaged tool and restricted installation) is next.
 
 ### Test stack — policy change, 2026-10-03
 

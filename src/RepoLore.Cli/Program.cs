@@ -1,10 +1,17 @@
 using RepoLore.Cli;
 using RepoLore.Cli.Arguments;
 using RepoLore.Cli.Commands;
+using RepoLore.Cli.Failures;
+using RepoLore.Cli.Rendering;
 using RepoLore.Core.Configuration;
 using RepoLore.Core.Format;
+using RepoLore.Core.Health;
+using RepoLore.Core.Json;
 using RepoLore.Core.Restore;
+using RepoLore.Infrastructure;
 using RepoLore.Infrastructure.History;
+
+var json = Array.IndexOf(args, "--json") >= 0;
 
 try
 {
@@ -16,13 +23,12 @@ try
         return ExitCodes.Success;
     }
 
+    CommandRules.Validate(cl);
+
     switch (cl.Command)
     {
         case "version":
-            if (cl.Target is not null || cl.SawOption)
-                return Usage("version takes no arguments");
-            Console.WriteLine($"RepoLore {CliVersion.Value}");
-            Console.WriteLine($"Supported knowledge formats: {KnowledgeFormat.Current}");
+            PrintVersion(cl.Json);
             return ExitCodes.Success;
 
         case "path":
@@ -49,55 +55,105 @@ try
         case "migrate":
             return MigrateCommand.Run(cl, Environment.CurrentDirectory);
 
+        case "health-check":
+            return HealthCheckCommand.Run(cl, Environment.CurrentDirectory);
+
         case null:
-            return Usage("missing command");
+            throw new UsageException("missing command");
 
         default:
-            return Usage("unknown command: " + cl.Command);
+            throw new UsageException("unknown command: " + cl.Command);
     }
 }
 catch (UsageException ex)
 {
-    return Usage(ex.Message);
+    return Usage(json, ex.Message);
 }
 catch (ArgumentException ex)
 {
-    return Usage(ex.Message);
+    return Usage(json, ex.Message);
+}
+catch (CliFailureException ex)
+{
+    return Failure(json, ex.Id, ex.Message, ex.RecoveryId);
 }
 catch (ConfigException ex)
 {
-    return OperationalError(ex.Message);
+    return Failure(json, ConfigFailureId(ex.Kind), ex.Message, null);
 }
 catch (WriterLockException ex)
 {
-    return OperationalError(ex.Message);
+    return Failure(json, ErrorIds.HistoryLocked, ex.Message, null);
 }
 catch (HistoryStoreException ex)
 {
-    return OperationalError(ex.Message);
+    return Failure(json, ErrorIds.HistoryFailure, ex.Message, null);
 }
 catch (RestoreException ex)
 {
-    Console.Error.WriteLine($"repolore: {ex.Message}");
-    Console.Error.WriteLine($"repolore: recover with: repolore restore {ex.RecoveryId}");
-    return ExitCodes.Failure;
+    return Failure(json, ErrorIds.OperationInterrupted, ex.Message, ex.RecoveryId);
 }
 catch (RestorePlanException ex)
 {
-    return OperationalError(ex.Message);
+    return Failure(json, ErrorIds.RestorePlanInvalid, ex.Message, null);
+}
+catch (InitIncompleteException ex)
+{
+    return Failure(json, ErrorIds.InitIncomplete,
+        ex.Message + "; already created: " + string.Join(", ", ex.Created) + "; rerun 'repolore init' to finish, nothing was deleted", null);
+}
+catch (InitException ex)
+{
+    return Failure(json, ex.RecoveryId is null ? ErrorIds.HistoryFailure : ErrorIds.OperationInterrupted, ex.Message, ex.RecoveryId);
+}
+catch (MigrationException ex)
+{
+    return Failure(json, ex.RecoveryId is null ? ErrorIds.MigrationBlocked : ErrorIds.OperationInterrupted, ex.Message, ex.RecoveryId);
+}
+catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or PathResolutionException)
+{
+    return Failure(json, ErrorIds.IoError, ex.Message, null);
+}
+catch (Exception ex)
+{
+    return Failure(json, ErrorIds.InternalError, ex.Message, null);
 }
 
-static int Usage(string message)
+static int Usage(bool json, string message)
 {
-    Console.Error.WriteLine("Usage: repolore version | --help | init [--update-method] | migrate [--check | --dry-run] | path <target> | context [<target>] | tree | checkpoint | history | restore <id>");
-    Console.Error.WriteLine(message);
+    Console.Error.WriteLine("Usage: repolore version | --help | init [--update-method] | migrate [--check | --dry-run] | path <target> | context [<target>] | tree | checkpoint | history | restore <id> | health-check");
+    ErrorRenderer.Write(json, ErrorIds.Usage, message, null);
     return ExitCodes.Usage;
 }
 
-static int OperationalError(string message)
+static int Failure(bool json, string id, string message, long? recoveryId)
 {
-    Console.Error.WriteLine("repolore: " + message);
+    ErrorRenderer.Write(json, id, message, recoveryId);
     return ExitCodes.Failure;
+}
+
+static string ConfigFailureId(ConfigErrorKind kind) => kind switch
+{
+    ConfigErrorKind.UnsupportedFormat => FindingIds.UnsupportedFormat,
+    ConfigErrorKind.Policy => FindingIds.PolicyError,
+    _ => FindingIds.MalformedFormat
+};
+
+static void PrintVersion(bool json)
+{
+    if (!json)
+    {
+        Console.WriteLine($"RepoLore {CliVersion.Value}");
+        Console.WriteLine($"Supported knowledge formats: {KnowledgeFormat.Current}");
+        return;
+    }
+
+    var root = new JsonObject();
+    root.Members.Add(new JsonMember("version", new JsonStringValue(CliVersion.Value)));
+    var formats = new JsonArray();
+    formats.Items.Add(Renderer.Number(KnowledgeFormat.Current));
+    root.Members.Add(new JsonMember("supportedKnowledgeFormats", formats));
+    Console.WriteLine(JsonWriter.Write(root));
 }
 
 static void PrintHelp()
@@ -115,6 +171,8 @@ static void PrintHelp()
     Console.WriteLine("  restore <id> [--path <path>] [--dry-run]   Preview or restore a checkpoint within coverage.");
     Console.WriteLine("  init [--update-method]                     Create the missing knowledge base and first checkpoint.");
     Console.WriteLine("  migrate [--check | --dry-run]              Migrate alpha knowledge to v1 (check, preview, or apply).");
+    Console.WriteLine("  health-check [--explain <path>] [--session <id>]");
+    Console.WriteLine("                                             Report structural findings; observes only, never fixes.");
     Console.WriteLine();
     Console.WriteLine("Common options: --repo-root <path>, --json, --quiet, --help");
 }

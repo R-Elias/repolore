@@ -15,6 +15,7 @@ public sealed class CompiledRule
     public string Source { get; }
     public bool Negated { get; }
     public bool DirectoryOnly { get; }
+    public string Display => (Negated ? "!" : "") + Source + (DirectoryOnly ? "/" : "");
 
     private CompiledRule(int line, string source, bool negated, bool directoryOnly, Segment[] segments)
     {

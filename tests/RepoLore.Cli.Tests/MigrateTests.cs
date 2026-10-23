@@ -62,6 +62,18 @@ public class MigrateTests
     }
 
     [Fact]
+    public void Migrate_check_reports_migration_needed_with_exit_1_and_writes_nothing()
+    {
+        TestSupport.WithFixture("alpha-local-only", temp =>
+        {
+            var before = TestSupport.Snapshot(temp);
+            var result = TestSupport.Run(temp, TestSupport.Cli, "migrate", "--check");
+            result.Code.Should().Be(1);
+            TestSupport.Snapshot(temp).Should().Be(before);
+        });
+    }
+
+    [Fact]
     public void Migrate_dry_run_writes_nothing()
     {
         TestSupport.WithFixture("alpha-local-only", temp =>

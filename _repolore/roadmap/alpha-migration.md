@@ -80,3 +80,12 @@ scope-agnostic.
   `init` still refuses alpha; migration is explicit and deliberate only.
 - Conflict resolution is a human step: a separate explicit `checkpoint` (ordinary v1 scope) before
   editing protects the variants while a human resolves them.
+
+## Exit codes (package 10)
+
+`migrate --check` exits 1 when a clean migration is needed (the contract's "migration-needed"),
+3 on any conflict/destination problem, and 0 only when nothing needs migrating. `--dry-run`
+previews with 0 (1 if unknown legacy files would be left behind, 3 on conflicts). `--json` plan
+output carries `migrationNeeded` and `blocked`; an already-v1 or empty directory returns
+`{"migrationNeeded":false,...}` with exit 0. Health-check reports the same state as
+`migration-needed`; see [health checks and CLI contract](health-and-cli-contract.md).

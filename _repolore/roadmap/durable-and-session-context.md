@@ -21,7 +21,7 @@ src/RepoLore.Cli/
   KnowledgeReader.cs              reads a candidate (alpha-aware) via RepositoryPathResolver
   ContextCommand.cs, PathCommand.cs, TreeCommand.cs
   Output.cs                       text and JSON rendering (Core Json writer)
-  ExitCodes.cs, UsageException.cs, Finding.cs
+  ExitCodes.cs, UsageException.cs  (Finding now lives in RepoLore.Core.Health)
 ```
 
 Core's `Context/` depends only on `Mapping/` (for `KnowledgePathMapper`). The CLI orchestrates
@@ -58,9 +58,13 @@ and reads files; Core stays pure.
 
 ## Exit codes
 
-`0` success; `1` findings (missing note/session, invalid UTF-8) or `--strict` budget omission;
-`2` usage error (no selector, invalid `--session`, cross-session/history node, non-positive
-budget); `3` conflict or IO/failure. Reads and previews write nothing (invariant 8).
+`0` success; `1` findings (`missing-note`, `invalid-session`, `invalid-utf8`) or `--strict` budget
+omission; `2` usage error (no selector, invalid `--session`, cross-session/history node,
+non-positive budget); `3` conflict (`conflicting-alpha-notes`), a malformed/unsupported
+`repolore.json` (`FormatGate`), or IO/failure. Reads and previews write nothing (invariant 8).
+Finding IDs and the exit rule are the shared catalog in
+[health checks and CLI contract](health-and-cli-contract.md); package 10 renamed the earlier
+`missing-session` and `conflict` IDs to `invalid-session` and `conflicting-alpha-notes`.
 
 ## Maintenance notes
 

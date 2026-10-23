@@ -4,9 +4,21 @@ using RepoLore.Core.Matching;
 
 namespace RepoLore.Core.Configuration;
 
+public enum ConfigErrorKind
+{
+    Malformed,
+    UnsupportedFormat,
+    Policy
+}
+
 public sealed class ConfigException : Exception
 {
-    public ConfigException(string message) : base(message) { }
+    public ConfigException(string message, ConfigErrorKind kind = ConfigErrorKind.Malformed) : base(message)
+    {
+        Kind = kind;
+    }
+
+    public ConfigErrorKind Kind { get; }
 }
 
 public static class ConfigParser
@@ -24,7 +36,7 @@ public static class ConfigParser
             throw new ConfigException($"repolore.json is not valid JSON: {ex.Message}");
         }
 
-        DetectDuplicates(root, "repolore.json");
+        DetectDuplicates(root, "repolore.json", ConfigErrorKind.Malformed);
 
         var hasFormatVersion = false;
         var formatVersion = 0;
@@ -63,7 +75,7 @@ public static class ConfigParser
         }
         catch (RuleSyntaxException ex)
         {
-            throw new ConfigException($"history.exclude rule #{ex.Line} is invalid: {ex.Message}");
+            throw new ConfigException($"history.exclude rule #{ex.Line} is invalid: {ex.Message}", ConfigErrorKind.Policy);
         }
 
         return new RepoLoreConfig(formatVersion, enabled, maxBytes, historyExclude, exclude, root);
@@ -72,9 +84,9 @@ public static class ConfigParser
     private static void ReadHistory(JsonValue historyRaw, out bool enabled, out long maxBytes, List<string> exclude)
     {
         if (historyRaw is not JsonObject history)
-            throw new ConfigException("'history' must be an object.");
+            throw new ConfigException("'history' must be an object.", ConfigErrorKind.Policy);
 
-        DetectDuplicates(history, "history");
+        DetectDuplicates(history, "history", ConfigErrorKind.Policy);
 
         enabled = RepoLoreConfig.DefaultHistoryEnabled;
         maxBytes = RepoLoreConfig.DefaultMaxBytes;
@@ -108,8 +120,9 @@ public static class ConfigParser
         {
             if (parsed > KnowledgeFormat.Current)
                 throw new ConfigException(
-                    $"Unknown format version {parsed}; this build supports {KnowledgeFormat.Current}. Upgrade RepoLore to open this knowledge base.");
-            throw new ConfigException($"Unsupported format version {parsed}; expected {KnowledgeFormat.Current}.");
+                    $"Unknown format version {parsed}; this build supports {KnowledgeFormat.Current}. Upgrade RepoLore to open this knowledge base.",
+                    ConfigErrorKind.UnsupportedFormat);
+            throw new ConfigException($"Unsupported format version {parsed}; expected {KnowledgeFormat.Current}.", ConfigErrorKind.UnsupportedFormat);
         }
         return (int)parsed;
     }
@@ -117,11 +130,11 @@ public static class ConfigParser
     private static long ReadMaxBytes(JsonValue value)
     {
         if (value is not JsonNumberValue number)
-            throw new ConfigException("'history.maxBytes' must be an integer number.");
+            throw new ConfigException("'history.maxBytes' must be an integer number.", ConfigErrorKind.Policy);
         if (!JsonNumbers.TryParseInteger(number.Raw, out var parsed))
-            throw new ConfigException("'history.maxBytes' must be a non-negative integer that fits in a 64-bit signed value.");
+            throw new ConfigException("'history.maxBytes' must be a non-negative integer that fits in a 64-bit signed value.", ConfigErrorKind.Policy);
         if (parsed < 0)
-            throw new ConfigException("'history.maxBytes' must not be negative.");
+            throw new ConfigException("'history.maxBytes' must not be negative.", ConfigErrorKind.Policy);
         return parsed;
     }
 
@@ -129,26 +142,26 @@ public static class ConfigParser
     {
         if (value is JsonBooleanValue boolean)
             return boolean.Value;
-        throw new ConfigException($"'{field}' must be a boolean (true or false).");
+        throw new ConfigException($"'{field}' must be a boolean (true or false).", ConfigErrorKind.Policy);
     }
 
     private static void ReadExclude(JsonValue value, List<string> exclude)
     {
         if (value is not JsonArray array)
-            throw new ConfigException("'history.exclude' must be an array of strings.");
+            throw new ConfigException("'history.exclude' must be an array of strings.", ConfigErrorKind.Policy);
         foreach (var item in array.Items)
         {
             if (item is not JsonStringValue text)
-                throw new ConfigException("'history.exclude' must contain only strings.");
+                throw new ConfigException("'history.exclude' must contain only strings.", ConfigErrorKind.Policy);
             exclude.Add(text.Value);
         }
     }
 
-    private static void DetectDuplicates(JsonObject obj, string label)
+    private static void DetectDuplicates(JsonObject obj, string label, ConfigErrorKind kind)
     {
         for (var i = 0; i < obj.Members.Count; i++)
             for (var j = i + 1; j < obj.Members.Count; j++)
                 if (string.Equals(obj.Members[i].Name, obj.Members[j].Name, StringComparison.Ordinal))
-                    throw new ConfigException($"{label} contains a duplicate key '{obj.Members[i].Name}'.");
+                    throw new ConfigException($"{label} contains a duplicate key '{obj.Members[i].Name}'.", kind);
     }
 }

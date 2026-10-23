@@ -1,4 +1,4 @@
-namespace RepoLore.Cli.Rendering;
+namespace RepoLore.Core.Health;
 
 public sealed class Finding
 {

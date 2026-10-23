@@ -97,4 +97,18 @@ public class ConfigParserTests
         written.Should().Contain("\"x\":[1,true,null]");
         written.Should().Contain("\"extra\":\"keep\"");
     }
+
+    [Theory]
+    [InlineData("{not json", ConfigErrorKind.Malformed)]
+    [InlineData("{\"history\":{}}", ConfigErrorKind.Malformed)]
+    [InlineData("{\"formatVersion\":1,\"formatVersion\":1}", ConfigErrorKind.Malformed)]
+    [InlineData("{\"formatVersion\":2}", ConfigErrorKind.UnsupportedFormat)]
+    [InlineData("{\"formatVersion\":0}", ConfigErrorKind.UnsupportedFormat)]
+    [InlineData("{\"formatVersion\":1,\"history\":{\"maxBytes\":-1}}", ConfigErrorKind.Policy)]
+    [InlineData("{\"formatVersion\":1,\"history\":{\"enabled\":\"yes\"}}", ConfigErrorKind.Policy)]
+    [InlineData("{\"formatVersion\":1,\"history\":{\"exclude\":[\"ab**cd\"]}}", ConfigErrorKind.Policy)]
+    public void Failures_carry_the_kind_that_health_checks_report(string json, ConfigErrorKind expected)
+    {
+        new Action(() => ConfigParser.Parse(json)).Should().Throw<ConfigException>().Which.Kind.Should().Be(expected);
+    }
 }

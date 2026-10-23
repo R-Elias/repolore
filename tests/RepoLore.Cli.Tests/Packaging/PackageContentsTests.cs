@@ -48,12 +48,23 @@ public sealed class PackageContentsTests(PackedToolFixture package)
     }
 
     [Fact]
+    public void Package_readme_is_the_repository_readme_and_states_the_unsigned_preview_limitation()
+    {
+        package.Nuspec().Descendants().Single(node => node.Name.LocalName == "readme").Value.Should().Be("README.md");
+
+        var readme = package.EntryText("README.md");
+        readme.Should().Be(File.ReadAllText(Path.Combine(TestSupport.Repo, "README.md")));
+        readme.Should().Contain("Preview, unsigned").And.Contain("not an enterprise-ready or certified release");
+    }
+
+    [Fact]
     public void Package_contains_only_the_three_shipped_assemblies_and_their_tool_files()
     {
         var expected = new[]
         {
             "[Content_Types].xml",
             "_rels/.rels",
+            "README.md",
             "RepoLore.Cli.nuspec",
             ToolFolder + "DotnetToolSettings.xml",
             ToolFolder + "RepoLore.Cli.deps.json",

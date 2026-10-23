@@ -11,10 +11,14 @@
     <Description>RepoLore: local, offline operational memory for developers and coding agents, stored as Markdown. Installs the repolore command.</Description>
     <PackageTags>repolore;knowledge;markdown;cli;agents</PackageTags>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageProjectUrl>https://github.com/R-Elias/repolore</PackageProjectUrl>
     <RepositoryUrl>https://github.com/R-Elias/repolore.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../RepoLore.Core/RepoLore.Core.csproj" />
     <ProjectReference Include="../RepoLore.Infrastructure/RepoLore.Infrastructure.csproj" />

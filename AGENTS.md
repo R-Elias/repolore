@@ -19,7 +19,7 @@ Code remains the source of truth for current behavior. Verify discrepancies and 
 
 ## Distinguish alpha from v1
 
-The current method copies and PowerShell scripts describe the alpha full mirror and generated sparse tree. They are historical implementation references, not the v1 specification. The .NET CLI, session-aware commands, and recovery features are planned; verify what has actually landed before using or claiming them.
+The current method copies and PowerShell scripts describe the alpha full mirror and generated sparse tree. They are historical implementation references, not the v1 specification. The .NET CLI, session-aware commands, and recovery features are implemented through package 11 and exercised by the packaged-tool acceptance journey on disposable fixtures (user-facing instructions: [user guide](docs/user-guide.md)). The preview is unsigned and unpublished, and this checkout has not adopted it: it has no tool manifest, no `.history/`, and unmigrated alpha-layout knowledge. Verify what has actually landed before claiming more.
 
 - Do not recreate the complete empty mirror in v1. Its canonical authored path notes live in `_repolore/sparse-tree/`, alongside custom durable areas.
 - Do not delete, migrate, or regenerate this checkout's knowledge just because the design changed. A sparse-only clone may contain its only knowledge copy there.
@@ -59,7 +59,7 @@ Sessions are optional local working knowledge under `_repolore/sessions/<session
 
 Before creating sessions, ensure session/history paths are Gitignored; never commit their contents. Gitignore does not untrack previously tracked files. Session folders and recovery history are different things. Do not delete sessions or expire their contents automatically.
 
-When checkpoint tooling is implemented and validated, checkpoint before and after direct knowledge edits, including session edits. Until then, do not invent a working checkpoint command or claim recovery protection. Follow the documented backup procedure for any authorized destructive operation.
+Checkpoint tooling is implemented and validated on disposable fixtures. On a knowledge base that has adopted it, checkpoint before and after direct knowledge edits, including session edits. This checkout has not adopted it: do not run `repolore` (including `checkpoint`, which creates `_repolore/.history/`) or `migrate` against it, or claim recovery protection for it, until the maintainer has approved the dogfood adoption in [dogfood and preview](_repolore/roadmap/dogfood-and-preview.md). Until then follow the documented backup procedure for any authorized destructive operation.
 
 After meaningful changes, update RepoLore for behavior, architecture, responsibilities, dependencies, conventions, important paths, or maintenance assumptions. Keep notes concise and evidence-backed. Do not duplicate obvious source code or record guesses as facts. A session-only note is insufficient for a change future maintainers need to understand.
 

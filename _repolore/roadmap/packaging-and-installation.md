@@ -18,7 +18,7 @@ Changing the ID if `RepoLore.Cli` turns out to be unavailable means editing `Pac
 
 ## What the package contains
 
-Exactly (asserted as a whitelist, so any new file is a deliberate review): `tools/net10.0/any/` with `DotnetToolSettings.xml` (command `repolore`), `RepoLore.Cli.{dll,pdb,deps.json,runtimeconfig.json}`, `RepoLore.Core.{dll,pdb}`, `RepoLore.Infrastructure.{dll,pdb}`, plus the nuspec/OPC metadata. No NuGet dependencies, no test-stack assemblies, no knowledge, sessions, history, fixtures, or configuration files. Packing `Core` and `Infrastructure` produces nothing (`IsPackable=false`), so the feed holds one package. There is no package readme yet (NuGet prints an advisory, not an error); the user-facing readme and install docs belong to package 12.
+Exactly (asserted as a whitelist, so any new file is a deliberate review): `tools/net10.0/any/` with `DotnetToolSettings.xml` (command `repolore`), `RepoLore.Cli.{dll,pdb,deps.json,runtimeconfig.json}`, `RepoLore.Core.{dll,pdb}`, `RepoLore.Infrastructure.{dll,pdb}`, the root `README.md`, plus the nuspec/OPC metadata. No NuGet dependencies, no test-stack assemblies, no knowledge, sessions, history, fixtures, or configuration files. Packing `Core` and `Infrastructure` produces nothing (`IsPackable=false`), so the feed holds one package. The package readme is the repository `README.md` (`PackageReadmeFile`, added in package 12 with the whitelist change; `Package_readme_is_the_repository_readme_and_states_the_unsigned_preview_limitation` pins it). The user-facing install and usage instructions are `docs/user-guide.md`; see [dogfood and preview](dogfood-and-preview.md).
 
 ## Supported environments
 
@@ -52,7 +52,7 @@ and an approved `NuGet.Config` that clears other sources:
 </configuration>
 ```
 
-Then `dotnet tool restore` and `dotnet tool run repolore -- <command>` (or `dotnet repolore`). Commit no credentials. `dotnet tool install RepoLore.Cli --version <v> --local` after `dotnet new tool-manifest` writes the same manifest (verified manually). Global installation (`dotnet tool install --global`) is an individual-user alternative and is **not** exercised by the package tests. This checkout deliberately has no tool manifest: the tool is unpublished and dogfooding is package 12.
+Then `dotnet tool restore` and `dotnet tool run repolore -- <command>` (or `dotnet repolore`). Commit no credentials. `dotnet tool install RepoLore.Cli --version <v> --local` after `dotnet new tool-manifest` writes the same manifest (verified manually). Global installation (`dotnet tool install --global`) is an individual-user alternative and is **not** exercised by the package tests. This checkout deliberately has no tool manifest: the tool is unpublished and the dogfood adoption awaits the maintainer's approval ([dogfood and preview](dogfood-and-preview.md)).
 
 ## Checks
 

@@ -48,15 +48,27 @@ public sealed class IsolatedToolEnvironment : IDisposable
             """);
     }
 
-    public (int Code, string Out, string Error) RestoreTools() => Dotnet("tool", "restore", "--configfile", NuGetConfigPath);
+    public string PathForNewRepository(string name) => Path.Combine(root, name);
 
-    public (int Code, string Out, string Error) RunTool(params string[] arguments) =>
-        Dotnet(["tool", "run", "repolore", "--", .. arguments]);
+    public (int Code, string Out, string Error) RestoreTools() => RestoreToolsIn(ConsumerRepository);
 
-    public void Dispose() => Directory.Delete(root, recursive: true);
+    public (int Code, string Out, string Error) RestoreToolsIn(string repository) =>
+        Dotnet(repository, "tool", "restore", "--configfile", NuGetConfigPath);
 
-    private (int Code, string Out, string Error) Dotnet(params string[] arguments) =>
-        TestSupport.RunWithEnvironment(ConsumerRepository, IsolationVariables(), arguments);
+    public (int Code, string Out, string Error) RunTool(params string[] arguments) => RunToolIn(ConsumerRepository, arguments);
+
+    public (int Code, string Out, string Error) RunToolIn(string repository, params string[] arguments) =>
+        Dotnet(repository, ["tool", "run", "repolore", "--", .. arguments]);
+
+    public void Dispose()
+    {
+        foreach (var file in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
+            File.SetAttributes(file, FileAttributes.Normal);
+        Directory.Delete(root, recursive: true);
+    }
+
+    private (int Code, string Out, string Error) Dotnet(string workingDirectory, params string[] arguments) =>
+        TestSupport.RunWithEnvironment(workingDirectory, IsolationVariables(), arguments);
 
     private Dictionary<string, string> IsolationVariables() => new()
     {

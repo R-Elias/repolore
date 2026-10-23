@@ -73,6 +73,23 @@ public class InitTests
     }
 
     [Fact]
+    public void A_session_folder_created_before_init_makes_init_refuse_and_change_nothing()
+    {
+        TestSupport.WithTemp(temp =>
+        {
+            Directory.CreateDirectory(Path.Combine(temp, "_repolore", "sessions", "early-session"));
+            File.WriteAllText(Path.Combine(temp, "_repolore", "sessions", "early-session", "root.md"), "EARLY_SESSION_SENTINEL");
+            var before = TestSupport.Snapshot(temp);
+
+            var result = TestSupport.Run(temp, TestSupport.Cli, "init");
+
+            result.Code.Should().Be(3);
+            result.Error.Should().Contain("migrate");
+            TestSupport.Snapshot(temp).Should().Be(before);
+        });
+    }
+
+    [Fact]
     public void A_user_edited_method_is_never_replaced_during_ordinary_init()
     {
         TestSupport.WithTemp(temp =>

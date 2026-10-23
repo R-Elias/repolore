@@ -230,7 +230,7 @@ public sealed class AcceptanceJourneyTests : IDisposable
         context.Should().Contain(PromotedFactSentinel);
         AssertContainsNone(context, AllSessionSentinels);
         ToolSucceedsIn(clone.Path, "health-check").Should().Contain("healthy");
-        ToolSucceedsIn(clone.Path, "history").Should().BeEmpty();
+        ToolSucceedsIn(clone.Path, "history").Trim().Should().Be("no checkpoints");
 
         var missingSession = environment.RunToolIn(clone.Path, "context", "src/", "--session", SessionAId, "--json");
         missingSession.Code.Should().Be(1);

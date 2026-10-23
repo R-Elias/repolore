@@ -33,7 +33,7 @@ public static class FormatHealthCheck
         if (markerPresent)
             config = ParseMarker(markerFile, findings);
         else if (new InitEngine(repositoryRoot, historyDirectory).Classify() == InitDirKind.Alpha)
-            findings.Add(new Finding(FindingIds.MigrationNeeded, "_repolore/", "no format marker: this is an alpha knowledge base; run 'repolore migrate --check'"));
+            findings.Add(new Finding(FindingIds.MigrationNeeded, "_repolore/", "no format marker: alpha knowledge, or session folders created before 'repolore init'; see 'repolore migrate --check', or move _repolore/sessions/ aside and run 'repolore init'"));
 
         return new FormatState(markerPresent, config, ParseIgnore(Path.Combine(repositoryRoot, IgnorePath), findings));
     }

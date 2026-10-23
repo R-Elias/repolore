@@ -16,7 +16,7 @@ public static class InitCommand
 
         if (engine.Classify() == InitDirKind.Alpha)
         {
-            throw new CliFailureException(ErrorIds.AlphaNeedsMigration, "_repolore/ contains alpha knowledge without a format marker; run 'repolore migrate' to migrate it");
+            throw new CliFailureException(ErrorIds.AlphaNeedsMigration, InitEngine.MarkerlessDirectoryMessage);
         }
 
         using var writerLock = WriterLock.Acquire(historyDirectory);

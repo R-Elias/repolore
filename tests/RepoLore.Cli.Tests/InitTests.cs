@@ -84,8 +84,27 @@ public class InitTests
             var result = TestSupport.Run(temp, TestSupport.Cli, "init");
 
             result.Code.Should().Be(3);
-            result.Error.Should().Contain("migrate");
+            result.Error.Should().Contain("no format marker").And.Contain("move _repolore/sessions/ aside").And.Contain("migrate --check");
             TestSupport.Snapshot(temp).Should().Be(before);
+        });
+    }
+
+    [Fact]
+    public void Moving_the_early_session_aside_lets_init_succeed_and_the_session_returns_unchanged()
+    {
+        TestSupport.WithTemp(temp =>
+        {
+            var sessions = Path.Combine(temp, "_repolore", "sessions");
+            Directory.CreateDirectory(Path.Combine(sessions, "early-session"));
+            File.WriteAllText(Path.Combine(sessions, "early-session", "root.md"), "EARLY_SESSION_SENTINEL");
+            var aside = Path.Combine(temp, "sessions-aside");
+            Directory.Move(sessions, aside);
+
+            TestSupport.Run(temp, TestSupport.Cli, "init").Code.Should().Be(0);
+            Directory.Move(aside, sessions);
+
+            TestSupport.Run(temp, TestSupport.Cli, "context", "--session", "early-session").Out.Should().Contain("EARLY_SESSION_SENTINEL");
+            TestSupport.Run(temp, TestSupport.Cli, "health-check").Code.Should().Be(0);
         });
     }
 

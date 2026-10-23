@@ -265,7 +265,7 @@ public sealed class RestoreEngine
         foreach (var manifest in _checkpoints.ListCompleted())
             if (manifest.Id == targetId)
                 return manifest;
-        throw new HistoryStoreException($"unknown checkpoint id {targetId}; run 'history' to list available checkpoints");
+        throw new UnknownCheckpointException(targetId);
     }
 
     private List<FileEntry> CollectCurrent(RuleSet historyExclude, bool migrationScope)

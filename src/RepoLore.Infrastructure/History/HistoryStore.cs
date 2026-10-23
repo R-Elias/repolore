@@ -4,9 +4,15 @@ using RepoLore.Core.Snapshot;
 
 namespace RepoLore.Infrastructure.History;
 
-public sealed class HistoryStoreException : Exception
+public class HistoryStoreException : Exception
 {
     public HistoryStoreException(string message) : base(message) { }
+}
+
+public sealed class UnknownCheckpointException : HistoryStoreException
+{
+    public UnknownCheckpointException(long checkpointId)
+        : base($"unknown checkpoint id {checkpointId}; run 'history' to list available checkpoints") { }
 }
 
 public sealed class ObjectStore

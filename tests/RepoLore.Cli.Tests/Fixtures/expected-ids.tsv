@@ -23,5 +23,6 @@ error	init-incomplete	3
 error	alpha-needs-migration	3
 error	migration-blocked	3
 error	restore-plan-invalid	3
+error	unknown-checkpoint	3
 error	io-error	3
 error	internal-error	3

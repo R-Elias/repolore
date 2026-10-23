@@ -59,7 +59,7 @@ marker, session contents when no session is selected.
 
 Operational-only error IDs: `usage` (2), `history-locked`, `history-disabled`, `history-failure`,
 `operation-interrupted` (carries `recoveryId`), `init-incomplete`, `alpha-needs-migration`,
-`migration-blocked`, `restore-plan-invalid`, `io-error`, `internal-error` (all 3). The format
+`migration-blocked`, `restore-plan-invalid`, `unknown-checkpoint` (package 12.5), `io-error`, `internal-error` (all 3). The format
 errors reuse the finding IDs `malformed-format`/`unsupported-format`/`policy-error`, and a pending
 record reuses `history-pending`.
 
@@ -119,6 +119,10 @@ another session is neither followed nor validated.
 - Default health lists the entry names inside `_repolore/sessions/` (via the migration inventory)
   but never opens session files.
 - A run with no `_repolore/` directory exits 2 like every other repository command.
-- Unknown restore IDs, corrupt/missing target objects, and budget failures surface as the generic
-  `history-failure`; `--path` scope explanations surface as `restore-plan-invalid`. Finer IDs can
-  be added without renaming existing ones.
+- Corrupt/missing target objects and budget failures surface as the generic `history-failure`; an
+  unknown restore ID is `unknown-checkpoint` and `--path` scope explanations are
+  `restore-plan-invalid`. Finer IDs can be added without renaming existing ones.
+- `init` refuses a markerless nonempty `_repolore/` with the `alpha-needs-migration` ID, but the
+  message covers both causes (alpha knowledge, or session folders created before `init`) and gives
+  the move-aside recipe for the second; the classification rule itself is unchanged. `migrate --json`
+  carries an additive `markerWritten`; `history` prints `no checkpoints` in text mode when empty.

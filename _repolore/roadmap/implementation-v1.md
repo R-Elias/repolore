@@ -1,6 +1,6 @@
 # First Release — Implementation Work Packages
 
-Status: **packages 01–10 implemented (01–02 CI-green; 03–10 local evidence pending CI); package 11 implemented and CI-green (committed as 4ce90ca); package 12 prepared with local evidence, not yet complete (see its record)**. Target: a preview followed by v1.0.0 of the single `RepoLore.Cli` NuGet tool. This guide decomposes the [roadmap](roadmap.md); [invariants](../product/invariants.md) and the [session contract](../product/sessions.md) still apply. It resolves earlier open implementation choices below. Do not copy alpha mirror-generation behavior into v1.
+Status: **packages 01–10 implemented (01–02 CI-green; 03–10 local evidence pending CI); package 11 implemented and CI-green (committed as 4ce90ca); package 12 prepared, CI reported green on its push, not yet complete (dogfood migration and publication await the maintainer); package 12.5 implemented with local evidence, CI pending**. Target: a preview followed by v1.0.0 of the single `RepoLore.Cli` NuGet tool. This guide decomposes the [roadmap](roadmap.md); [invariants](../product/invariants.md) and the [session contract](../product/sessions.md) still apply. It resolves earlier open implementation choices below. Do not copy alpha mirror-generation behavior into v1.
 
 ## How to execute this plan
 
@@ -24,7 +24,8 @@ For every work package, leave: the implemented behavior, exact check command and
 | 10 | Health checks and final CLI contract | 03–09 | Stable findings and exit codes, no repair side effects |
 | 11 | Packaged tool and restricted installation | 10 | Actual .nupkg works with clean caches and local-only feeds |
 | 12 | Dogfood and NuGet preview | 11 | Full human/agent workflow, including session promotion |
-| 13 | Signed v1.0.0 release | 12 | Verified release artifact and versioned recovery documentation |
+| 12.5 | Small CLI friction fixes | 12 | Misleading messages and one generic error ID fixed with frozen IDs, no contract change |
+| 13 | Signed v1.0.0 release | 12, 12.5 | Verified release artifact and versioned recovery documentation |
 
 Work on 04 and 05 can proceed independently once paths and coverage are stable. Do not split snapshot, retention, and restore across incompatible implementations. Release credentials can be arranged while implementation proceeds; never bypass the signing gate to label a preview enterprise-ready.
 
@@ -188,6 +189,16 @@ Run one scripted acceptance journey on disposable fixtures: clean install → in
 
 **Fail:** an agent must know undocumented command order; a Gitignored session leaks into the reviewed diff/package; promotion leaves durable guidance depending on a local-only file; old alpha commands remain recommended for migrated knowledge. Numerical productivity claims are not a gate or a permitted substitute for these checks.
 
+## 12.5 — Remove small CLI friction found in the package-12 journey
+
+**Deliver:** six small fixes, each observed while writing the package-12 journey, and nothing else. (1) `init` on a `_repolore/` that holds files but no `repolore.json` no longer says only "alpha knowledge": the message states that the directory has no format marker, tells a user who created a session folder before `init` to move `_repolore/sessions/` aside, run `init`, and move it back, and points alpha knowledge to `migrate --check`; the `migration-needed` health message gets the same two-case wording. The classification rule from package 08 is **unchanged**. (2) `migrate` reports the marker it writes instead of "0 created, 0 removed"; JSON gains an additive `markerWritten`. (3) The one-line usage hint printed on a usage error points to `--help` instead of repeating a shorter, drifting command list. (4) `history` with no checkpoints prints `no checkpoints` in text mode. (5) Restoring an unknown checkpoint ID gets its own stable error ID `unknown-checkpoint` (exit 3) instead of the generic `history-failure`. (6) The package `Authors` value becomes `Elias Aliche`.
+
+Freeze the new error ID in `expected-ids.tsv` and the health-and-CLI contract table **before** wiring it. Update `docs/user-guide.md` wherever its text names the old behavior.
+
+**Pass:** each of (1)–(5) has a test that fails on the old behavior and passes on the new; the journey and its fresh-clone `history` assertion are updated deliberately; exit codes and every existing error/finding ID are unchanged; JSON changes are additive only; `init` still refuses a markerless nonempty directory without writing; `history` and `restore --dry-run` still write nothing. All three suites and the Packaging suite pass, plus the locked restore, the warnings-as-errors Release build and boundary guard, `git diff --check`, and `cmp` of the method copies.
+
+**Fail:** renaming or removing an ID, changing an exit code, letting `init` adopt a sessions-only directory (a contract change that needs its own decision), changing `migrate` behavior rather than its report, or growing this package beyond these six items.
+
 ## 13 — Release v1.0.0 with verifiable artifacts
 
 **Deliver:** public license, release notes, support/runtime matrix, vulnerability-reporting route, SBOM, signing/verification procedure, checksum, and the single tool artifact. Keep signing credentials outside source. Tag must match the version embedded in the artifact. No plugins, npm wrappers, separate Core package, or unrequested hosted service.
@@ -214,6 +225,7 @@ Track implementation here or in linked PRs; all entries start incomplete. For ea
 - [x] 10 — Health checks and final CLI contract — implemented and validated locally (details below)
 - [x] 11 — Packaged tool and restricted installation — implemented; macOS local evidence plus green Windows/Linux/macOS CI including the Linux networking-blocked smoke; package ID ownership still unconfirmed (details below)
 - [ ] 12 — Dogfood and NuGet preview — **prepared, not complete**: docs, package readme, acceptance journey, backup procedure and preview checklist done with local macOS evidence; CI on the new tests, the dogfood migration, and publication remain (details below)
+- [x] 12.5 — Small CLI friction fixes — implemented and validated locally (details below); CI pending
 - [ ] 13 — Signed v1.0.0 release
 
 ### Package 01 — local evidence, 2026-09-05
@@ -406,6 +418,19 @@ Checks actually run on macOS arm64, SDK 10.0.100 (`~/.dotnet`), Apple Git 2.50.1
 **Gates not run locally / needing CI or a human:** Windows and Linux runs of the new tests (Git behavior, `core.autocrlf` handling, read-only `.git` deletion are untested there); the Linux networking-blocked repeat of the journey; the dogfood migration of this checkout (maintainer approval); NuGet ID ownership and `RepoLore.` prefix reservation; the `Authors` value and project URL; signing (a preview is unsigned by design); the network-call trace (never implemented); NuGet.org rendering of the readme; the exact-uploaded-bytes smoke in the publication steps; publication itself (needs an explicit instruction). Package 12 stays unchecked until CI is green on these tests and the maintainer decides the dogfood and publication items.
 
 Contract interpretations to confirm: (1) the journey adds `health-check` calls, a checkpoint after promotion (the roadmap workflow's "checkpoint if changed"), and `restore` dry-runs to the guide's step list without reordering it; (2) the method copies change only their banner because the guide says to replace alpha guidance when v1 behavior **and migration** are real and this checkout's migration is pending; (3) a `_repolore/` holding only a session folder is alpha to `init` (existing package 08 rule), so the guide tells users to `init` before creating sessions rather than changing the rule; (4) AGENTS.md now forbids running the tool on this checkout before approval, which goes beyond the guide's "ask before migrating" because `checkpoint` would create `.history/` here; (5) package 12 is left unchecked because publication and dogfood are part of its title and need decisions. No document conflict was found.
+
+### Package 12.5 — local evidence, 2026-10-24
+
+Delivered the six small fixes defined in the section above, and nothing else. The maintainer reported CI green on the package-12 push before this work (run not inspected from this environment) and chose the clearer-message option for item 1. Changes: `InitEngine.MarkerlessDirectoryMessage` (one string used by `init` and the engine) says the directory holds files but has no `repolore.json`, gives the move-aside recipe for early session folders and `migrate --check` for alpha knowledge; the `migration-needed` health message has the same two causes; `migrate` text reads `format marker written, N notes copied, M legacy files removed (checkpoint X)` and `--json` gains `markerWritten` (additive); the usage hint is `Usage: repolore <command> [options]; run 'repolore --help' for the commands and options.`; `history` prints `no checkpoints` in text mode only when empty (JSON `{"checkpoints":[]}` and `--quiet` unchanged); `UnknownCheckpointException` (subclass of `HistoryStoreException`, so existing handlers and tests still apply) maps to the new error ID `unknown-checkpoint`, exit 3, frozen in `expected-ids.tsv` first; `Authors` is `Elias Aliche`. `init`'s classification rule (package 08) is unchanged: a markerless nonempty directory, including one holding only sessions, is still refused with no writes.
+
+Checks actually run on macOS arm64, SDK 10.0.100:
+
+- Red first: with only `src/` stashed, 7 of the 8 new or changed tests failed (usage hint, `init` message, migrate text and JSON, empty history text, frozen ID fixture, `Authors`); the eighth, the move-aside recipe test, passes on old and new code because it only proves the recipe in the message is true. `src/` was restored from the stash and the tree rebuilt.
+- `dotnet restore --locked-mode --disable-build-servers` — no changes. `dotnet build --configuration Release --no-restore --disable-build-servers` — 0 warnings, 0 errors, boundary guard intact.
+- Core **101/101**, Infrastructure **80/80**, Cli excluding Packaging **106/106** (was 102: usage hint, move-aside recipe, migrate JSON, empty history), Packaging **18/18** (journey updated to expect `no checkpoints` in the fresh clone; metadata test now pins `Authors`). The contract test for `restore 99 --dry-run --json` expects `unknown-checkpoint`; the frozen-ID test compares the fixture with `ErrorIds.All`.
+- `git diff --check` clean; `cmp method.md _repolore/method.md` identical (method copies not touched in this package).
+
+Limitations: CI on these changes is not run (local macOS arm64 only). Item 1 keeps the refusal; a user who creates a session first must move it aside — adopting a sessions-only directory directly would be a package-08 rule change and was deliberately not made. Package 12's open items are unchanged except: CI green (reported), `Authors` decided, and the NuGet name lookup below.
 
 ### Test stack — policy change, 2026-10-03
 

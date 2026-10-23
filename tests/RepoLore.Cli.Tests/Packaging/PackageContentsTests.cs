@@ -43,7 +43,7 @@ public sealed class PackageContentsTests(PackedToolFixture package)
             .ToDictionary(node => node.Name.LocalName, node => node.Value);
         values["license"].Should().Be("Apache-2.0");
         values["description"].Should().NotBe("Package Description").And.Contain("RepoLore");
-        values["authors"].Should().NotBe("RepoLore.Cli");
+        values["authors"].Should().Be("Elias Aliche");
         values["projectUrl"].Should().StartWith("https://");
     }
 

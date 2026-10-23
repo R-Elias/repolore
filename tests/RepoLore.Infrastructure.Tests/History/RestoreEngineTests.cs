@@ -64,7 +64,7 @@ public class RestoreEngineTests
         WithRepo(temp =>
         {
             Capture(temp).Capture(Load(temp));
-            var ex = new Action(() => Restore(temp).Apply(Load(temp), 99)).Should().Throw<HistoryStoreException>().Which;
+            var ex = new Action(() => Restore(temp).Apply(Load(temp), 99)).Should().Throw<UnknownCheckpointException>().Which;
             ex.Message.Should().Contain("unknown");
             Read(temp, Root).Should().Be("ROOT");
             File.Exists(PendingPath(temp)).Should().BeFalse();

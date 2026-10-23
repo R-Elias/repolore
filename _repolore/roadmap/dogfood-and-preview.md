@@ -60,14 +60,14 @@ Procedure to run only after the maintainer says so:
 
 | Item | State |
 |---|---|
-| Package builds, installs from a clean local-only feed, runs the full journey | **Ready** locally on macOS arm64; Windows/Linux/macOS CI for the new tests **not run** (needs a push) |
+| Package builds, installs from a clean local-only feed, runs the full journey | **Ready**: macOS arm64 locally, and the maintainer reported the Windows/Linux/macOS CI matrix green after the package-12 push (2026-10-24; run not inspected from here). Package 12.5 changes need their own CI run |
 | Contents whitelist, no knowledge/sessions/history/test stack/build paths | **Ready** (readme added deliberately) |
 | User documentation and package readme | **Ready**; NuGet.org rendering of the readme unseen until a publish |
-| `RepoLore.Cli` ID ownership, `RepoLore.` prefix reservation | **Blocked** — needs a nuget.org account; a read-only lookup showed the ID unpublished (2026-10-23), which proves nothing about ownership |
-| `Authors` (`R-Elias`), `PackageProjectUrl`/`RepositoryUrl` (`https://github.com/R-Elias/repolore`) | **Blocked on a human decision**; URL equals `origin` but the repository's visibility and the author identity were not verified |
+| `RepoLore.Cli` ID ownership, `RepoLore.` prefix reservation | **Open** — the maintainer reports the name is free on nuget.org (taken only on npm and as a GitHub organization, which do not affect a NuGet ID). An unpublished ID is still unreserved until the first push, and a placeholder push is not allowed; the optional `RepoLore.` prefix reservation is requested through nuget.org after the account exists |
+| `Authors`, `PackageProjectUrl`/`RepositoryUrl` | **Decided**: `Authors` is `Elias Aliche` (package 12.5); the URLs stay `https://github.com/R-Elias/repolore` (equals `origin`; the `repolore` GitHub organization is taken by someone else). Repository visibility was not verified |
 | Package signing | **Not available**; a preview ships unsigned; v1.0.0 gate (package 13) |
 | Network-call trace of the smoke path | **Not implemented**; static guards, the boundary-guard build, and the Linux networking-blocked run are the evidence |
-| Linux networking-blocked run of the journey | **Written, never run**; the journey (and its Git calls) now runs inside that step in CI |
+| Linux networking-blocked run of the journey | Runs inside that CI step; covered by the reported green matrix |
 | Dogfood migration of this checkout | **Blocked on maintainer approval** |
 | SBOM, checksum file, vulnerability-reporting contact, release notes | Package 13 |
 

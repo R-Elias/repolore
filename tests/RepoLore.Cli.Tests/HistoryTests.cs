@@ -7,6 +7,26 @@ namespace RepoLore.Cli.Tests;
 public class HistoryTests
 {
     [Fact]
+    public void History_without_checkpoints_says_so_in_text_and_stays_empty_in_json_and_quiet_mode()
+    {
+        TestSupport.WithTemp(temp =>
+        {
+            TestSupport.Run(temp, TestSupport.Cli, "init").Code.Should().Be(0);
+            Directory.Delete(Path.Combine(temp, "_repolore", ".history"), recursive: true);
+
+            var text = TestSupport.Run(temp, TestSupport.Cli, "history");
+            var json = TestSupport.Run(temp, TestSupport.Cli, "history", "--json");
+            var quiet = TestSupport.Run(temp, TestSupport.Cli, "history", "--quiet");
+
+            text.Code.Should().Be(0);
+            TestSupport.Normalize(text.Out).Should().Be("no checkpoints\n");
+            json.Out.Trim().Should().Be("{\"checkpoints\":[]}");
+            quiet.Out.Should().BeEmpty();
+            Directory.Exists(Path.Combine(temp, "_repolore", ".history")).Should().BeFalse("history is read-only");
+        });
+    }
+
+    [Fact]
     public void Checkpoint_captures_add_change_delete_as_three_distinguishable_manifests_with_recoverable_bytes()
     {
         WithFixture("history-failures", temp =>

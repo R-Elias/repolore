@@ -46,7 +46,7 @@ Run these in this order:
 
 3. Commit `.gitignore`, `.config/dotnet-tools.json`, `NuGet.Config` and the new `_repolore/` files.
 
-Create sessions only after `init`. A `_repolore/` directory that holds nothing but a session folder is treated as alpha knowledge, and `init` refuses it with a `migrate` message and changes nothing.
+Create sessions only after `init`. If you created a session folder first, `init` refuses (exit 3, nothing changed) because `_repolore/` already holds files but has no `repolore.json`. Move `_repolore/sessions/` aside, run `repolore init`, then move it back.
 
 ## 3. Daily use
 

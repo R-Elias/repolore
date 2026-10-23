@@ -33,7 +33,7 @@ public class CommandContractTests
         { "context", "minimal", "context --json", 2, "usage" },
         { "tree", "minimal", "tree --start nowhere/ --json", 2, "usage" },
         { "history", "corrupt-history", "history --json", 3, "history-failure" },
-        { "restore", "minimal", "restore 99 --dry-run --json", 3, "history-failure" },
+        { "restore", "minimal", "restore 99 --dry-run --json", 3, "unknown-checkpoint" },
         { "checkpoint", "disabled-history", "checkpoint --json", 3, "history-disabled" },
         { "checkpoint pending", "pending", "checkpoint --json", 3, "history-pending" },
         { "init", "alpha-sparse", "init --json", 3, "alpha-needs-migration" },
@@ -147,6 +147,14 @@ public class CommandContractTests
         result.Code.Should().Be(2);
         result.Error.Should().StartWith("Usage:");
         writes.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Usage_errors_point_to_help_instead_of_repeating_a_command_list()
+    {
+        var result = RunArranged("minimal", "checkpoint extra", out _);
+
+        result.Error.Split('\n')[0].Should().Be("Usage: repolore <command> [options]; run 'repolore --help' for the commands and options.");
     }
 
     [Fact]

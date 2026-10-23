@@ -85,6 +85,10 @@ catch (WriterLockException ex)
 {
     return Failure(json, ErrorIds.HistoryLocked, ex.Message, null);
 }
+catch (UnknownCheckpointException ex)
+{
+    return Failure(json, ErrorIds.UnknownCheckpoint, ex.Message, null);
+}
 catch (HistoryStoreException ex)
 {
     return Failure(json, ErrorIds.HistoryFailure, ex.Message, null);
@@ -121,7 +125,7 @@ catch (Exception ex)
 
 static int Usage(bool json, string message)
 {
-    Console.Error.WriteLine("Usage: repolore version | --help | init [--update-method] | migrate [--check | --dry-run] | path <target> | context [<target>] | tree | checkpoint | history | restore <id> | health-check");
+    Console.Error.WriteLine("Usage: repolore <command> [options]; run 'repolore --help' for the commands and options.");
     ErrorRenderer.Write(json, ErrorIds.Usage, message, null);
     return ExitCodes.Usage;
 }

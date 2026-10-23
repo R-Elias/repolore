@@ -12,12 +12,27 @@ public class MigrateTests
         {
             var result = TestSupport.Run(temp, TestSupport.Cli, "migrate");
             result.Code.Should().Be(0);
+            result.Out.Should().Contain("format marker written");
 
             File.ReadAllText(Path.Combine(temp, "_repolore", "repolore.json")).Should().Be("{\"formatVersion\":1}");
             TestSupport.Normalize(File.ReadAllText(Path.Combine(temp, "_repolore", "sparse-tree", "src", "src.md")))
                 .Should().Be("ALPHA_SPARSE_ONLY_SENTINEL\n");
             File.Exists(Path.Combine(temp, "_repolore", "root.md")).Should().BeTrue();
             Directory.Exists(Path.Combine(temp, "_repolore", "tree")).Should().BeFalse();
+        });
+    }
+
+    [Fact]
+    public void Migrate_json_reports_the_marker_additively()
+    {
+        TestSupport.WithFixture("alpha-sparse-only", temp =>
+        {
+            var result = TestSupport.Run(temp, TestSupport.Cli, "migrate", "--json");
+
+            result.Code.Should().Be(0);
+            using var document = System.Text.Json.JsonDocument.Parse(result.Out);
+            document.RootElement.GetProperty("markerWritten").GetBoolean().Should().BeTrue();
+            document.RootElement.TryGetProperty("created", out _).Should().BeTrue();
         });
     }
 

@@ -11,12 +11,13 @@ public static class ErrorIds
     public const string AlphaNeedsMigration = "alpha-needs-migration";
     public const string MigrationBlocked = "migration-blocked";
     public const string RestorePlanInvalid = "restore-plan-invalid";
+    public const string UnknownCheckpoint = "unknown-checkpoint";
     public const string IoError = "io-error";
     public const string InternalError = "internal-error";
 
     public static readonly IReadOnlyList<string> All = new[]
     {
         Usage, HistoryLocked, HistoryDisabled, HistoryFailure, OperationInterrupted, InitIncomplete,
-        AlphaNeedsMigration, MigrationBlocked, RestorePlanInvalid, IoError, InternalError
+        AlphaNeedsMigration, MigrationBlocked, RestorePlanInvalid, UnknownCheckpoint, IoError, InternalError
     };
 }

@@ -143,6 +143,9 @@ public static class Renderer
         if (quiet)
             return;
 
+        if (ordered.Count == 0)
+            Console.WriteLine("no checkpoints");
+
         foreach (var manifest in ordered)
         {
             Console.WriteLine($"{ManifestId.Format(manifest.Id)} {manifest.Timestamp}");
@@ -352,6 +355,7 @@ public static class Renderer
         {
             var root = new JsonObject();
             root.Members.Add(new JsonMember("checkpointId", result.PublishedId is long id ? Number(id) : new JsonNullValue()));
+            root.Members.Add(new JsonMember("markerWritten", new JsonBooleanValue(true)));
             root.Members.Add(new JsonMember("created", Number(result.Created)));
             root.Members.Add(new JsonMember("removed", Number(result.Removed)));
             root.Members.Add(new JsonMember("leftBehind", StringArray(result.LeftBehind)));
@@ -366,7 +370,7 @@ public static class Renderer
             return;
 
         var checkpoint = result.PublishedId is long published ? ManifestId.Format(published) : "?";
-        Console.WriteLine($"migrated: {result.Created} created, {result.Removed} removed (checkpoint {checkpoint})");
+        Console.WriteLine($"migrated: format marker written, {result.Created} notes copied, {result.Removed} legacy files removed (checkpoint {checkpoint})");
     }
 
     private static string MappingStatusName(MappingStatus status) => status switch

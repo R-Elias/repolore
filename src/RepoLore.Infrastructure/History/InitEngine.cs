@@ -55,6 +55,11 @@ public sealed class InitResult
 
 public sealed class InitEngine
 {
+    public const string MarkerlessDirectoryMessage =
+        "_repolore/ holds files but has no format marker (repolore.json), so init will not write into it. " +
+        "If you created session folders first, move _repolore/sessions/ aside, run 'repolore init', then move it back. " +
+        "If it holds alpha knowledge, run 'repolore migrate --check'.";
+
     private const string MethodPath = "_repolore/method.md";
     private const string RootPath = "_repolore/root.md";
     private const string SparseTreePath = "_repolore/sparse-tree/";
@@ -105,7 +110,7 @@ public sealed class InitEngine
     {
         var kind = Classify();
         if (kind == InitDirKind.Alpha)
-            throw new InitException("_repolore/ holds alpha knowledge without a format marker; migration is required (repolore migrate), not init");
+            throw new InitException(MarkerlessDirectoryMessage);
 
         var fresh = kind != InitDirKind.V1;
         var created = new List<string>();

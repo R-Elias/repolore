@@ -154,7 +154,7 @@ public class CommandContractTests
     {
         var result = RunArranged("minimal", "checkpoint extra", out _);
 
-        result.Error.Split('\n')[0].Should().Be("Usage: repolore <command> [options]; run 'repolore --help' for the commands and options.");
+        TestSupport.Normalize(result.Error).Split('\n')[0].Should().Be("Usage: repolore <command> [options]; run 'repolore --help' for the commands and options.");
     }
 
     [Fact]

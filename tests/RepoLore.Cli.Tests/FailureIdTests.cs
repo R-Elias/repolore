@@ -58,6 +58,29 @@ public sealed class FailureIdTests
         });
     }
 
+    [Theory]
+    [InlineData("checkpoint")]
+    [InlineData("restore 1")]
+    [InlineData("init")]
+    public void A_file_in_place_of_the_history_directory_fails_writes_with_a_clear_message_and_no_machine_path(string command)
+    {
+        TestSupport.WithFixture("minimal-v1", temp =>
+        {
+            var history = Path.Combine(temp, "_repolore", ".history");
+            File.WriteAllText(history, "not a directory\n");
+
+            var result = TestSupport.Run(temp, [TestSupport.Cli, .. command.Split(' '), "--json"]);
+
+            result.Code.Should().Be(3, result.Error);
+            using var error = JsonDocument.Parse(result.Out);
+            error.RootElement.GetProperty("error").GetProperty("id").GetString().Should().Be("io-error");
+            error.RootElement.GetProperty("error").GetProperty("message").GetString().Should().Be(
+                "_repolore/.history is a file, not a directory, so nothing can be written; move that file aside or delete it, then retry");
+            (result.Out + result.Error).Should().NotContain(temp);
+            File.ReadAllText(history).Should().Be("not a directory\n");
+        });
+    }
+
     // Windows refuses to write, replace or delete a file another handle holds with read-only sharing (the restore's own
     // pre-operation checkpoint can still read it); Unix refuses to change the entries of a directory without write
     // permission.

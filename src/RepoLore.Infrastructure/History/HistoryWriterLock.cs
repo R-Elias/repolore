@@ -13,6 +13,10 @@ public sealed class WriterLock : IDisposable
 
     public static WriterLock Acquire(string historyDirectory)
     {
+        // Every write command starts here. Without this check, a file in place of the directory surfaces as the
+        // runtime's own message, which names the absolute path and no remedy.
+        if (File.Exists(historyDirectory))
+            throw new IOException("_repolore/.history is a file, not a directory, so nothing can be written; move that file aside or delete it, then retry");
         Directory.CreateDirectory(historyDirectory);
         var path = Path.Combine(historyDirectory, "write.lock");
         try

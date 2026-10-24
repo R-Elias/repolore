@@ -8,3 +8,4 @@ Draft notes. When the next version is cut, rename this file to `<version>.md` (t
 - User guide: supported environments, how the privacy claim is evidenced, and how to verify a release.
 - Author signing is not planned for 1.0.0 (maintainer decision of 2026-10-24); releases are verified through Trusted Publishing, NuGet.org's repository signature, the checksum, and the SBOM.
 - Fix: `init` writes the method and root templates with LF line endings whatever machine built the tool. A Windows build previously wrote CRLF, a different method from the published package's; the published `0.1.0-preview.1` was built on Linux and is not affected.
+- Fix: when `_repolore/.history` is a file instead of a directory, write commands now fail with "_repolore/.history is a file, not a directory, so nothing can be written; move that file aside or delete it, then retry" instead of the runtime's raw message, which included the absolute path. The error ID is still `io-error`.

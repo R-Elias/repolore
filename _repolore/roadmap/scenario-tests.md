@@ -4,7 +4,7 @@ Status: **14a and 14b complete (2026-10-24); 14c deferred until after 1.0.0.** T
 - **Reference repository:** `repolore-e2e-test-reference` (39 stages), published at <https://github.com/R-Elias/repolore-e2e-test-reference>. Rulesets protect it: `main` cannot be deleted or force-pushed, and tags cannot be updated or deleted, though new tags can still be created.
 - **Proof of completion:** `scenarios` run #2 on `main`, commit `9b27435` (PR #7), was green on Ubuntu (28 scenarios), Windows (26) and macOS (27), with no failure artifact. CI was green on PR #7 and after its merge.
 - **Run #1 on commit `3a8b7c3`:** failed on Windows only. That run found the build-dependent line endings of the init templates, fixed in PR #7 (see the Catalog section).
-- **Still open, without blocking the gates:** the contract question about an invalid `_repoloreignore`, and the `s36` `io-error` message defect.
+- **Still open, without blocking the gates:** the contract question about an invalid `_repoloreignore`. The `s36` `io-error` message defect was fixed on 2026-10-24.
 - **Gates:** [implementation guide, section 14](implementation-v1.md#14--scenario-tests-on-a-reference-repository). Before the v1.0.0 tag, the suite must also be green on the exact release commit.
 
 ## Purpose
@@ -70,7 +70,7 @@ The repository was built by a one-off script with fixed authors and dates and an
 
 Checking out commits cannot reproduce these four IDs: `history-locked`, `operation-interrupted`, `internal-error` and `init-incomplete`. They stay covered by ordinary tests. On macOS, `s37` collapses into one directory, as expected.
 
-**First defect found (not fixed; for a follow-up package):** on `s36`, `checkpoint` and `restore` exit 3 with `io-error` and the raw .NET message "The file '<absolute path>/_repolore/.history' already exists." The message names no remedy and contains an absolute machine path. The read-only `health-check` reports the clear `history-unavailable` finding instead.
+**First defect found (fixed on 2026-10-24, branch `package-13/pre-release-fixes`):** on `s36`, `checkpoint` and `restore` exit 3 with `io-error` and the raw .NET message "The file '<absolute path>/_repolore/.history' already exists." The message names no remedy and contains an absolute machine path. The read-only `health-check` reports the clear `history-unavailable` finding instead.
 
 ## Execution and cost
 
@@ -191,7 +191,7 @@ Until 14b, no CLI-level test asserted `history-locked` or `operation-interrupted
 - **Regression test:** `InitTests.Init_writes_lf_templates_whatever_line_endings_the_source_was_checked_out_with`. It runs on every pull request, and its Windows job builds from a CRLF checkout.
 - **Local proof:** with `EmbeddedTemplates.cs` converted to CRLF, the old code fails the test and writes `105dd6d8…`, exactly the Windows CI artifact. The fixed code passes and writes `393afc14…` from either a CRLF or an LF checkout.
 
-**Defect still open:** the `s36` `io-error` message is raw .NET text containing an absolute path. Only its ID is pinned.
+**`s36` defect fixed (2026-10-24, branch `package-13/pre-release-fixes`):** `WriterLock.Acquire`, which every write command (`init`, `checkpoint`, `restore`, `migrate`) calls first, now checks for a file at the history path. In that case it throws its own `IOException`, still mapped to `io-error`, with the message "_repolore/.history is a file, not a directory, so nothing can be written; move that file aside or delete it, then retry". The message names no machine path. The scenario now pins this exact message. The new `FailureIdTests.A_file_in_place_of_the_history_directory_fails_writes_with_a_clear_message_and_no_machine_path` covers `checkpoint`, `restore 1` and `init`; all three cases fail without the fix and pass with it. Other raw runtime messages, such as "access denied" inside `operation-interrupted`, can still name absolute paths; that is unchanged.
 
 ## Sub-packages
 

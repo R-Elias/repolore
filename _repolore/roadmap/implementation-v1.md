@@ -245,7 +245,7 @@ Track implementation here or in linked PRs; all entries start incomplete. For ea
   - **14a:** the reference repository `repolore-e2e-test-reference` (39 stages, protected tags), the runner in `tests/RepoLore.Cli.Tests/Scenarios/`, its self-tests, the pin, and `scenarios.yml`.
   - **14b:** 28 scenarios, 6 reviewed golden files, the ID coverage test with 5 reviewed exemptions, and 2 `FailureIdTests`.
   - **Evidence:** `scenarios` run #2 on `main` (`9b27435`) was green on Ubuntu (28), Windows (26) and macOS (27). Run #1 found the Windows line-ending defect in the init templates, fixed in PR #7.
-  - **Open:** the invalid-`_repoloreignore` contract question and the `s36` `io-error` message.
+  - **Open:** the invalid-`_repoloreignore` contract question. The `s36` `io-error` message was fixed on 2026-10-24.
   - Details are in [scenario tests](scenario-tests.md).
 - [ ] 13 — Verifiable v1.0.0 release (author signing deferred by the maintainer, 2026-10-24; the final cut waits for 14a–14b) — not started as a release; plan and open decisions in [v1.0.0 release plan](release-v1.md), cleanups in branch `package-13/release-preparation`
 
@@ -493,3 +493,9 @@ Test projects may now reference an approved test stack: xUnit (`2.9.3`), FluentA
 - New test `InitTests.Init_writes_lf_templates_whatever_line_endings_the_source_was_checked_out_with`. A local CRLF reproduction makes the old code fail it with the Windows hash, and the fixed code pass with `393afc14…`.
 - Checks (macOS): Core 101, Infrastructure 80, Cli 147 excluding Packaging and Scenario, Packaging 18, scenarios 27 of 27.
 - Remaining: the Windows CI job on the pull request, then a re-run of `scenarios` on `main`. A repository-wide `.gitattributes` was deliberately not added.
+
+**Clear message for a file at the history path — 2026-10-24 (branch `package-13/pre-release-fixes`).** This was the first defect the scenarios found (stage `s36`). When `_repolore/.history` was a file, every write command failed with the runtime's raw text, which named the absolute path and no remedy.
+- `WriterLock.Acquire`, the first call of `init`, `checkpoint`, `restore` and `migrate`, now throws `IOException("_repolore/.history is a file, not a directory, so nothing can be written; move that file aside or delete it, then retry")`.
+- The error ID stays `io-error`, so `expected-ids.tsv` and the error mapping are unchanged.
+- Tests: the new `FailureIdTests` theory (`checkpoint`, `restore 1`, `init`) checks the ID, the exact message, that no temp path appears, and that the file is unchanged. All three cases fail without the fix. The `history-path-is-a-file` scenario pins the message.
+- Checks (macOS): Core 101, Infrastructure 80, Cli 150 excluding Packaging and Scenario, Packaging 18, scenarios 27 of 27.

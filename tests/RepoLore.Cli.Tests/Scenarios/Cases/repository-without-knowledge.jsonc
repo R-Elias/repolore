@@ -1,0 +1,10 @@
+// Before adoption there is nothing to read: commands fail as usage errors and write nothing.
+{
+  "name": "repository-without-knowledge",
+  "tags": ["smoke"],
+  "steps": [
+    { "checkout": "s01-plain-monorepo" },
+    { "run": "health-check", "expect": { "exit": 2, "stderr": "no _repolore/ directory found", "file-absent": "_repolore" } },
+    { "run": "context services/", "expect": { "exit": 2, "stderr": "no _repolore/ directory found", "file-absent": "_repolore" } }
+  ]
+}

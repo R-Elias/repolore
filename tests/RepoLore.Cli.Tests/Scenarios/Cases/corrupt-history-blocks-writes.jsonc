@@ -1,0 +1,13 @@
+// An altered stored object is reported by health-check and refuses every write that needs history.
+{
+  "name": "corrupt-history-blocks-writes",
+  "tags": ["smoke", "history"],
+  "steps": [
+    { "checkout": "s33-corrupt-history-object" },
+    { "run": "health-check",
+      "expect": { "exit": 3, "stdout": "history-corrupt _repolore/.history/objects/8278f7f3a165513f66348bca7eb9f891c8eaf45d39c3723ddea3c9b09f98558f" } },
+    { "run": "checkpoint", "expect": { "exit": 3, "stderr": "is corrupt" } },
+    { "run": "restore 1", "expect": { "exit": 3, "stderr": "is corrupt",
+      "file-equals": { "path": "_repolore/sparse-tree/services/orders/orders.md", "at": "s33-corrupt-history-object" } } }
+  ]
+}

@@ -1,0 +1,19 @@
+// An adopter checkpoints, edits a note in a later commit, and restores that one note from the first checkpoint.
+{
+  "name": "adopt-edit-and-restore-a-note",
+  "tags": ["smoke", "recovery"],
+  "steps": [
+    { "checkout": "s04-knowledge-adopted" },
+    { "run": "health-check", "expect": { "exit": 0, "stdout": "healthy: no findings" } },
+    { "run": "checkpoint", "expect": { "exit": 0, "stdout": "checkpoint 0000000000000001: 17 files, 17 added" } },
+    { "checkout": "s05-note-edited" },
+    { "run": "checkpoint", "expect": { "exit": 0, "stdout": "checkpoint 0000000000000002: 17 files, 0 added, 1 changed" } },
+    { "run": "restore 1 --path _repolore/sparse-tree/services/orders/orders.md --dry-run",
+      "expect": { "exit": 0, "stdout": "replace _repolore/sparse-tree/services/orders/orders.md",
+                  "file-equals": { "path": "_repolore/sparse-tree/services/orders/orders.md", "at": "s05-note-edited" } } },
+    { "run": "restore 1 --path _repolore/sparse-tree/services/orders/orders.md",
+      "expect": { "exit": 0, "stdout": "restore complete: 0 added, 1 replaced, 0 deleted (checkpoint 0000000000000003)",
+                  "file-equals": { "path": "_repolore/sparse-tree/services/orders/orders.md", "at": "s04-knowledge-adopted" } } },
+    { "run": "history --json", "expect": { "exit": 0, "json": { "checkpoints.0.id": 3, "checkpoints.2.id": 1 } } }
+  ]
+}

@@ -26,6 +26,42 @@ public sealed class GitRepository
         return new GitRepository(destination);
     }
 
+    public static GitRepository Open(string path) => new(path);
+
+    public static GitRepository CloneWithoutCheckout(string sourcePath, string destination)
+    {
+        var parent = System.IO.Path.GetDirectoryName(destination)!;
+        Directory.CreateDirectory(parent);
+        new GitRepository(parent).Run("clone", "--quiet", "--no-checkout", sourcePath, destination);
+        return new GitRepository(destination);
+    }
+
+    public void CheckoutStage(string tag)
+    {
+        Run("checkout", "--quiet", "--force", tag);
+        Run("clean", "-fd", "--quiet");
+    }
+
+    public bool HasCommit(string revision) => Execute("rev-parse", "--verify", "--quiet", revision + "^{commit}").Code == 0;
+
+    public string ResolveCommit(string revision) => Run("rev-parse", "--verify", "--quiet", revision + "^{commit}").Trim();
+
+    public byte[] FileAt(string revision, string relativePath)
+    {
+        using var buffer = new MemoryStream();
+        var result = CliWrap.Cli.Wrap("git")
+            .WithArguments(["-c", "core.autocrlf=false", "cat-file", "blob", revision + ":" + relativePath])
+            .WithWorkingDirectory(Path)
+            .WithEnvironmentVariables(env => env.Set("GIT_CONFIG_GLOBAL", EmptyGlobalConfig).Set("GIT_CONFIG_NOSYSTEM", "1"))
+            .WithStandardOutputPipe(PipeTarget.ToStream(buffer))
+            .WithValidation(CommandResultValidation.None)
+            .ExecuteAsync()
+            .GetAwaiter()
+            .GetResult();
+        result.ExitCode.Should().Be(0, $"'{relativePath}' must exist at '{revision}'");
+        return buffer.ToArray();
+    }
+
     public void CommitAll(string message)
     {
         Run("add", "--all");
@@ -58,7 +94,7 @@ public sealed class GitRepository
         string[] isolatedArguments =
         [
             "-c", "user.name=Journey", "-c", "user.email=journey@example.invalid",
-            "-c", "core.autocrlf=false", "-c", "commit.gpgsign=false", .. arguments,
+            "-c", "core.autocrlf=false", "-c", "core.longpaths=true", "-c", "commit.gpgsign=false", "-c", "tag.gpgsign=false", .. arguments,
         ];
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
         var result = CliWrap.Cli.Wrap("git")

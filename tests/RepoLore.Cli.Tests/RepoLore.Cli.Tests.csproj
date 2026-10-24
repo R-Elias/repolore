@@ -13,5 +13,6 @@
   <ItemGroup>
     <ProjectReference Include="../../src/RepoLore.Cli/RepoLore.Cli.csproj" />
     <None Include="Fixtures/**/*" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Scenarios/Cases/*.jsonc;Scenarios/reference-repo.version" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

@@ -1,0 +1,17 @@
+// A newer, malformed or duplicate-key marker fails safely: nothing is read as knowledge and nothing is written.
+{
+  "name": "unknown-and-broken-formats-are-refused",
+  "tags": ["smoke", "format"],
+  "steps": [
+    { "checkout": "s21-unsupported-format" },
+    { "run": "context services/", "expect": { "exit": 3, "stderr": "Unknown format version 2; this build supports 1. Upgrade RepoLore" } },
+    { "run": "checkpoint", "expect": { "exit": 3, "stderr": "Unknown format version 2", "file-absent": "_repolore/.history" } },
+    { "run": "health-check --json", "expect": { "exit": 3, "json": { "findings.0.id": "unsupported-format", "findings.0.path": "_repolore/repolore.json" } } },
+    { "checkout": "s22-malformed-marker" },
+    { "run": "health-check", "expect": { "exit": 3, "stdout": "malformed-format _repolore/repolore.json: repolore.json is not valid JSON" } },
+    { "checkout": "s23-duplicate-keys" },
+    { "run": "health-check", "expect": { "exit": 3, "stdout": "duplicate key 'formatVersion'" } },
+    { "checkout": "s10-session-cleaned-up" },
+    { "run": "health-check", "expect": { "exit": 0, "stdout": "healthy: no findings" } }
+  ]
+}

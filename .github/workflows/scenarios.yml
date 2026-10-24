@@ -1,0 +1,55 @@
+name: scenarios
+on:
+  schedule:
+    - cron: '17 4 * * 1,4'
+  workflow_dispatch:
+    inputs:
+      tags:
+        description: 'Comma-separated scenario tags to run (empty runs all; "smoke" is the quick set)'
+        type: string
+        default: ''
+permissions:
+  contents: read
+concurrency:
+  group: scenarios-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  scenarios:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: '1'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - name: Clone the pinned reference repository
+        shell: bash
+        run: |
+          pin=tests/RepoLore.Cli.Tests/Scenarios/reference-repo.version
+          repository=$(awk '$1 == "repository" { print $2 }' "$pin")
+          tag=$(awk '$1 == "tag" { print $2 }' "$pin")
+          commit=$(awk '$1 == "commit" { print $2 }' "$pin")
+          reference="$RUNNER_TEMP/reference"
+          git -c core.longpaths=true -c core.autocrlf=false clone --quiet --no-checkout "$repository" "$reference"
+          test "$(git -C "$reference" rev-parse --verify "$tag^{commit}")" = "$commit"
+          echo "REPOLORE_REFERENCE_REPO=$reference" >> "$GITHUB_ENV"
+          echo "REPOLORE_SCENARIO_ARTIFACTS=$RUNNER_TEMP/scenario-failures" >> "$GITHUB_ENV"
+      - run: dotnet restore --locked-mode
+      - run: dotnet build --no-restore --configuration Release
+      - name: Run the scenarios on the packed tool
+        env:
+          REPOLORE_SCENARIO_TAGS: ${{ inputs.tags }}
+        run: dotnet test --no-build --configuration Release tests/RepoLore.Cli.Tests --filter "Category=Scenario"
+      - name: Keep the failed scenarios' command logs and files
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: scenario-failures-${{ matrix.os }}
+          path: ${{ runner.temp }}/scenario-failures/
+          if-no-files-found: ignore

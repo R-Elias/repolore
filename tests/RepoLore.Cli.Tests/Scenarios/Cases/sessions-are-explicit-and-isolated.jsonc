@@ -1,0 +1,16 @@
+// Default context never opens a session; a selected session adds only its own notes, labelled as provisional.
+{
+  "name": "sessions-are-explicit-and-isolated",
+  "tags": ["smoke", "sessions"],
+  "steps": [
+    { "checkout": "s08-two-sessions" },
+    { "run": "context services/payments/",
+      "expect": { "exit": 0, "stdout": "## _repolore/sparse-tree/services/payments/payments.md [durable]", "stdout-not": "[session:" } },
+    { "run": "context services/payments/ --session 2026-01-11-payment-retries-a1c4",
+      "expect": { "exit": 0, "stdout": "## _repolore/sessions/2026-01-11-payment-retries-a1c4/root.md [session:2026-01-11-payment-retries-a1c4]",
+                  "stdout-not": "2026-01-12-checkout-latency-b7e2" } },
+    { "run": "context services/payments/ --session 2026-01-12-checkout-latency-b7e2",
+      "expect": { "exit": 0, "stdout": "[session:2026-01-12-checkout-latency-b7e2]", "stdout-not": "2026-01-11-payment-retries-a1c4" } },
+    { "run": "health-check --session 2026-01-11-payment-retries-a1c4", "expect": { "exit": 0, "stdout": "healthy: no findings" } }
+  ]
+}

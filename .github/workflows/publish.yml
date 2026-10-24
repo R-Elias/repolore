@@ -45,7 +45,7 @@ jobs:
       - run: dotnet build --no-restore --configuration Release
       - run: dotnet test --no-build --configuration Release tests/RepoLore.Core.Tests
       - run: dotnet test --no-build --configuration Release tests/RepoLore.Infrastructure.Tests
-      - run: dotnet test --no-build --configuration Release tests/RepoLore.Cli.Tests --filter "FullyQualifiedName!~RepoLore.Cli.Tests.Packaging"
+      - run: dotnet test --no-build --configuration Release tests/RepoLore.Cli.Tests --filter "FullyQualifiedName!~RepoLore.Cli.Tests.Packaging&Category!=Scenario"
       - run: dotnet test --no-build --configuration Release tests/RepoLore.Cli.Tests --filter "FullyQualifiedName~RepoLore.Cli.Tests.Packaging"
       - name: Pack the single tool package from the tested build
         run: dotnet pack src/RepoLore.Cli/RepoLore.Cli.csproj --no-build --configuration Release --output artifacts

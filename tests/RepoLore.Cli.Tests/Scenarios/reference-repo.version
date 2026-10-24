@@ -1,0 +1,4 @@
+# Pinned version of the scenario reference repository. Move it forward only, together with the scenarios that need it.
+repository https://github.com/R-Elias/repolore-e2e-test-reference.git
+tag s39-long-paths
+commit 47e63466b69390e9171ceec4e9e60fb8179d3026

@@ -12,7 +12,7 @@ public static class HistoryCoveragePolicy
             return false;
         if (isSymlink)
             return false;
-        if (relativePath == "_repoloreignore")
+        if (relativePath == SourceDiscoveryPolicy.IgnoreFile)
             return true;
         if (relativePath == "_repolore/repolore.json")
             return true;

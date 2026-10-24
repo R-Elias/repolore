@@ -85,7 +85,7 @@ repolore context src/ --session 2026-10-23-retry-path-a1c4 --node _repolore/sess
 | State | Lives in | In Git? | Recoverable by `restore`? | Status |
 |---|---|---|---|---|
 | Durable notes: `root.md`, `sparse-tree/`, custom areas | `_repolore/` | Yes | Yes, from a checkpoint (and from Git) | Established guidance |
-| `method.md`, `repolore.json`, `_repoloreignore` | `_repolore/`, repo root | Yes | Yes | Configuration |
+| `method.md`, `repolore.json`, `.repoloreignore` | `_repolore/`, repo root | Yes | Yes | Configuration |
 | Session notes | `_repolore/sessions/<id>/` | **No** (ignored) | Yes, from a checkpoint | **Provisional** |
 | Checkpoints | `_repolore/.history/` | **No** (ignored) | not applicable | Local recovery state, not a backup |
 | Source code | anywhere else | Yes | **No**, RepoLore never touches it | Use Git |
@@ -95,6 +95,8 @@ repolore context src/ --session 2026-10-23-retry-path-a1c4 --node _repolore/sess
 ## 6. Format and migration
 
 `_repolore/repolore.json` holds `{"formatVersion":1}` and optional history settings. A format the tool does not know fails safely: `context`, `path`, `tree` and every command that writes refuse with an upgrade message (exit 3) and change nothing. Updating the tool never migrates knowledge.
+
+An optional `.repoloreignore` at the repository root holds source-discovery rules, in the same syntax as `history.exclude`. Today these rules only change what `health-check --explain` reports. An invalid rule is a blocking `policy-error` in `health-check` (exit 3, with its line number), but it blocks nothing else: reads and writes go on, because the rules never decide what history protects. The `0.1.0-preview.1` release named this file `_repoloreignore`. A leftover file with that name is reported by `health-check`, and its rules are not read until you rename it.
 
 Knowledge from the alpha PowerShell tools (no `repolore.json`, a `tree/` and/or `sparse-tree/`) is migrated only on request:
 
@@ -110,7 +112,7 @@ Before running `migrate` on knowledge you care about, **make your own backup out
 
 ## 7. Recovery
 
-`repolore checkpoint` stores complete copies of every eligible file (all `_repolore/` Markdown including every session, `repolore.json`, `_repoloreignore`) and skips the call when nothing changed. Only states seen by a successful checkpoint can be recovered: edits between checkpoints collapse into one, a file created and deleted between two checkpoints is gone, and the oldest checkpoints are evicted when history exceeds `history.maxBytes` (200 MiB by default; the latest checkpoint is never evicted). Pause editing while a checkpoint runs; a file that changes mid-capture makes it fail with a retry message.
+`repolore checkpoint` stores complete copies of every eligible file (all `_repolore/` Markdown including every session, `repolore.json`, `.repoloreignore`) and skips the call when nothing changed. Only states seen by a successful checkpoint can be recovered: edits between checkpoints collapse into one, a file created and deleted between two checkpoints is gone, and the oldest checkpoints are evicted when history exceeds `history.maxBytes` (200 MiB by default; the latest checkpoint is never evicted). Pause editing while a checkpoint runs; a file that changes mid-capture makes it fail with a retry message.
 
 ```text
 repolore history                                   # checkpoints and the files each holds

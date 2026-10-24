@@ -13,10 +13,10 @@ public static class HistoryEnumerator
         var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(repositoryRoot));
         var results = new List<string>();
 
-        var ignorePath = Path.Combine(root, "_repoloreignore");
+        var ignorePath = Path.Combine(root, SourceDiscoveryPolicy.IgnoreFile);
         if (File.Exists(ignorePath) && !RepositoryPathResolver.IsReparsePoint(ignorePath)
-            && HistoryCoveragePolicy.IsCovered("_repoloreignore", false, false, historyExclude))
-            results.Add("_repoloreignore");
+            && HistoryCoveragePolicy.IsCovered(SourceDiscoveryPolicy.IgnoreFile, false, false, historyExclude))
+            results.Add(SourceDiscoveryPolicy.IgnoreFile);
 
         var repoLore = Path.Combine(root, "_repolore");
         if (Directory.Exists(repoLore))

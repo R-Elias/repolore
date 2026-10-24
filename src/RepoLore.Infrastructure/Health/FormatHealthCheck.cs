@@ -1,6 +1,7 @@
 using RepoLore.Core.Configuration;
 using RepoLore.Core.Health;
 using RepoLore.Core.Matching;
+using RepoLore.Core.Policies;
 using RepoLore.Infrastructure.History;
 
 namespace RepoLore.Infrastructure.Health;
@@ -22,7 +23,6 @@ public sealed class FormatState
 public static class FormatHealthCheck
 {
     private const string MarkerPath = "_repolore/repolore.json";
-    private const string IgnorePath = "_repoloreignore";
 
     public static FormatState Run(string repositoryRoot, string historyDirectory, List<Finding> findings)
     {
@@ -35,7 +35,11 @@ public static class FormatHealthCheck
         else if (new InitEngine(repositoryRoot, historyDirectory).Classify() == InitDirKind.Alpha)
             findings.Add(new Finding(FindingIds.MigrationNeeded, "_repolore/", "no format marker: alpha knowledge, or session folders created before 'repolore init'; see 'repolore migrate --check', or move _repolore/sessions/ aside and run 'repolore init'"));
 
-        return new FormatState(markerPresent, config, ParseIgnore(Path.Combine(repositoryRoot, IgnorePath), findings));
+        if (File.Exists(Path.Combine(repositoryRoot, SourceDiscoveryPolicy.LegacyIgnoreFile)))
+            findings.Add(new Finding(FindingIds.PolicyError, SourceDiscoveryPolicy.LegacyIgnoreFile,
+                $"the ignore file is now named {SourceDiscoveryPolicy.IgnoreFile}; rename this file, whose rules are not read until then"));
+
+        return new FormatState(markerPresent, config, ParseIgnore(Path.Combine(repositoryRoot, SourceDiscoveryPolicy.IgnoreFile), findings));
     }
 
     private static RepoLoreConfig? ParseMarker(string markerFile, List<Finding> findings)
@@ -68,7 +72,7 @@ public static class FormatHealthCheck
         }
         catch (RuleSyntaxException ex)
         {
-            findings.Add(new Finding(FindingIds.PolicyError, IgnorePath, $"line {ex.Line}: {ex.Message}"));
+            findings.Add(new Finding(FindingIds.PolicyError, SourceDiscoveryPolicy.IgnoreFile, $"line {ex.Line}: {ex.Message}"));
             return null;
         }
     }

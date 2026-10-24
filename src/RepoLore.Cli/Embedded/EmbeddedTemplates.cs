@@ -1,8 +1,10 @@
 namespace RepoLore.Cli.Embedded;
 
+// Line endings are normalized to LF: a multi-line literal takes its line breaks from this file, which Git may check out
+// with CRLF on Windows, and init must write the same bytes whatever machine built the tool.
 internal static class EmbeddedTemplates
 {
-    internal const string Method = @"# RepoLore Method
+    internal static readonly string Method = @"# RepoLore Method
 
 RepoLore is a local, offline operational memory for this repository: plain Markdown that records
 what a future maintainer or coding agent should know before changing an area - constraints,
@@ -50,12 +52,12 @@ are never expired automatically, and do not accompany a fresh clone.
 `repolore restore <id>` recovers a previous state within coverage. Only states observed at
 successful checkpoints are recoverable. Read-only commands (context, path, tree, history, and all
 previews) never write.
-";
+".ReplaceLineEndings("\n");
 
-    internal const string Root = @"# Root
+    internal static readonly string Root = @"# Root
 
 No operational knowledge has been recorded yet. Record a task-oriented map here: what this
 repository is, its major areas, and where to start for common kinds of work. Keep it concise and
 update it as real work touches the code.
-";
+".ReplaceLineEndings("\n");
 }

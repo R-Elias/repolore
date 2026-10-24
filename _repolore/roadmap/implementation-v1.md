@@ -241,7 +241,7 @@ Track implementation here or in linked PRs; all entries start incomplete. For ea
 - [x] 11 — Packaged tool and restricted installation — implemented; macOS local evidence plus green Windows/Linux/macOS CI including the Linux networking-blocked smoke; package ID ownership still unconfirmed (details below)
 - [x] 12 — Dogfood and NuGet preview — complete: docs, package readme, acceptance journey and preview checklist CI-green; this checkout migrated 2026-10-24; `RepoLore.Cli` `0.1.0-preview.1` published to NuGet.org on 2026-10-24 through Trusted Publishing and verified by a clean install from nuget.org; unsigned (no author signature) by design, preview label stated (details below)
 - [x] 12.5 — Small CLI friction fixes — implemented and validated locally; Windows/Linux/macOS CI green after one test fix (details below)
-- [ ] 14 — Scenario tests on a reference repository (bonus package; 14a–14b required before the 1.0.0 cut, 14c after) — designed, not started; design in [scenario tests](scenario-tests.md)
+- [ ] 14 — Scenario tests on a reference repository (bonus package; 14a–14b required before the 1.0.0 cut, 14c after). 14a is in progress: the reference repository `repolore-e2e-test-reference` (39 stages) is validated locally and published (2026-10-24) with protected `main` and tags; the the runner, pin and workflow are not started. Design, stages and validation are in [scenario tests](scenario-tests.md)
 - [ ] 13 — Verifiable v1.0.0 release (author signing deferred by the maintainer, 2026-10-24; the final cut waits for 14a–14b) — not started as a release; plan and open decisions in [v1.0.0 release plan](release-v1.md), cleanups in branch `package-13/release-preparation`
 
 ### Package 01 — local evidence, 2026-09-05

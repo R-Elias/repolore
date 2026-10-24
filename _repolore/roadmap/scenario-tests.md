@@ -1,6 +1,6 @@
 # Scenario tests on a reference repository — package 14 design
 
-Status: **designed, not started** (design agreed with the maintainer on 2026-10-24). Gates: [implementation guide, section 14](implementation-v1.md#14--scenario-tests-on-a-reference-repository). **14a and 14b must pass before the v1.0.0 cut** (package 13); 14c comes after 1.0.0.
+Status: **14a in progress.** Design agreed with the maintainer on 2026-10-24. The reference repository (39 stages) was published on 2026-10-24 at <https://github.com/R-Elias/repolore-e2e-test-reference> with `main` and all tags pushed. The maintainer activated rulesets: `main` cannot be deleted or force-pushed, and tags cannot be updated or deleted, though new tags can still be created. The runner, pin and workflow do not exist yet. Gates: [implementation guide, section 14](implementation-v1.md#14--scenario-tests-on-a-reference-repository). **14a and 14b must pass before the v1.0.0 cut** (package 13); 14c comes after 1.0.0.
 
 ## Purpose
 
@@ -8,7 +8,7 @@ Unit, integration and package tests prove the parts. This suite reproduces what 
 
 ## Principles
 
-- **The reference repository is separate and immutable.** A public GitHub repository (placeholder name `repolore-reference-repo`) holds a bogus but production-looking monorepo and a deliberately designed history. Tests never write to it; they clone it into a disposable temp directory.
+- **The reference repository is separate and immutable.** A public GitHub repository, `repolore-e2e-test-reference`, holds a bogus but production-looking monorepo and a deliberately designed history. Tests never write to it; they clone it into a disposable temp directory.
 - **Git history is the script of edits.** The tests may do exactly two things: `checkout <tag>` and `run <repolore command>`. They never create, edit, move or delete files, and never decide what content to write. An edit is a later commit; a deletion is a commit that removes the file; a resolved merge is a merge commit; a corrupt history is a stage that commits broken `.history/` files (force-added), as the frozen `history-failures` fixture already does; sessions are committed, force-added, which also exercises "policies are independent" (the tool reads sessions whether or not Git tracks them). Untracked, Gitignored sessions stay covered by the acceptance journey.
 - **One harness rule for `checkout`:** `git checkout --force <tag>` followed by `git clean -fd` (not `-x`), so the working tree equals the stage while the tool's Gitignored `.history/` survives between stages.
 - **Append-only.** Stages and tags are never edited or force-pushed. New behavior means a new stage at the end. Tags are protected in the repository settings.
@@ -38,21 +38,34 @@ Expectations: `exit`; `stdout`/`stderr` containing or not containing text; `json
 
 The vocabulary stays this small on purpose; a need for more is a signal that the case belongs in an ordinary test.
 
-## Initial stage plan (subject to the maintainer's review)
+## Stages (built 2026-10-24)
 
-| Stages | Purpose |
+The fictional "Harbor" monorepo has 39 commits on `main`, one annotated tag per stage, and one merge. `STAGES.md` in every commit is the authoritative per-tag list: content, intended tool behavior, and the rules (never modify, append-only, tags are the interface, `.gitattributes` `* -text` so every OS checks out identical bytes).
+
+| Tags | Purpose |
 |---|---|
-| `s01`–`s03` | Plain monorepo with no RepoLore: services, web, libraries, infrastructure, docs; hazard folders (`vendor`, `bin`, `obj`, spaces, accents, very deep and very wide); then a `.gitignore` ready for `init`. The adopter's starting point |
-| `s04`–`s06` | Knowledge adopted (marker, method, root, path notes, custom `architecture/` and `adr/`), a note edited, notes added and removed. Checkpoint, restore and history flows |
-| `s07`–`s10` | One session, two sessions, a promotion, a cleanup |
-| `s11`–`s13` | Directories moved or deleted (orphan notes); broken and escaping links, a link into a session, invalid UTF-8, BOM, CRLF, a name mismatch, an oversized note |
-| `s14`–`s16` | A huge tree, Unicode paths, configuration variants (history exclusions, a tiny budget, ignore rules with re-inclusion, an invalid rule) |
-| `s17` | Unsupported format, malformed JSON, duplicate keys |
-| `s18`–`s21` | Realistic alpha repositories for `migrate`: sparse-only, local-only, conflicting copies, a `sessions/` naming conflict |
-| `s22`–`s23` | A resolved merge conflict in a note; a "release 1" baseline |
-| `s24`–`s26` | Corrupt history, a pending operation, and operating-system hazards (case collisions, symlinks, long paths), each scenario tagged with its `os` list |
+| `s01`–`s03` | Plain monorepo; hazard folders (vendored SDK, tracked `tools/bin/`, spaces, accents, 16-level chain, 120 siblings); `.gitignore` ready for `init` |
+| `s04`–`s10` | Adoption (real `init` output plus authored path and custom notes), edit, add and remove, one then two sessions (force-added), promotion, cleanup. `s10` is the **baseline** |
+| `s11`–`s23` | Each one is the baseline plus one hazard (hazards never accumulate): orphans and a missing method, links and malformed sessions, note content (invalid UTF-8, BOM, CRLF, misnamed note, 1.5 MB note), 1000-directory tree, Unicode paths, policy variants, a one-checkpoint budget, history disabled, invalid ignore rule, invalid history policy, format 2, malformed and duplicate-key markers |
+| `s24`–`s27` | Alpha repositories from `s03`: sparse committed, local mirror only, conflicting copies, a loose file in `sessions/` |
+| `s28`–`s32` | Back to the baseline; a branch edit and a main edit of one note, merged with a hand resolution; release 1 |
+| `s33`–`s36` | Committed `.history/` made by the real tool, then damaged: an altered object, a truncated manifest, an interrupted restore (`pending.json`), and `.history` as a file |
+| `s37`–`s39` | OS hazards: a case collision built through the index (Linux only), symlinks, paths over 260 characters |
 
-A `STAGES.md` in the reference repository states each stage's purpose and the scenarios that rely on it.
+The repository was built by a one-off script with fixed authors and dates and an isolated Git configuration. Commits through `s32` are byte-reproducible; `s33`–`s35` contain real checkpoint timestamps. Because the repository is append-only, the script is never rerun against it. New stages are appended by hand.
+
+**Local validation (2026-10-24, the `RepoLore.Cli` source build equal to `0.1.0-preview.1`, macOS):** the harness flow (fresh clone, `checkout --force <tag>`, `clean -fd`) was run on all 39 tags. `health-check` matched each stage's intent, and two independent builds gave identical results. Spot checks:
+
+- sessions are isolated, and an invalid session id is a usage error
+- `--explain` follows the re-inclusion rule
+- the `s17` budget evicts after a checkpoint from another stage
+- migration succeeds on `s24` and `s25`, and refuses on `s26` and `s27`
+- `s33` and `s34` refuse writes
+- `s35`'s pending operation refuses writes, and `restore 2` then recovers to healthy.
+
+Checking out commits cannot reproduce these four IDs: `history-locked`, `operation-interrupted`, `internal-error` and `init-incomplete`. They stay covered by ordinary tests. On macOS, `s37` collapses into one directory, as expected.
+
+**First defect found (not fixed; for a follow-up package):** on `s36`, `checkpoint` and `restore` exit 3 with `io-error` and the raw .NET message "The file '<absolute path>/_repolore/.history' already exists." The message names no remedy and contains an absolute machine path. The read-only `health-check` reports the clear `history-unavailable` finding instead.
 
 ## Execution and cost
 

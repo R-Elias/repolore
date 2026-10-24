@@ -44,7 +44,8 @@ Remaining:
 
 1. **Maintainer:** enable private vulnerability reporting in the repository settings.
 2. **Maintainer:** after the pull request merges, run `publish` once manually on `main` with `publish` unticked; it exercises the Node 24 actions, the release-notes gate and the SBOM step on GitHub for the first time.
-3. **Use the preview on real work**, fix what it shows, then bump `<Version>` in `Directory.Build.props` to `1.0.0`, rename `docs/release-notes/unreleased.md` to `1.0.0.md`, tag `v1.0.0`, approve the publish job, verify the download from NuGet.org as for the preview, and create the GitHub release with the checksum file and SBOM attached.
+3. **Scenario tests (package 14a–14b) must be green** on the release commit ([scenario tests](scenario-tests.md)).
+4. **Use the preview on real work**, fix what it shows, then bump `<Version>` in `Directory.Build.props` to `1.0.0`, rename `docs/release-notes/unreleased.md` to `1.0.0.md`, tag `v1.0.0`, approve the publish job, verify the download from NuGet.org as for the preview, and create the GitHub release with the checksum file and SBOM attached.
 
 ## Cleanups done in the package-13 branch (no release behavior)
 

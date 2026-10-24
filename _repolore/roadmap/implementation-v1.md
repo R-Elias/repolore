@@ -25,7 +25,8 @@ For every work package, leave: the implemented behavior, exact check command and
 | 11 | Packaged tool and restricted installation | 10 | Actual .nupkg works with clean caches and local-only feeds |
 | 12 | Dogfood and NuGet preview | 11 | Full human/agent workflow, including session promotion |
 | 12.5 | Small CLI friction fixes | 12 | Misleading messages and one generic error ID fixed with frozen IDs, no contract change |
-| 13 | Verifiable v1.0.0 release (author signing deferred, see its decision) | 12, 12.5 | Verified release artifact and versioned recovery documentation |
+| 13 | Verifiable v1.0.0 release (author signing deferred, see its decision) | 12, 12.5; the final cut also needs 14a–14b | Verified release artifact and versioned recovery documentation |
+| 14 | Scenario tests on a reference repository (bonus) | 12.5 | Deterministic user-reproduction scenarios pass on Windows, Linux and macOS |
 
 Work on 04 and 05 can proceed independently once paths and coverage are stable. Do not split snapshot, retention, and restore across incompatible implementations. Release credentials can be arranged while implementation proceeds; never label a preview, or a release without an author signature, enterprise-ready.
 
@@ -211,6 +212,18 @@ Build/test/package once for the candidate; calculate the hash of the exact file 
 
 **Fail:** publishing despite a preservation failure; publishing a checksum for a file other than the one pushed; claiming an author signature that does not exist; retagging a published version to different bits; describing the release as certified for banks or as preventing external agents from uploading content. Future fixes get a new version, with compatibility and recovery documented.
 
+## 14 — Scenario tests on a reference repository
+
+**Deliver:** a new test project `tests/RepoLore.Scenarios.Tests`, a separate public reference repository with a designed, append-only history, and scenarios written as JSON files. Design, scenario format, stage plan and execution policy: [scenario tests](scenario-tests.md). The tests may only `checkout` a stage (`git checkout --force` then `git clean -fd`) and `run` repolore commands against the real installed package; they never write, move, or delete files. Expectations are exit code, text, JSON fields, file equality with the file at another stage, absence, and reviewed golden output; read-only commands are checked automatically for zero changes. The reference repository is pinned by one small file in this repository; CI clones it in a build step and the tests only clone the local copy. A dedicated workflow runs the suite on all three operating systems twice a week and on demand, not on pull requests.
+
+- **14a:** reference repository (first stages), pin file, runner and its self-tests, workflow, smoke scenarios.
+- **14b:** the full scenario catalog, a coverage test that every finding and error ID in `expected-ids.tsv` is asserted by at least one scenario, and golden outputs for the key commands. **14a and 14b are required before the v1.0.0 cut** (maintainer decision, 2026-10-24).
+- **14c:** upgrade matrix with older published packages, deferred until a second version exists.
+
+**Pass:** the suite is deterministic (two runs give identical results); each scenario starts from a fresh clone of the pinned version; self-tests show that a deliberately wrong expectation fails, an unknown stage fails with a clear message, and the automatic read-only check catches a command that writes; the workflow is green on Windows, Linux and macOS; failures upload the scenario directory and command log; OS-specific stages run only where tagged. For 14b, every command has at least one normal and one failure scenario, every ID in `expected-ids.tsv` is covered, and the categories in the design note (daily use, sessions, Git-driven change, recovery and corruption, migration, configuration, hazards) each have scenarios.
+
+**Fail:** a test that edits or creates repository content; editing or force-pushing a published stage, or moving the pin backward; expectations pasted from tool output without review; any dependence on wall-clock time; tests needing network at run time (cloning is a build step); growing the expectation vocabulary instead of writing an ordinary test; calling the suite proof that no enterprise problem can occur.
+
 ## Completion record
 
 Track implementation here or in linked PRs; all entries start incomplete. For each, record the commit/PR, fixture/check command, observed result, and limitations. Do not check off the roadmap because this instruction document exists.
@@ -228,7 +241,8 @@ Track implementation here or in linked PRs; all entries start incomplete. For ea
 - [x] 11 — Packaged tool and restricted installation — implemented; macOS local evidence plus green Windows/Linux/macOS CI including the Linux networking-blocked smoke; package ID ownership still unconfirmed (details below)
 - [x] 12 — Dogfood and NuGet preview — complete: docs, package readme, acceptance journey and preview checklist CI-green; this checkout migrated 2026-10-24; `RepoLore.Cli` `0.1.0-preview.1` published to NuGet.org on 2026-10-24 through Trusted Publishing and verified by a clean install from nuget.org; unsigned (no author signature) by design, preview label stated (details below)
 - [x] 12.5 — Small CLI friction fixes — implemented and validated locally; Windows/Linux/macOS CI green after one test fix (details below)
-- [ ] 13 — Verifiable v1.0.0 release (author signing deferred by the maintainer, 2026-10-24) — not started as a release; plan and open decisions in [v1.0.0 release plan](release-v1.md), cleanups in branch `package-13/release-preparation`
+- [ ] 14 — Scenario tests on a reference repository (bonus package; 14a–14b required before the 1.0.0 cut, 14c after) — designed, not started; design in [scenario tests](scenario-tests.md)
+- [ ] 13 — Verifiable v1.0.0 release (author signing deferred by the maintainer, 2026-10-24; the final cut waits for 14a–14b) — not started as a release; plan and open decisions in [v1.0.0 release plan](release-v1.md), cleanups in branch `package-13/release-preparation`
 
 ### Package 01 — local evidence, 2026-09-05
 

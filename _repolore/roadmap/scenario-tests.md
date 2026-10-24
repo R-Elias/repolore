@@ -1,6 +1,6 @@
 # Scenario tests on a reference repository — package 14 design
 
-Status: **14a in progress.** Design agreed with the maintainer on 2026-10-24. The reference repository (39 stages) was published on 2026-10-24 at <https://github.com/R-Elias/repolore-e2e-test-reference> with `main` and all tags pushed. The maintainer activated rulesets: `main` cannot be deleted or force-pushed, and tags cannot be updated or deleted, though new tags can still be created. The runner, pin and workflow do not exist yet. Gates: [implementation guide, section 14](implementation-v1.md#14--scenario-tests-on-a-reference-repository). **14a and 14b must pass before the v1.0.0 cut** (package 13); 14c comes after 1.0.0.
+Status: **14a in progress.** Design agreed with the maintainer on 2026-10-24. The reference repository (39 stages) was published on 2026-10-24 at <https://github.com/R-Elias/repolore-e2e-test-reference> with `main` and all tags pushed. The maintainer activated rulesets: `main` cannot be deleted or force-pushed, and tags cannot be updated or deleted, though new tags can still be created. The runner, its self-tests, the pin, the workflow and 10 scenarios (9 tagged `smoke`) are implemented and green locally on macOS (see [Implementation](#implementation-14a)). The workflow's first run on GitHub, on all three operating systems, can only happen after the merge to `main`. Gates: [implementation guide, section 14](implementation-v1.md#14--scenario-tests-on-a-reference-repository). **14a and 14b must pass before the v1.0.0 cut** (package 13); 14c comes after 1.0.0.
 
 ## Purpose
 
@@ -12,9 +12,9 @@ Unit, integration and package tests prove the parts. This suite reproduces what 
 - **Git history is the script of edits.** The tests may do exactly two things: `checkout <tag>` and `run <repolore command>`. They never create, edit, move or delete files, and never decide what content to write. An edit is a later commit; a deletion is a commit that removes the file; a resolved merge is a merge commit; a corrupt history is a stage that commits broken `.history/` files (force-added), as the frozen `history-failures` fixture already does; sessions are committed, force-added, which also exercises "policies are independent" (the tool reads sessions whether or not Git tracks them). Untracked, Gitignored sessions stay covered by the acceptance journey.
 - **One harness rule for `checkout`:** `git checkout --force <tag>` followed by `git clean -fd` (not `-x`), so the working tree equals the stage while the tool's Gitignored `.history/` survives between stages.
 - **Append-only.** Stages and tags are never edited or force-pushed. New behavior means a new stage at the end. Tags are protected in the repository settings.
-- **Pinned.** This repository holds one small file naming the exact fixture tag or commit (`tests/RepoLore.Scenarios.Tests/reference-repo.version`). The pin only moves forward. CI clones that version in a build step; the tests only clone that local copy, so the tests need no network. A developer runs the suite with an environment variable pointing at a local clone.
+- **Pinned.** This repository holds one small file naming the exact fixture tag or commit (`tests/RepoLore.Cli.Tests/Scenarios/reference-repo.version`). The pin only moves forward. CI clones that version in a build step; the tests only clone that local copy, so the tests need no network. A developer runs the suite with an environment variable pointing at a local clone.
 - **Real package, real Git.** The harness runs the installed package (the packed `.nupkg` restored into an isolated cache, as `IsolatedToolEnvironment` does), with its tool manifest in the *parent* of the clone so the clone stays pristine. Git is the real `git`, isolated from the machine's configuration, with `core.autocrlf=false`.
-- **Dead simple to maintain.** A scenario is one JSON file (comments allowed, read with Newtonsoft). A new case is a new file; a new situation is a new stage plus a version bump of the pin.
+- **Dead simple to maintain.** A scenario is one JSON file. Comments and trailing commas are allowed, and the file is read with `System.Text.Json`, which the CLI tests already use, so no new package is needed. A new case is a new file; a new situation is a new stage plus a version bump of the pin.
 
 ## Scenario format (about eight expectation kinds)
 
@@ -70,6 +70,53 @@ Checking out commits cannot reproduce these four IDs: `history-locked`, `operati
 ## Execution and cost
 
 A dedicated workflow runs the suite on Windows, Linux and macOS **twice a week and on demand** (`schedule` plus `workflow_dispatch` with a tag filter), not on pull requests. The `smoke` tag selects a short subset for on-demand quick runs. Before the 1.0.0 tag the full suite must be run on demand on the exact release commit and be green. A failing scenario uploads its temp directory and command log as an artifact. Scheduled runs only fire from the default branch, and GitHub disables scheduled workflows in a public repository after 60 days without activity.
+
+## Implementation (14a)
+
+On 2026-10-24 the maintainer decided the suite lives in `tests/RepoLore.Cli.Tests/Scenarios/`, not in a new test project. That keeps to "one test project per shipped assembly", and the suite reuses `PackedToolFixture`, `IsolatedToolEnvironment` and the journey's `GitRepository`.
+
+- **Files:**
+  - `Scenario.cs`: the model, and a strict parser that rejects unknown keys, a run step without `expect.exit`, a first step that is not a checkout, a name that differs from the file name, and an unknown OS.
+  - `ScenarioRunner.cs`: the runner and `TreeSnapshot`.
+  - `ScenarioCatalog.cs`: case discovery, OS and tag selection, and `ReferencePin`.
+  - `ScenarioFixture.cs`: the collection fixture and `[ScenarioTheory]`.
+  - `ScenarioTests.cs`: one theory row per case.
+  - `ScenarioRunnerTests.cs`: the self-tests.
+  - `Cases/*.jsonc`: the scenarios.
+  - `reference-repo.version`: the pin, with `repository`, `tag` and `commit` lines.
+- **Run:**
+  - The fixture packs the shipped projects once and restores the exact package into an isolated cache.
+  - Each scenario gets a work directory holding the tool manifest. Below it, `repo/` is a `--no-checkout` clone of the local reference clone, so the clone stays exactly as the reference repository has it.
+  - The fixture refuses to run unless the reference clone resolves the pinned tag to the pinned commit.
+  - Read-only commands get the automatic before-and-after snapshot check. These are `context`, `path`, `tree`, `history`, `health-check`, `version`, any `--dry-run` or `--help`, and `migrate --check`. The snapshot covers paths, modification times and hashes, including `.git` and `.history`, and records symbolic links without following them.
+  - The first failing step ends the scenario. Golden output files are deferred to 14b.
+- **Variables:**
+  - `REPOLORE_REFERENCE_REPO`: the local clone. Without it, the scenarios are reported as skipped.
+  - `REPOLORE_SCENARIO_TAGS`: optional comma-separated tags.
+  - `REPOLORE_SCENARIO_ARTIFACTS`: where a failed scenario's `log.txt` and files, without `.git`, are copied.
+- **Locally:** `REPOLORE_REFERENCE_REPO=<clone> dotnet test -c Release tests/RepoLore.Cli.Tests --filter "Category=Scenario"`.
+- **CI:**
+  - `.github/workflows/scenarios.yml` runs Monday and Thursday at 04:17 UTC, plus `workflow_dispatch` with a `tags` input, on all three OSes. It clones the pinned repository in a build step (with `core.longpaths`) and verifies the pin. A failure uploads `scenario-failures-<os>`.
+  - `ci.yml` and `publish.yml` exclude `Category=Scenario` from the ordinary Cli step, so pull requests do not run scenarios. The runner self-tests have no `Category` and still run on every pull request.
+- **Scenarios:**
+  - `adopt-edit-and-restore-a-note`
+  - `sessions-are-explicit-and-isolated`
+  - `orphan-and-missing-notes-are-reported`
+  - `alpha-knowledge-migrates-and-rolls-back`
+  - `alpha-conflicts-block-migration`
+  - `corrupt-history-blocks-writes`
+  - `truncated-manifest-blocks-history` (not smoke)
+  - `interrupted-restore-recovers`
+  - `unknown-and-broken-formats-are-refused`
+  - `repository-without-knowledge`
+
+  Every expectation was checked against a manual run of the source build on that stage before it was written.
+- **Evidence (2026-10-24, macOS arm64):**
+  - The runner self-tests pass, 32 of 32. They cover every expectation kind failing with its step named, JSON comparison by value, the read-only check catching a write for four read-only command forms, writes being allowed for write commands, and checkout resetting tracked files, removing untracked ones and keeping the ignored `.history/`. They also cover the first failure ending the scenario, an unknown stage failing with a clear message, the reference repository never being written, parser rejections, OS and tag selection, a catalog check, and a pin check.
+  - Three deliberate mutations were each caught: disabling the read-only check, dropping `git clean`, and ignoring the exit code.
+  - The scenarios pass twice, 10 of 10, against the local clone of the published repository, in about 10 to 14 seconds. A deliberately wrong expectation in the built case file failed with `step 5 (repolore checkpoint): stdout: missing …` and left `log.txt` plus the clone's files in the artifacts directory. `REPOLORE_SCENARIO_TAGS=recovery` selected two scenarios. Without `REPOLORE_REFERENCE_REPO`, the scenarios are skipped and the fixture is not built.
+  - With the CI filters, all suites pass: Core 101, Infrastructure 80, Cli 136 excluding Packaging and Scenario (which includes the self-tests), and Packaging 18. The reference clone stayed clean.
+- **Not yet done:** the GitHub run on Windows, Linux and macOS, which needs the merge, and everything in 14b.
 
 ## Sub-packages
 

@@ -1,6 +1,11 @@
 # Scenario tests on a reference repository — package 14 design
 
-Status: **14a in progress.** Design agreed with the maintainer on 2026-10-24. The reference repository (39 stages) was published on 2026-10-24 at <https://github.com/R-Elias/repolore-e2e-test-reference> with `main` and all tags pushed. The maintainer activated rulesets: `main` cannot be deleted or force-pushed, and tags cannot be updated or deleted, though new tags can still be created. The runner, its self-tests, the pin, the workflow and 10 scenarios (9 tagged `smoke`) are implemented and green locally on macOS (see [Implementation](#implementation-14a)). The workflow's first run on GitHub, on all three operating systems, can only happen after the merge to `main`. Gates: [implementation guide, section 14](implementation-v1.md#14--scenario-tests-on-a-reference-repository). **14a and 14b must pass before the v1.0.0 cut** (package 13); 14c comes after 1.0.0.
+Status: **14a and 14b complete (2026-10-24); 14c deferred until after 1.0.0.** The design was agreed with the maintainer on 2026-10-24.
+- **Reference repository:** `repolore-e2e-test-reference` (39 stages), published at <https://github.com/R-Elias/repolore-e2e-test-reference>. Rulesets protect it: `main` cannot be deleted or force-pushed, and tags cannot be updated or deleted, though new tags can still be created.
+- **Proof of completion:** `scenarios` run #2 on `main`, commit `9b27435` (PR #7), was green on Ubuntu (28 scenarios), Windows (26) and macOS (27), with no failure artifact. CI was green on PR #7 and after its merge.
+- **Run #1 on commit `3a8b7c3`:** failed on Windows only. That run found the build-dependent line endings of the init templates, fixed in PR #7 (see the Catalog section).
+- **Still open, without blocking the gates:** the contract question about an invalid `_repoloreignore`, and the `s36` `io-error` message defect.
+- **Gates:** [implementation guide, section 14](implementation-v1.md#14--scenario-tests-on-a-reference-repository). Before the v1.0.0 tag, the suite must also be green on the exact release commit.
 
 ## Purpose
 

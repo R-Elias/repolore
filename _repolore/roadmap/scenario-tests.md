@@ -1,10 +1,10 @@
 # Scenario tests on a reference repository — package 14 design
 
 Status: **14a and 14b complete (2026-10-24); 14c deferred until after 1.0.0.** The design was agreed with the maintainer on 2026-10-24.
-- **Reference repository:** `repolore-e2e-test-reference` (39 stages), published at <https://github.com/R-Elias/repolore-e2e-test-reference>. Rulesets protect it: `main` cannot be deleted or force-pushed, and tags cannot be updated or deleted, though new tags can still be created.
+- **Reference repository:** `repolore-e2e-test-reference` (41 stages since 2026-10-24), published at <https://github.com/R-Elias/repolore-e2e-test-reference>. Rulesets protect it: `main` cannot be deleted or force-pushed, and tags cannot be updated or deleted, though new tags can still be created.
 - **Proof of completion:** `scenarios` run #2 on `main`, commit `9b27435` (PR #7), was green on Ubuntu (28 scenarios), Windows (26) and macOS (27), with no failure artifact. CI was green on PR #7 and after its merge.
 - **Run #1 on commit `3a8b7c3`:** failed on Windows only. That run found the build-dependent line endings of the init templates, fixed in PR #7 (see the Catalog section).
-- **Still open, without blocking the gates:** the contract question about an invalid `_repoloreignore`. The `s36` `io-error` message defect was fixed on 2026-10-24.
+- **Settled on 2026-10-24:** the invalid ignore-rule question (it blocks nothing else, and the file was renamed `.repoloreignore`), and the `s36` `io-error` message (fixed).
 - **Gates:** [implementation guide, section 14](implementation-v1.md#14--scenario-tests-on-a-reference-repository). Before the v1.0.0 tag, the suite must also be green on the exact release commit.
 
 ## Purpose
@@ -45,7 +45,7 @@ The vocabulary stays this small on purpose; a need for more is a signal that the
 
 ## Stages (built 2026-10-24)
 
-The fictional "Harbor" monorepo has 39 commits on `main`, one annotated tag per stage, and one merge. `STAGES.md` in every commit is the authoritative per-tag list: content, intended tool behavior, and the rules (never modify, append-only, tags are the interface, `.gitattributes` `* -text` so every OS checks out identical bytes).
+The fictional "Harbor" monorepo had 39 commits on `main` when first built (41 with `s40`–`s41`), one annotated tag per stage, and one merge. `STAGES.md` in every commit is the authoritative per-tag list: content, intended tool behavior, and the rules (never modify, append-only, tags are the interface, `.gitattributes` `* -text` so every OS checks out identical bytes).
 
 | Tags | Purpose |
 |---|---|
@@ -56,6 +56,7 @@ The fictional "Harbor" monorepo has 39 commits on `main`, one annotated tag per 
 | `s28`–`s32` | Back to the baseline; a branch edit and a main edit of one note, merged with a hand resolution; release 1 |
 | `s33`–`s36` | Committed `.history/` made by the real tool, then damaged: an altered object, a truncated manifest, an interrupted restore (`pending.json`), and `.history` as a file |
 | `s37`–`s39` | OS hazards: a case collision built through the index (Linux only), symlinks, paths over 260 characters |
+| `s40`–`s41` | Appended 2026-10-24: `s16` and `s19` with the ignore file under its final name `.repoloreignore`. `s16` and `s19` now test the leftover preview name `_repoloreignore`. Pin: `s41` (`37d832f`) |
 
 The repository was built by a one-off script with fixed authors and dates and an isolated Git configuration. Commits through `s32` are byte-reproducible; `s33`–`s35` contain real checkpoint timestamps. Because the repository is append-only, the script is never rerun against it. New stages are appended by hand.
 
@@ -182,7 +183,7 @@ Until 14b, no CLI-level test asserted `history-locked` or `operation-interrupted
   - Windows red with a single failure, `init-reproduces-the-adoption`. Every Unicode, long-path and golden scenario passed there.
   - GitHub recorded no or incomplete step lists for these runs and for the CI runs at the time. Results were read from job conclusions and the failure artifact.
 
-**Open contract question (for the maintainer):** on `s19`, an invalid `_repoloreignore` rule is a blocking `policy-error` in `health-check` (exit 3). Yet `checkpoint` succeeds and `context` reads normally. Package 03 says "reject … invalid rules before mutations", while ignore rules affect only source discovery, never history coverage. Both readings are defensible, so the scenario asserts only the `health-check` finding until this is decided.
+**Contract question settled (maintainer, 2026-10-24):** an invalid ignore rule blocks nothing but the `health-check` exit code, and the file was renamed `.repoloreignore`. Stages `s40` and `s41` carry the final name, `s16` and `s19` now test the leftover preview name, and `invalid-policies-are-reported` pins `checkpoint` and `context` succeeding on `s41`.
 
 **Defect found and fixed (branch `fix/lf-templates`): line endings of the init templates depended on the build machine.**
 - `EmbeddedTemplates.Method` and `.Root` were multi-line verbatim literals. The repository has no `.gitattributes`, so a Windows checkout gave the source file, and therefore the compiled templates, CRLF line endings.

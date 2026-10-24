@@ -18,7 +18,7 @@ Changing the ID if `RepoLore.Cli` turns out to be unavailable means editing `Pac
 
 ## What the package contains
 
-Exactly (asserted as a whitelist, so any new file is a deliberate review): `tools/net10.0/any/` with `DotnetToolSettings.xml` (command `repolore`), `RepoLore.Cli.{dll,pdb,deps.json,runtimeconfig.json}`, `RepoLore.Core.{dll,pdb}`, `RepoLore.Infrastructure.{dll,pdb}`, the root `README.md`, plus the nuspec/OPC metadata. No NuGet dependencies, no test-stack assemblies, no knowledge, sessions, history, fixtures, or configuration files. Packing `Core` and `Infrastructure` produces nothing (`IsPackable=false`), so the feed holds one package. The package readme is the repository `README.md` (`PackageReadmeFile`, added in package 12 with the whitelist change; `Package_readme_is_the_repository_readme_and_states_the_unsigned_preview_limitation` pins it). The user-facing install and usage instructions are `docs/user-guide.md`; see [dogfood and preview](dogfood-and-preview.md).
+Exactly (asserted as a whitelist, so any new file is a deliberate review): `tools/net10.0/any/` with `DotnetToolSettings.xml` (command `repolore`), `RepoLore.Cli.{dll,pdb,deps.json,runtimeconfig.json}`, `RepoLore.Core.{dll,pdb}`, `RepoLore.Infrastructure.{dll,pdb}`, the root `README.md`, plus the nuspec/OPC metadata. No NuGet dependencies, no test-stack assemblies, no knowledge, sessions, history, fixtures, or configuration files. Packing `Core` and `Infrastructure` produces nothing (`IsPackable=false`), so the feed holds one package. The package readme is the repository `README.md` (`PackageReadmeFile`, added in package 12 with the whitelist change; `Package_readme_is_the_repository_readme_and_states_the_preview_signature_limitation` pins it). The user-facing install and usage instructions are `docs/user-guide.md`; see [dogfood and preview](dogfood-and-preview.md).
 
 ## Supported environments
 
@@ -72,5 +72,5 @@ Then `dotnet tool restore` and `dotnet tool run repolore -- <command>` (or `dotn
 ## Not covered
 
 - No network-call trace of the smoke path exists; static guards plus the blocked-network run are the evidence. One disconnected success does not prove zero networking.
-- Package signing, SBOM, checksums and tag/version verification are package 13.
+- SBOM, checksums and tag/version verification are package 13. Author signing is deferred for v1.0.0 by the maintainer's decision of 2026-10-24 ([v1.0.0 release plan](release-v1.md)); the package carries only NuGet.org's repository signature.
 - NuGet.org ID ownership and any `RepoLore.` prefix reservation cannot be confirmed without an account; a read-only lookup only shows nothing is published.

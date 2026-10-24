@@ -84,7 +84,7 @@ Done on the branch `chore/adopt-published-tool`, after the preview was verified.
 | `Authors`, `PackageProjectUrl`/`RepositoryUrl` | **Decided**: `Authors` is `Elias Aliche` (package 12.5); the URLs stay `https://github.com/R-Elias/repolore` (equals `origin`; the `repolore` GitHub organization is taken by someone else). The repository is public (checked 2026-10-24) |
 | Publish workflow (`publish.yml`) and exact-bytes smoke (`build/smoke-exact-package.sh`) | **Done**: dry run on `main` green (commit `e140967…`), tag run green, package published (see the result below) |
 | nuget.org Trusted Publishing policy, GitHub environment `nuget-preview`, secret `NUGET_USER` | **Done and proven by the publish**. The `v*` environment rule had first been created as a *branch* rule and the first publish attempt was refused at the environment gate; the maintainer recreated it as a *tag* rule and the re-run succeeded. Administrator bypass is disabled |
-| Package signing | **No author signature**; a preview ships without one; v1.0.0 gate (package 13). The published file carries NuGet.org's repository signature only |
+| Package signing | **No author signature**, and author signing is deferred for v1.0.0 by the maintainer's decision of 2026-10-24 ([v1.0.0 release plan](release-v1.md)). The published file carries NuGet.org's repository signature only |
 | Network-call trace of the smoke path | **Not implemented**; static guards, the boundary-guard build, and the Linux networking-blocked run are the evidence |
 | Linux networking-blocked run of the journey | Runs inside that CI step; covered by the reported green matrix |
 | Dogfood migration of this checkout | **Done 2026-10-24** (see the section above); the method-body replacement is still the maintainer's decision |

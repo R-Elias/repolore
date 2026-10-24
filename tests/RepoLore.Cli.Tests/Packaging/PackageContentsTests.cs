@@ -39,22 +39,23 @@ public sealed class PackageContentsTests(PackedToolFixture package)
     [Fact]
     public void Package_metadata_is_complete_and_not_the_sdk_placeholder()
     {
-        var values = package.Nuspec().Descendants().Where(node => node.Name.LocalName is "authors" or "description" or "license" or "projectUrl")
+        var values = package.Nuspec().Descendants().Where(node => node.Name.LocalName is "authors" or "copyright" or "description" or "license" or "projectUrl")
             .ToDictionary(node => node.Name.LocalName, node => node.Value);
         values["license"].Should().Be("Apache-2.0");
         values["description"].Should().NotBe("Package Description").And.Contain("RepoLore");
         values["authors"].Should().Be("Elias Aliche");
+        values["copyright"].Should().Be("Copyright 2026 Elias Aliche");
         values["projectUrl"].Should().StartWith("https://");
     }
 
     [Fact]
-    public void Package_readme_is_the_repository_readme_and_states_the_unsigned_preview_limitation()
+    public void Package_readme_is_the_repository_readme_and_states_the_preview_signature_limitation()
     {
         package.Nuspec().Descendants().Single(node => node.Name.LocalName == "readme").Value.Should().Be("README.md");
 
         var readme = package.EntryText("README.md");
         readme.Should().Be(File.ReadAllText(Path.Combine(TestSupport.Repo, "README.md")));
-        readme.Should().Contain("Preview, unsigned").And.Contain("not an enterprise-ready or certified release");
+        readme.Should().Contain("Preview, no author signature").And.Contain("not an enterprise-ready or certified release");
     }
 
     [Fact]

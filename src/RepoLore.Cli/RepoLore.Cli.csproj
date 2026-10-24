@@ -8,6 +8,7 @@
     <PackageId>RepoLore.Cli</PackageId>
     <RollForward>LatestPatch</RollForward>
     <Authors>Elias Aliche</Authors>
+    <Copyright>Copyright 2026 Elias Aliche</Copyright>
     <Description>RepoLore: local, offline operational memory for developers and coding agents, stored as Markdown. Installs the repolore command.</Description>
     <PackageTags>repolore;knowledge;markdown;cli;agents</PackageTags>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>

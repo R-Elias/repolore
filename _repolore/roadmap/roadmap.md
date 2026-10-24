@@ -1,6 +1,6 @@
 # RepoLore v1 — Roadmap and Implementation Contract
 
-Status: **Packages 01–11 implemented (01–02 and 11 CI-green; 03–10 local evidence, subsequently covered by the green CI matrix as reported); package 12 is complete: this checkout was migrated and `0.1.0-preview.1` was published to NuGet.org on 2026-10-24 ([dogfood and preview](dogfood-and-preview.md)); the signed v1.0.0 release (13) remains.** See the [completion record](implementation-v1.md#completion-record) for actual checks and remaining gates. This replaces the previous v0 plan. The first stable release is v1.0.0; preview releases may precede it. CLI versions and knowledge format versions are independent.
+Status: **Packages 01–11 implemented (01–02 and 11 CI-green; 03–10 local evidence, subsequently covered by the green CI matrix as reported); package 12 is complete: this checkout was migrated and `0.1.0-preview.1` was published to NuGet.org on 2026-10-24 ([dogfood and preview](dogfood-and-preview.md)); the verifiable v1.0.0 release (13, author signing deferred) remains.** See the [completion record](implementation-v1.md#completion-record) for actual checks and remaining gates. This replaces the previous v0 plan. The first stable release is v1.0.0; preview releases may precede it. CLI versions and knowledge format versions are independent.
 
 Read [product direction](../product/product.md) for the desired experience and release objectives, and [invariants](../product/invariants.md) for non-negotiable rules. This file specifies the product contract. Execute the first release through [implementation work packages](implementation-v1.md): 13 dependency-ordered steps with pitfalls, fixtures, and explicit pass/fail gates. That guide resolves the implementation details referenced below; do not leave them for ad hoc interpretation.
 
@@ -197,7 +197,7 @@ Publish one versioned tool to NuGet.org and provide the verified release `.nupkg
 
 Recommend a committed local tool manifest with a pinned version, plus an approved NuGet configuration that clears other sources. Do not commit credentials. Document global installation as an individual-user option. Updates change the pinned version through normal review; knowledge-format migration remains explicit.
 
-Release materials: license, release notes, supported environments, checksums, SBOM, short privacy/filesystem-access statement, offline/internal-feed instructions, and vulnerability-reporting contact. Establish package signing and verification for the enterprise-ready v1 release; keep credentials in release infrastructure, not source. A preview without signing must state that limitation. Do not promise paid support, certification, or universal enterprise approval.
+Release materials: license, release notes, supported environments, checksums, SBOM, short privacy/filesystem-access statement, offline/internal-feed instructions, and vulnerability-reporting contact. Author signing is deferred for v1.0.0 by the maintainer's decision of 2026-10-24 (implementation package 13); verification relies on Trusted Publishing, the NuGet.org repository signature, recorded checksums, and an SBOM. Keep any credentials in release infrastructure, not source. A release or preview without an author signature must state that limitation and must not be called enterprise-ready or certified. Do not promise paid support, certification, or universal enterprise approval.
 
 ## 9. Small deterministic test and release plan
 
@@ -216,7 +216,7 @@ Required cases:
 
 CI: restore locked build dependencies → build with warnings as errors and banned-network-API checks → run tests on Windows/Linux/macOS → pack the tool → install the actual package from a local feed and smoke-test commands. Run the Linux installation/runtime smoke with networking blocked and external feeds cleared; prepare the SDK and build dependencies beforehand. Trace network calls for the built-in smoke path if feasible, without claiming that one smoke test proves all possible behavior.
 
-Release: verify tag against a single version source → run CI → pack/sign → verify signed package → produce checksum/SBOM → publish the same package and release notes. Test tool-manifest restore from the offline feed. Measure a fixed medium-size fixture manually when scale behavior changes; correctness and preservation are the release gates.
+Release: verify tag against a single version source → run CI → pack → smoke the exact package file → produce checksum/SBOM → publish that file through Trusted Publishing and release notes → verify the downloaded package's repository signature. Test tool-manifest restore from the offline feed. Measure a fixed medium-size fixture manually when scale behavior changes; correctness and preservation are the release gates.
 
 ## 10. Implementation sequence
 
@@ -229,9 +229,9 @@ Use [First Release — Implementation Work Packages](implementation-v1.md) as th
 | Recovery foundation | 05–07: capture, retention, restore | Byte recovery, budgeted undo pair, and explicit interrupted-operation recovery pass before destructive commands. |
 | Adoption and diagnostics | 08–10: init, migration, health/CLI contract | Retryable initialization, conflict-free migration/rollback, stable findings, and write-free previews. |
 | Distribution | 11–12: actual NuGet package and preview workflow | Clean-cache local-feed install, explicit session workflow, and usable fresh clone. |
-| Stable release | 13: signed v1.0.0 | Verified final artifact, required tests, supported-platform smoke, and complete local recovery guidance. |
+| Stable release | 13: verifiable v1.0.0 (no author signature) | Verified final artifact, required tests, supported-platform smoke, and complete local recovery guidance. |
 
-Do not weaken a preservation gate to reach a preview date. Later work may proceed only where its dependencies are already satisfied. Release credentials may be prepared independently; missing signing infrastructure does not justify calling an unsigned preview enterprise-ready.
+Do not weaken a preservation gate to reach a preview date. Later work may proceed only where its dependencies are already satisfied. Release credentials may be prepared independently; the absence of an author signature does not justify calling a preview or release enterprise-ready.
 
 ## 11. Later releases
 

@@ -123,6 +123,18 @@ Applying a restore first checkpoints the current state of everything it will cha
 
 To stop protecting a file, add it to `history.exclude` in `repolore.json` or set `history.enabled` to `false`. That does not erase existing checkpoints. To purge all local history, delete `_repolore/.history/` with ordinary tools when `health-check` shows no pending operation; recovery of everything captured so far is then gone. Checkpoints are local copies on the same disk and do not replace Git or a backup.
 
+## 8. Supported environments, privacy evidence, and verifying a release
+
+| Item | Statement |
+|---|---|
+| Install | .NET 10 SDK; run on a .NET 10.0.x runtime (`LatestPatch`; a .NET 11 runtime is not used) |
+| Operating systems tested | CI on GitHub-hosted `windows-latest`, `ubuntu-latest` and `macos-latest` runners; development on macOS arm64. Other combinations are expected to work and are untested |
+| Repository language | Any; the tool does not read source code |
+| Network use by the tool | None. Evidence: the build refuses networking, process and dynamic-loading APIs in the three shipped projects; the Linux CI run repeats the install and smoke test with networking blocked. There is **no runtime network trace**, so this is evidence, not proof. NuGet restore, your editor and your agents are separate systems |
+| Reporting a vulnerability | Privately, as described in [SECURITY.md](../SECURITY.md) |
+
+To verify a release: compare the SHA-256 of the file you pushed or approved with the checksum file published with the release (`RepoLore.Cli.<version>.sha256`, which covers the package and its CycloneDX SBOM `RepoLore.Cli.<version>.cdx.json`). A package downloaded from NuGet.org carries NuGet.org's repository signature, so its bytes differ from the pushed file; check it with `dotnet nuget verify <file>`. The package has **no author signature**, and the SBOM lists no third-party components because there are none. Release notes live in `docs/release-notes/`.
+
 ## Where to learn more
 
 The design contract and per-area notes are under `_repolore/` in this repository, starting at `_repolore/root.md`.

@@ -8,7 +8,7 @@
       "repolore.infrastructure": {
         "type": "Project",
         "dependencies": {
-          "RepoLore.Core": "[0.1.0-preview.1, )"
+          "RepoLore.Core": "[1.0.0-rc.1, )"
         }
       }
     }

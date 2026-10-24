@@ -4,7 +4,7 @@ Status: **Packages 01–11 implemented (01–02 and 11 CI-green; 03–10 local e
 
 Read [product direction](../product/product.md) for the desired experience and release objectives, and [invariants](../product/invariants.md) for non-negotiable rules. This file specifies the product contract. Execute the first release through [implementation work packages](implementation-v1.md): 13 dependency-ordered steps with pitfalls, fixtures, and explicit pass/fail gates. That guide resolves the implementation details referenced below; do not leave them for ad hoc interpretation.
 
-The existing PowerShell scripts and both copies of `method.md` describe the alpha layout. They are historical references, not exact v1 semantics. This planning update does not migrate the current knowledge base or change those scripts.
+The alpha PowerShell scripts and the alpha method text described the alpha layout. They are historical references, not exact v1 semantics, and both have since left the working tree: the method copies were replaced with the shipped v1 method, and the scripts were removed on 2026-10-24. Both remain in Git history. This planning update did not migrate the knowledge base or change those scripts.
 
 ## 1. Scope and decisions
 

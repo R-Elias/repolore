@@ -507,3 +507,9 @@ Test projects may now reference an approved test stack: xUnit (`2.9.3`), FluentA
 - **Scenarios:** `policy-variants` and `invalid-policies-are-reported` cover both names, plus `checkpoint` and `context` succeeding despite an invalid rule.
 - **Tests:** `HistoryCoveragePolicyTests` (new name covered, legacy not); `HealthCheckerTests` gains a legacy-name test whose legacy file holds an invalid rule, proving it is not read.
 - **Limitation:** checkpoints taken by the preview that hold `_repoloreignore` cannot restore that path any more, since it is outside coverage. The file is in Git, and the preview had a very small population.
+
+**Alpha PowerShell tools removed — 2026-10-24 (maintainer decision, branch `release/1.0.0-rc.1`).**
+- **Why:** nothing built, packaged or ran them any more. Alpha migration is covered by the frozen fixtures and the reference repository's alpha stages. Their presence at the repository root invited exactly the mistake AGENTS.md warns against: running `sync-tree` on a v1 knowledge base.
+- **Removed:** `tools/` (five scripts and `tools.md`) and its path note `_repolore/sparse-tree/tools/tools.md`. The note was captured by checkpoint 32 before deletion and is also in Git. `_repolore/sparse-tree/` is now empty, and `health-check` is healthy with no findings.
+- **Updated:** AGENTS.md ("Distinguish alpha from v1"), `root.md`, `roadmap.md` (the present-tense claim), and the dated dogfood record (completed, not rewritten). `CheckoutIgnoreRulesTests` uses the example path `_repolore/sparse-tree/src/src.md`.
+- **Kept on purpose:** dated historical records and the user guide's "knowledge from the alpha PowerShell tools", which still describes what users migrate.

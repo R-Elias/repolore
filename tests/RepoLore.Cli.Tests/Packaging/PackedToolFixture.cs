@@ -25,7 +25,7 @@ public sealed class PackedToolFixture : IDisposable
     public string PackagePath => PackagePaths.Single();
     public string PackageId => NuspecValue("id");
     public string PackageVersion => NuspecValue("version");
-    public string SourceVersion { get; } = ReadSourceVersion();
+    public string SourceVersion { get; } = TestSupport.SourceVersion;
 
     public PackedToolFixture()
     {
@@ -62,6 +62,4 @@ public sealed class PackedToolFixture : IDisposable
 
     private string NuspecValue(string element) => Nuspec().Descendants().First(node => node.Name.LocalName == element).Value;
 
-    private static string ReadSourceVersion() =>
-        XDocument.Load(Path.Combine(TestSupport.Repo, "Directory.Build.props")).Descendants("Version").Single().Value;
 }

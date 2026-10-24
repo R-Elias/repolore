@@ -71,7 +71,7 @@ Done on the branch `chore/adopt-published-tool`, after the preview was verified.
 - `dotnet tool run repolore -- init --update-method` with that published tool replaced `_repolore/method.md` (376 alpha lines became the shipped 48-line v1 method, SHA-256 `393afc14c09884d5…`, the same object the first `init` stores on any fresh repository). The pre-operation state was already captured (checkpoint 9) and `restore 9 --path _repolore/method.md --dry-run` offers to put the old bytes back. A second run is a no-op.
 - The result was copied to the repository-root `method.md`; `cmp` confirms the two copies are identical. `health-check` healthy.
 - `AGENTS.md`, `root.md`, the executable-foundation note and the initialization note were updated to match. Dated historical records in the completion record were left as written.
-- Left alone on purpose: the PowerShell alpha tools and `_repolore/sparse-tree/tools/tools.md`, the obsolete `_repolore/tree/` line in `.gitignore`.
+- Left alone on purpose: the PowerShell alpha tools and `_repolore/sparse-tree/tools/tools.md`, the obsolete `_repolore/tree/` line in `.gitignore`. All three were removed later: the `.gitignore` line in package 13, and the tools with their note on 2026-10-24, on branch `release/1.0.0-rc.1`.
 
 ## Preview readiness
 

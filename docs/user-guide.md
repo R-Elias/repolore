@@ -1,6 +1,6 @@
 # RepoLore user guide
 
-> **Preview.** Version `0.1.0-preview.1`. The package is **unsigned** and has not been published to NuGet.org; it is not a certified or enterprise-ready release. Everything below runs on your machine only: the tool makes no network calls, sends no telemetry and starts no other programs. Package restore (NuGet) and any editor or coding agent you use are separate systems that RepoLore does not control.
+> **Preview.** Version `0.1.0-preview.1`. The package is published on NuGet.org as a preview. It has **no author signature** (NuGet.org adds only its own repository signature), and it is not a certified or enterprise-ready release. Everything below runs on your machine only: the tool makes no network calls, sends no telemetry and starts no other programs. Package restore (NuGet) and any editor or coding agent you use are separate systems that RepoLore does not control.
 
 RepoLore keeps operational memory for a repository as Markdown under `_repolore/`: what a maintainer or coding agent should know before changing an area. You and your agents edit the Markdown directly; the `repolore` command reads it, checks it and protects it with local checkpoints.
 

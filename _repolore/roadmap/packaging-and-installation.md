@@ -67,7 +67,7 @@ Then `dotnet tool restore` and `dotnet tool run repolore -- <command>` (or `dotn
 
 ## Publication
 
-The publish path is the `publish.yml` Trusted Publishing workflow plus `build/smoke-exact-package.sh`; see [dogfood and preview](dogfood-and-preview.md). The Packaging tests above pack their own copy; the smoke script is what exercises the exact file that is pushed.
+`RepoLore.Cli` `0.1.0-preview.1` was published on 2026-10-24. The publish path is the `publish.yml` Trusted Publishing workflow plus `build/smoke-exact-package.sh`; see [dogfood and preview](dogfood-and-preview.md). The Packaging tests above pack their own copy; the smoke script is what exercises the exact file that is pushed.
 
 ## Not covered
 

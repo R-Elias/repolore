@@ -1,6 +1,6 @@
 # RepoLore user guide
 
-> **Preview.** Version `0.1.0-preview.1`. The package is published on NuGet.org as a preview. It has **no author signature** (NuGet.org adds only its own repository signature), and it is not a certified or enterprise-ready release. Everything below runs on your machine only: the tool makes no network calls, sends no telemetry and starts no other programs. Package restore (NuGet) and any editor or coding agent you use are separate systems that RepoLore does not control.
+> **Release candidate.** Version `1.0.0-rc.1`, a release candidate for 1.0.0, published on NuGet.org as a pre-release. It has **no author signature** (NuGet.org adds only its own repository signature), and it is not a certified or enterprise-ready release. Everything below runs on your machine only: the tool makes no network calls, sends no telemetry and starts no other programs. Package restore (NuGet) and any editor or coding agent you use are separate systems that RepoLore does not control.
 
 RepoLore keeps operational memory for a repository as Markdown under `_repolore/`: what a maintainer or coding agent should know before changing an area. You and your agents edit the Markdown directly; the `repolore` command reads it, checks it and protects it with local checkpoints.
 
@@ -21,14 +21,14 @@ You need a **.NET 10 SDK** to install the tool and a **.NET 10.0.x runtime** to 
 
 ```text
 dotnet new tool-manifest
-dotnet tool install RepoLore.Cli --version 0.1.0-preview.1 --local
+dotnet tool install RepoLore.Cli --version 1.0.0-rc.1 --local
 dotnet tool restore
 dotnet tool run repolore -- version
 ```
 
 `<clear />` removes every other source, so only the approved feed is used. A local folder feed works the same way (`value="/path/to/folder"`). Commit no credentials. The manifest pins the exact version; updating RepoLore is a reviewed change to that file, and it never migrates your knowledge by itself.
 
-**Alternative (single user, not exercised by the package tests):** `dotnet tool install --global RepoLore.Cli --version 0.1.0-preview.1 --add-source <feed>`, then run `repolore`.
+**Alternative (single user, not exercised by the package tests):** `dotnet tool install --global RepoLore.Cli --version 1.0.0-rc.1 --add-source <feed>`, then run `repolore`.
 
 All examples below write `repolore <command>`; with the manifest, run `dotnet tool run repolore -- <command>`.
 

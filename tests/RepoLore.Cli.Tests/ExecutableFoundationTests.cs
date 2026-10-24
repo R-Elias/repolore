@@ -14,7 +14,7 @@ public class ExecutableFoundationTests
             var before = TestSupport.Snapshot(temp);
             var result = TestSupport.Run(temp, TestSupport.Cli, "version");
             result.Code.Should().Be(0);
-            TestSupport.Normalize(result.Out).Should().Be("RepoLore 0.1.0-preview.1\nSupported knowledge formats: 1\n");
+            TestSupport.Normalize(result.Out).Should().Be($"RepoLore {TestSupport.SourceVersion}\nSupported knowledge formats: 1\n");
             result.Error.Should().Be("");
             TestSupport.Snapshot(temp).Should().Be(before);
         });

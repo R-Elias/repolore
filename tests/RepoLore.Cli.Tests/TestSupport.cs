@@ -7,6 +7,8 @@ namespace RepoLore.Cli.Tests;
 public static class TestSupport
 {
     public static string Repo { get; } = FindRepo();
+    public static string SourceVersion { get; } =
+        System.Xml.Linq.XDocument.Load(Path.Combine(Repo, "Directory.Build.props")).Descendants("Version").Single().Value;
     public static string Configuration { get; } = new DirectoryInfo(AppContext.BaseDirectory).Parent!.Name;
     public static string Cli { get; } = Path.Combine(Repo, "src", "RepoLore.Cli", "bin", Configuration, "net10.0", "RepoLore.Cli.dll");
     public static string Dotnet { get; } = Environment.GetEnvironmentVariable("DOTNET_HOST_PATH")

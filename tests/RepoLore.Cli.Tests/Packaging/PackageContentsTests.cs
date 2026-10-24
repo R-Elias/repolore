@@ -49,13 +49,13 @@ public sealed class PackageContentsTests(PackedToolFixture package)
     }
 
     [Fact]
-    public void Package_readme_is_the_repository_readme_and_states_the_preview_signature_limitation()
+    public void Package_readme_is_the_repository_readme_and_states_the_signature_limitation()
     {
         package.Nuspec().Descendants().Single(node => node.Name.LocalName == "readme").Value.Should().Be("README.md");
 
         var readme = package.EntryText("README.md");
         readme.Should().Be(File.ReadAllText(Path.Combine(TestSupport.Repo, "README.md")));
-        readme.Should().Contain("Preview, no author signature").And.Contain("not an enterprise-ready or certified release");
+        readme.Should().Contain("no author signature").And.Contain("not an enterprise-ready or certified release");
     }
 
     [Fact]

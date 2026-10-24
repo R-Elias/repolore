@@ -44,8 +44,26 @@ Remaining:
 
 1. **Done:** the maintainer enabled private vulnerability reporting and created the GitHub pre-release for `v0.1.0-preview.1` (reported on 2026-10-24).
 2. **Done:** `publish` dry run #4 on `main` (`57969d7`, 2026-10-24) was green. Every build step succeeded on GitHub, including the release-notes gate, all four test steps, the pack, the exact-package smoke, the SBOM and the checksum file. The tag check and the publish job were skipped, as they should be outside a tag. The `package` artifact (126406 bytes) was uploaded. Dry run #3 had failed on the SBOM command's case (see the SBOM row).
-3. **Scenario tests (package 14a–14b) are complete and must be green again** on the release commit ([scenario tests](scenario-tests.md)).
-4. **Use the preview on real work**, fix what it shows, then bump `<Version>` in `Directory.Build.props` to `1.0.0`, rename `docs/release-notes/unreleased.md` to `1.0.0.md`, tag `v1.0.0`, approve the publish job, verify the download from NuGet.org as for the preview, and create the GitHub release with the checksum file and SBOM attached.
+3. **Scenario tests (package 14a–14b) are complete; run #3 on `main` (`7491ee7`, with the pin at `s41`) was green on all three operating systems. They must be green again** on the release commit ([scenario tests](scenario-tests.md)).
+4. **Release candidate `1.0.0-rc.1` (maintainer decision, 2026-10-24).** The published preview predates the fixes and the ignore-file rename, so real use must happen on a candidate that matches what 1.0.0 will ship. Branch `release/1.0.0-rc.1`:
+   - `<Version>` is `1.0.0-rc.1`, and the lock files were regenerated; only the project version changed.
+   - `docs/release-notes/1.0.0-rc.1.md` lists the changes since the preview. `unreleased.md` was reset for changes after the candidate.
+   - The readme and the guide carry a "release candidate" label. The readme test now checks the signature limitation, not the word "Preview".
+   - The version test reads `TestSupport.SourceVersion` from `Directory.Build.props` instead of a literal.
+
+   Local checks: Core 101, Infrastructure 81, Cli 150 excluding Packaging and Scenario, Packaging 18, scenarios 27 of 27, the release-notes gate, and `build/smoke-exact-package.sh` on the packed `RepoLore.Cli.1.0.0-rc.1.nupkg`.
+
+   After the merge:
+   1. Tag `v1.0.0-rc.1` on `main`, approve the publish job, and verify the download as for the preview.
+   2. Attach the checksum file and SBOM to a GitHub pre-release.
+   3. Then, on a branch, move `.config/dotnet-tools.json` to `1.0.0-rc.1`, which cannot happen before the package exists.
+5. **Use the candidate on real work** and fix what it shows (as `1.0.0-rc.2` if a fix is needed).
+6. **The cut:**
+   - bump `<Version>` to `1.0.0` and write `docs/release-notes/1.0.0.md` from the candidate's notes plus `unreleased.md`;
+   - run `scenarios` on that commit;
+   - tag `v1.0.0` and approve the publish job;
+   - verify the download from NuGet.org;
+   - create the GitHub release with the checksum file and SBOM attached.
 
 ## Cleanups done in the package-13 branch (no release behavior)
 

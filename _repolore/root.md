@@ -22,12 +22,11 @@ This repository is the proof of concept of RepoLore: operational memory for deve
 - Plan or work on the v1.0.0 release (author signing deferred; SBOM, release notes, vulnerability reporting, remaining actions) → [v1.0.0 release plan](roadmap/release-v1.md).
 - Prepare or review the dogfood migration of this checkout, the acceptance journey, or the preview-readiness checklist and publication steps → [dogfood and preview](roadmap/dogfood-and-preview.md).
 - Read the method (the shipped v1 guidance; the two copies are identical) → repository-root `method.md` and its matching `_repolore/method.md` copy. The alpha text it replaced is in Git history.
-- Work on the PowerShell alpha tools → `tools/tools.md` and `_repolore/sparse-tree/tools/tools.md`.
 - Work as an agent → `AGENTS.md` for contract reading order, package execution/gates, alpha/v1 boundaries, and durable-update/session responsibilities.
 
 ## Current state versus target contract
 
-The alpha full mirror (`_repolore/tree/`) has been removed; `_repolore/sparse-tree/` is the authored canonical path tree (currently `tools/tools.md`). The PowerShell scripts still describe the alpha mirror behavior as a historical reference. Do not regenerate the full mirror; a sparse-only clone holds authored knowledge only in `sparse-tree/`.
+The alpha full mirror (`_repolore/tree/`) has been removed; `_repolore/sparse-tree/` is the authored canonical path tree. It is currently empty: its only note described the alpha PowerShell scripts in `tools/`, and both were removed on 2026-10-24. The scripts survive in Git history only, as a historical reference for the alpha mirror. Do not regenerate the full mirror; a sparse-only clone holds authored knowledge only in `sparse-tree/`.
 
 The full mirror is gone and `sparse-tree/` is the sole authored path tree. Custom areas are first-class. Planned `sessions/<session-id>/` folders add Gitignored short-term knowledge, explicitly selected for context and included in checkpoint recovery by default. Durable knowledge remains the reviewed long-term layer. `product/` and `roadmap/` are authored planning areas today and may be edited directly. Do not run alpha generators on a migrated v1 knowledge base.
 

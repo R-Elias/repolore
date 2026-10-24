@@ -103,7 +103,24 @@ public sealed class ScenarioRunnerTests : IDisposable
                 return (0, string.Empty, string.Empty);
             });
 
-        outcome.Failures.Should().ContainSingle().Which.Should().EndWith("a read-only command changed the working tree or the history");
+        outcome.Failures.Should().ContainSingle().Which.Should()
+            .Contain("a read-only command changed the working tree or the history: + D _repolore/.history; + F _repolore/.history/write.lock ");
+    }
+
+    [Fact]
+    public void A_read_only_command_that_rewrites_a_file_with_identical_bytes_is_still_caught()
+    {
+        var outcome = Run(
+            """{ "name": "touches", "steps": [ { "checkout": "stage-b" }, { "run": "health-check", "expect": { "exit": 0 } } ] }""",
+            (repository, _) =>
+            {
+                var note = Path.Combine(repository, Note);
+                File.WriteAllBytes(note, File.ReadAllBytes(note));
+                File.SetLastWriteTimeUtc(note, File.GetLastWriteTimeUtc(note).AddMinutes(1));
+                return (0, string.Empty, string.Empty);
+            });
+
+        outcome.Failures.Should().ContainSingle().Which.Should().Contain("- F _repolore/note.md ").And.Contain("+ F _repolore/note.md ");
     }
 
     [Fact]

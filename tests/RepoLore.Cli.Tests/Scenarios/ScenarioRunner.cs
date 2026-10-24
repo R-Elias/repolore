@@ -45,8 +45,9 @@ public sealed class ScenarioRunner(Func<string, string[], (int Code, string Out,
             log.AppendLine($"[exit {code}]").AppendLine("--- stdout").Append(output).AppendLine("--- stderr").Append(error);
 
             failures.AddRange(Check(step.Expect!, code, output, error, repository, git).Select(failure => $"{label}: {failure}"));
-            if (before is not null && TreeSnapshot.Take(repository) != before)
-                failures.Add($"{label}: a read-only command changed the working tree or the history");
+            var after = before is null ? null : TreeSnapshot.Take(repository);
+            if (before is not null && after != before)
+                failures.Add($"{label}: a read-only command changed the working tree or the history: {TreeSnapshot.Differences(before, after!)}");
         }
 
         File.WriteAllText(Path.Combine(workDirectory, "log.txt"), log.ToString());
@@ -134,8 +135,11 @@ public sealed class ScenarioRunner(Func<string, string[], (int Code, string Out,
     }
 }
 
-// Every entry under a directory, including .git and .history: kind, relative path, modification time, and content hash
-// or link target. Symbolic links are recorded, never followed, so dangling or escaping links are safe.
+// Every entry under a directory, including .git and .history: kind and relative path, plus a file's modification time
+// and content hash or a link's target. Symbolic links are recorded, never followed, so dangling or escaping links are
+// safe. Directory times are left out (an added or removed entry already shows), and each file's time is re-read from
+// the file itself: on Windows, enumeration returns the directory entry's copy of the timestamps, which NTFS updates
+// lazily, so it can change between two snapshots without any write.
 public static class TreeSnapshot
 {
     public static string Take(string root)
@@ -146,16 +150,28 @@ public static class TreeSnapshot
         return string.Join('\n', lines);
     }
 
+    // The first few lines present in only one snapshot, marked '-' (before) or '+' (after).
+    public static string Differences(string before, string after)
+    {
+        var old = before.Split('\n');
+        var current = after.Split('\n');
+        var changes = old.Except(current, StringComparer.Ordinal).Select(line => "- " + line)
+            .Concat(current.Except(old, StringComparer.Ordinal).Select(line => "+ " + line))
+            .ToArray();
+        return string.Join("; ", changes.Take(6)) + (changes.Length > 6 ? $"; … {changes.Length - 6} more" : string.Empty);
+    }
+
     private static void Walk(DirectoryInfo directory, string root, List<string> lines)
     {
         foreach (var entry in directory.EnumerateFileSystemInfos())
         {
+            entry.Refresh();
             var relative = Path.GetRelativePath(root, entry.FullName).Replace('\\', '/');
             if (entry.LinkTarget is not null)
                 lines.Add($"L {relative} -> {entry.LinkTarget}");
             else if (entry is DirectoryInfo child)
             {
-                lines.Add($"D {relative} {child.LastWriteTimeUtc.Ticks}");
+                lines.Add($"D {relative}");
                 Walk(child, root, lines);
             }
             else

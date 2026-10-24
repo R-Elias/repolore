@@ -54,9 +54,14 @@ Remaining:
    Local checks: Core 101, Infrastructure 81, Cli 150 excluding Packaging and Scenario, Packaging 18, scenarios 27 of 27, the release-notes gate, and `build/smoke-exact-package.sh` on the packed `RepoLore.Cli.1.0.0-rc.1.nupkg`.
 
    After the merge:
-   1. Tag `v1.0.0-rc.1` on `main`, approve the publish job, and verify the download as for the preview.
+   1. **Done:** `v1.0.0-rc.1` was tagged on `6a8da84` (PR #10). `publish` run #6 was green: the build job, then the approved publish job with OIDC login and push, completed at 20:11:58 UTC on 2026-10-24. NuGet.org showed the version as prerelease and "Validating" right after (maintainer screenshot). The packed candidate built from the same commit is 126163 bytes: three assemblies, their `.pdb` files and the readme, with no dependencies. **Download verified at about 20:18 UTC.** The registration feed lagged the "Listed" page by a few minutes; the first install attempt in that gap got "version not found". The check:
+      - A clean `dotnet tool install RepoLore.Cli --version 1.0.0-rc.1 --local`, with only nuget.org as source and empty caches, succeeded.
+      - `version` reported `RepoLore 1.0.0-rc.1`, `init` created the knowledge base with checkpoint 1, and `health-check` was healthy.
+      - The written `method.md` has hash `393afc14…` with no CR, so the line-ending fix shipped.
+      - `dotnet nuget verify --all` exited 0. The only signature is NuGet.org's repository signature, as expected with no author signature. The downloaded file is 139432 bytes including that signature.
+      - In this checkout, `dotnet tool restore` with the new pin worked, and the candidate read the history written by the preview: `checkpoint` reported no changes, and `health-check`, which verifies every manifest and object, was healthy.
    2. Attach the checksum file and SBOM to a GitHub pre-release.
-   3. Then, on a branch, move `.config/dotnet-tools.json` to `1.0.0-rc.1`, which cannot happen before the package exists.
+   3. Branch `chore/pin-1.0.0-rc.1` moves `.config/dotnet-tools.json` to `1.0.0-rc.1`. It also carries two edits that missed the PR #10 commits: the AGENTS.md paragraph on the removed alpha tools, and the `CheckoutIgnoreRulesTests` example path.
 5. **Use the candidate on real work** and fix what it shows (as `1.0.0-rc.2` if a fix is needed).
 6. **The cut:**
    - bump `<Version>` to `1.0.0` and write `docs/release-notes/1.0.0.md` from the candidate's notes plus `unreleased.md`;

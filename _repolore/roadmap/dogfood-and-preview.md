@@ -9,7 +9,7 @@ Prepares the preview; **nothing is published and this checkout is not migrated**
 | Install, internal feed, daily use, sessions, format/migration, recovery instructions | `docs/user-guide.md` (user-facing, outside `_repolore/`) |
 | Package readme that states the preview/unsigned label | `README.md`, packed as `PackageReadmeFile` (whitelist test updated deliberately) |
 | One scripted acceptance journey on disposable fixtures | `tests/RepoLore.Cli.Tests/Packaging/Journey/AcceptanceJourneyTests.cs` |
-| Method banner and agent guidance reflecting implemented behavior | both `method.md` copies (banner only, identical), `AGENTS.md` |
+| Method and agent guidance reflecting implemented behavior | both `method.md` copies (banner first, then replaced by the shipped v1 method, identical), `AGENTS.md`, `.config/dotnet-tools.json` |
 | Dogfood backup procedure, preview checklist, publication workflow and steps | this note; `.github/workflows/publish.yml`, `build/smoke-exact-package.sh` (migration done 2026-10-24; publication prepared, not executed) |
 
 ## Acceptance journey
@@ -50,7 +50,7 @@ Rehearsed on 2026-10-23 on a disposable `git clone` of HEAD (never on this check
 - Backup first, outside the repository and `.history/`: `~/repolore-backups/2026-10-24-pre-migration/` holds `repolore-poc.bundle` (`git bundle verify`: complete history), a copy of `_repolore/`, `method.md`, `.gitignore`, and `uncommitted.diff` (two uncommitted completion-record edits, preserved untouched). SHA-256 manifests of the live and backup `_repolore/` (20 files) were identical.
 - A fresh-clone rehearsal with the installed package gave the same plan as the real checkout: `migrate --check` exit 1 (candidates `root.md`, `sparse-tree/tools/tools.md`), `--dry-run` exit 0 with one `create _repolore/repolore.json`.
 - Applied: `migrated: format marker written, 0 notes copied, 0 legacy files removed (checkpoint 0000000000000002)`; baseline checkpoint 1 is the migration baseline, checkpoint 2 the result. `health-check` healthy, second `migrate` a no-op, `.history/` Gitignored. All 20 pre-existing files are byte-identical to the verified backup state; `repolore.json` is `{"formatVersion":1}`; `git status` shows only the new `repolore.json` plus the two pre-existing uncommitted edits.
-- Not done, deliberately: `init --update-method`, any change to the method bodies, and removing the obsolete `_repolore/tree/` line from `.gitignore`. The method banners (both copies, identical) now say the alpha body is superseded for this checkout. The rollback path (`restore 1`, which removes only the marker) was rehearsed on the clone, not run here.
+- Not done at migration time, deliberately: `init --update-method`, any change to the method bodies (both done later the same day, see below), and removing the obsolete `_repolore/tree/` line from `.gitignore` (still present, harmless). The method banners (both copies, identical) now say the alpha body is superseded for this checkout. The rollback path (`restore 1`, which removes only the marker) was rehearsed on the clone, not run here.
 
 Original procedure (kept as the reference for a repeat on another knowledge base):
 
@@ -62,6 +62,16 @@ Original procedure (kept as the reference for a repeat on another knowledge base
 6. `repolore migrate`; then `health-check`; compare the file manifest (only `repolore.json` added).
 7. Decide separately about `init --update-method` (replaces the alpha `_repolore/method.md` with shipped v1 guidance) and about the repository-root `method.md`, which AGENTS.md requires to stay identical to `_repolore/method.md`. Remove the obsolete `_repolore/tree/` line from `.gitignore` only deliberately.
 8. To undo: `restore <baseline id>`; if that were ever insufficient, restore from the verified backup.
+
+## Adoption of the published tool and v1 method — 2026-10-24
+
+Done on the branch `chore/adopt-published-tool`, after the preview was verified. A verified backup of both method files is in `~/repolore-backups/2026-10-24-pre-method-update/` (SHA-256 `cf89a3adb66378f8…`, identical for both copies).
+
+- `.config/dotnet-tools.json` was created with `dotnet new tool-manifest` and `dotnet tool install RepoLore.Cli --version 0.1.0-preview.1 --local` (nuget.org through the repository `NuGet.Config`); `dotnet tool run repolore -- version` reports `0.1.0-preview.1`.
+- `dotnet tool run repolore -- init --update-method` with that published tool replaced `_repolore/method.md` (376 alpha lines became the shipped 48-line v1 method, SHA-256 `393afc14c09884d5…`, the same object the first `init` stores on any fresh repository). The pre-operation state was already captured (checkpoint 9) and `restore 9 --path _repolore/method.md --dry-run` offers to put the old bytes back. A second run is a no-op.
+- The result was copied to the repository-root `method.md`; `cmp` confirms the two copies are identical. `health-check` healthy.
+- `AGENTS.md`, `root.md`, the executable-foundation note and the initialization note were updated to match. Dated historical records in the completion record were left as written.
+- Left alone on purpose: the PowerShell alpha tools and `_repolore/sparse-tree/tools/tools.md`, the obsolete `_repolore/tree/` line in `.gitignore`.
 
 ## Preview readiness
 
@@ -111,7 +121,7 @@ Post-publication checks run by the assistant from macOS arm64:
 - The nuspec on nuget.org: id `RepoLore.Cli`, version `0.1.0-preview.1`, authors `Elias Aliche`, license Apache-2.0, readme `README.md`, package type `DotnetTool`, repository commit `e140967…`, no dependencies.
 - Clean install: a new consumer directory, a `<clear/>` config with only `https://api.nuget.org/v3/index.json`, empty NuGet/HTTP/plugin caches and an isolated `DOTNET_CLI_HOME`; `dotnet tool install RepoLore.Cli --version 0.1.0-preview.1 --local`, then `version` (`RepoLore 0.1.0-preview.1`, formats 1), `init` (checkpoint 1), `health-check` (healthy, exit 0), `context src/` (the authored sentinel appears) and `checkpoint` (checkpoint 2). The restored files came from the NuGet cache, not a build output.
 
-**Not done by the assistant:** inspecting how nuget.org renders the readme and author; creating the GitHub pre-release for the tag (needs the label above and the `b2d46deb…` hash); the optional `RepoLore.` prefix reservation. **Follow-ups, none blocking:** the workflow warns that the v4 actions run on a forced Node 24 and that `ubuntu-latest` is migrating to Ubuntu 26 (pin the runner image and bump the actions in a later commit, which needs a new version to take effect); a committed tool manifest pinning `0.1.0-preview.1` can now be added to this checkout if the maintainer wants it; the published readme says "not signed" where "no author signature" would be more precise, which can be corrected in the next version.
+**Package page checked 2026-10-24** (fetched page text plus the maintainer's search screenshot): prerelease notice, .NET tool, .NET 10.0, no dependencies, owner `EliasAliche`, Apache-2.0, project and repository links, README rendered with its Install/Use/License sections and the "not signed … not an enterprise-ready or certified release" statement, no deprecation or vulnerability warning. The page's first install tab is the global form (the guide recommends the pinned local manifest and labels global as untested); no package icon is set, which the page does not flag. **Not done:** creating the GitHub pre-release for the tag (needs the label above and the `b2d46deb…` hash); the optional `RepoLore.` prefix reservation. **Follow-ups, none blocking:** the workflow warns that the v4 actions run on a forced Node 24 and that `ubuntu-latest` is migrating to Ubuntu 26 (pin the runner image and bump the actions in a later commit, which needs a new version to take effect); a committed tool manifest pinning `0.1.0-preview.1` can now be added to this checkout if the maintainer wants it; the published readme says "not signed" where "no author signature" would be more precise, which can be corrected in the next version.
 
 Original ordered steps:
 

@@ -57,6 +57,6 @@ old bytes because `PendingCodec`/`RestoreEngine.Recover` are format-agnostic.
   `GetByteCount` does); template hashes and writes round-trip through `File.WriteAllText` +
   `File.ReadAllBytes` instead.
 - No `record` types; all model types are sealed classes.
-- The repo-root `method.md` and `_repolore/method.md` in this checkout remain alpha and are untouched
-  by this package; only the packaged `EmbeddedTemplates.Method` (a new v1 method) is shipped. Replace
-  the checkout's method copies only when migration (09) lands.
+- This package left the checkout's `method.md` copies alone and shipped only `EmbeddedTemplates.Method`.
+  The checkout's own copies were replaced on 2026-10-24 by running `init --update-method` with the
+  published tool, then copying the result to the repository-root copy ([dogfood and preview](dogfood-and-preview.md)).

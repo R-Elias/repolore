@@ -19,7 +19,7 @@ This repository is the proof of concept of RepoLore: operational memory for deve
 - Work on the NuGet tool package, package contents, install/restore from a local feed, or the network-blocked smoke → [packaging and installation](roadmap/packaging-and-installation.md).
 - Use the tool (install, internal feed, daily use, sessions, migration, recovery) → [user guide](../docs/user-guide.md).
 - Prepare or review the dogfood migration of this checkout, the acceptance journey, or the preview-readiness checklist and publication steps → [dogfood and preview](roadmap/dogfood-and-preview.md).
-- Read the alpha method text (superseded for this migrated checkout; its banner says what no longer applies) → repository-root `method.md` and its matching `_repolore/method.md` copy.
+- Read the method (the shipped v1 guidance; the two copies are identical) → repository-root `method.md` and its matching `_repolore/method.md` copy. The alpha text it replaced is in Git history.
 - Work on the PowerShell alpha tools → `tools/tools.md` and `_repolore/sparse-tree/tools/tools.md`.
 - Work as an agent → `AGENTS.md` for contract reading order, package execution/gates, alpha/v1 boundaries, and durable-update/session responsibilities.
 
@@ -31,7 +31,7 @@ The full mirror is gone and `sparse-tree/` is the sole authored path tree. Custo
 
 The first release is one NuGet .NET tool package, `RepoLore.Cli`, containing Core and Infrastructure assemblies. No plugins or additional package channels. Runtime target: .NET 10. The core is local-only; recovery uses explicit checkpoints with a configurable 200 MiB default budget.
 
-The old alpha notes are historical implementation references. The v1 roadmap supersedes their full-mirror and exact-command-compatibility assumptions. Both method copies remain synchronized; their banner says they are superseded for this migrated checkout, while their alpha body is kept until the maintainer decides to replace it with the shipped v1 guidance ([dogfood and preview](roadmap/dogfood-and-preview.md)).
+The old alpha notes are historical implementation references. The v1 roadmap supersedes their full-mirror and exact-command-compatibility assumptions. Both method copies were replaced on 2026-10-24 with the shipped v1 method through `repolore init --update-method` and remain identical; the committed tool manifest `.config/dotnet-tools.json` pins `RepoLore.Cli` `0.1.0-preview.1` ([dogfood and preview](roadmap/dogfood-and-preview.md)).
 
 ## Remaining design work
 

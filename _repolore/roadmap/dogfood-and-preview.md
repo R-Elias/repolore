@@ -10,7 +10,7 @@ Prepares the preview; **nothing is published and this checkout is not migrated**
 | Package readme that states the preview/unsigned label | `README.md`, packed as `PackageReadmeFile` (whitelist test updated deliberately) |
 | One scripted acceptance journey on disposable fixtures | `tests/RepoLore.Cli.Tests/Packaging/Journey/AcceptanceJourneyTests.cs` |
 | Method banner and agent guidance reflecting implemented behavior | both `method.md` copies (banner only, identical), `AGENTS.md` |
-| Dogfood backup procedure, preview checklist, publication steps | this note (prepared, not executed) |
+| Dogfood backup procedure, preview checklist, publication workflow and steps | this note; `.github/workflows/publish.yml`, `build/smoke-exact-package.sh` (migration done 2026-10-24; publication prepared, not executed) |
 
 ## Acceptance journey
 
@@ -71,7 +71,9 @@ Original procedure (kept as the reference for a repeat on another knowledge base
 | Contents whitelist, no knowledge/sessions/history/test stack/build paths | **Ready** (readme added deliberately) |
 | User documentation and package readme | **Ready**; NuGet.org rendering of the readme unseen until a publish |
 | `RepoLore.Cli` ID ownership, `RepoLore.` prefix reservation | **Open** — the maintainer reports the name is free on nuget.org (taken only on npm and as a GitHub organization, which do not affect a NuGet ID). An unpublished ID is still unreserved until the first push, and a placeholder push is not allowed; the optional `RepoLore.` prefix reservation is requested through nuget.org after the account exists |
-| `Authors`, `PackageProjectUrl`/`RepositoryUrl` | **Decided**: `Authors` is `Elias Aliche` (package 12.5); the URLs stay `https://github.com/R-Elias/repolore` (equals `origin`; the `repolore` GitHub organization is taken by someone else). Repository visibility was not verified |
+| `Authors`, `PackageProjectUrl`/`RepositoryUrl` | **Decided**: `Authors` is `Elias Aliche` (package 12.5); the URLs stay `https://github.com/R-Elias/repolore` (equals `origin`; the `repolore` GitHub organization is taken by someone else). The repository is public (checked 2026-10-24) |
+| Publish workflow (`publish.yml`) and exact-bytes smoke (`build/smoke-exact-package.sh`) | **Written and checked locally** (YAML parses; script positive and negative controls); **never run on GitHub** until pushed and dry-run |
+| nuget.org Trusted Publishing policy, GitHub environment `nuget-preview`, secret `NUGET_USER` | **Created by the maintainer 2026-10-24** (known only from their pasted policy and a screenshot, not independently verified): policy Active, owner `EliasAliche`, scopes push new packages and versions, pattern `RepoLore.Cli`, publisher `R-Elias/repolore` (NuGet already holds the GitHub owner and repository IDs; the owner ID equals the one in the commit author address), workflow `publish.yml`, environment `nuget-preview`. Environment: required reviewer `R-Elias`, self-review allowed, administrator bypass disabled by the maintainer afterwards, deployment mode "Selected branches and tags" with a `v*` rule, secret `NUGET_USER`. **To confirm:** the `v*` rule is of type *tag* (the screenshot says it applies to 0 branches), the protection rules were saved, and `NUGET_USER` is the profile name `EliasAliche` |
 | Package signing | **Not available**; a preview ships unsigned; v1.0.0 gate (package 13) |
 | Network-call trace of the smoke path | **Not implemented**; static guards, the boundary-guard build, and the Linux networking-blocked run are the evidence |
 | Linux networking-blocked run of the journey | Runs inside that CI step; covered by the reported green matrix |
@@ -80,16 +82,31 @@ Original procedure (kept as the reference for a repeat on another knowledge base
 
 **The preview must state:** it is a preview (`0.1.0-preview.1`); the package is unsigned (NuGet.org adds only its own repository signature after upload, which is not an author signature); it is not enterprise-ready, certified, or a guarantee about what external agents or editors do with content they read; it needs a .NET 10 SDK to install and a .NET 10.0.x runtime; the networking-blocked run is Linux-only and there is no network-call trace; the knowledge format is version 1 and unknown formats are refused. `README.md` and `docs/user-guide.md` already carry the first two statements.
 
-## Publication steps — prepared, not executed
+## Publication — Trusted Publishing workflow prepared, NOT run
 
-Only on an explicit instruction in a session, after the blocked rows are settled and CI is green on the exact commit:
+Decision (2026-10-24): publish with NuGet.org **Trusted Publishing** from GitHub Actions instead of a long-lived API key. The repository is public, so a policy activates immediately (the 7-day pending state in the NuGet docs applies to private repositories). NuGet issues a single-use, one-hour API key in exchange for the workflow's OIDC token; nothing secret is stored except the nuget.org username, kept as a secret rather than in the file. Source: [NuGet Trusted Publishing](https://learn.microsoft.com/en-us/nuget/nuget-org/trusted-publishing), read 2026-10-24.
 
-1. Tag nothing yet. On a clean checkout of the candidate commit: `dotnet restore --locked-mode`; `dotnet build -c Release --no-restore`; the three suites and the Packaging suite.
-2. `dotnet pack src/RepoLore.Cli -c Release --no-restore -o <artifact-dir>`; record `shasum -a 256` of the single `.nupkg`.
-3. Smoke the exact file: a feed directory holding only that `.nupkg`, a `<clear/>` config, empty caches, `dotnet tool install --local`, `repolore version`. (The Packaging tests pack their own copy; they do not test the uploaded bytes.)
-4. `dotnet nuget push <nupkg> --source https://api.nuget.org/v3/index.json --api-key $NUGET_API_KEY` with the key from the environment, never from source. A published version can be unlisted but not deleted.
-5. After NuGet.org indexes it: install `RepoLore.Cli --version 0.1.0-preview.1` into a clean directory and check `repolore version`; inspect the readme rendering.
-6. Tag `v0.1.0-preview.1` on the published commit and create a GitHub pre-release carrying the label above and the hash from step 2 (repository signing can change bytes after upload; record the hash of the artifact you pushed).
+`.github/workflows/publish.yml` (triggers: a `v*` tag push, or a manual run) has two jobs:
+
+- **build** (no secrets, no OIDC permission): read the version from `Directory.Build.props`; for a tag run, require the tag to equal `v<version>`; locked restore, Release build, the Core, Infrastructure, Cli and Packaging suites on Ubuntu; `dotnet pack --no-build` of the single tool package; `build/smoke-exact-package.sh` installs **that exact `.nupkg`** from a `<clear/>` local-only feed into an isolated pinned manifest and runs `version`, `init`, `health-check`; record `sha256sum` in a `.sha256` file and the step summary; upload both as an artifact.
+- **publish** (runs only from a tag, and for a manual run only if `publish` is ticked): bound to the GitHub environment `nuget-preview`; `id-token: write`; downloads the artifact, re-verifies the checksum, exchanges the OIDC token with `NuGet/login` pinned to the verified commit of v1.2.0 (`8d196754b4036150537f80ac539e15c2f1028841`; the floating `v1` tag is an annotated tag whose peeled commit is the same), and runs `dotnet nuget push` without `--skip-duplicate`, so republishing a version fails.
+
+Checked locally on 2026-10-24: both workflow files parse as YAML; the smoke script passes on a fresh `dotnet pack --no-build` of the package and fails with exit 1 for a wrong expected version, exit 2 for a missing file or missing arguments; the version `sed` and the tag-equals-version test accept `v0.1.0-preview.1` and reject `v0.1.0` and `0.1.0-preview.1`. **Not checked:** the workflow has never run on GitHub (no `actionlint` or `shellcheck` was available), and the NuGet policy does not exist yet.
+
+One-time setup for the maintainer (nothing here can be done from the repository):
+
+1. nuget.org → username menu → **Trusted Publishing** → add a policy owned by you: Repository Owner `R-Elias`, Repository `repolore`, Workflow File `publish.yml` (file name only), Environment `nuget-preview`. In the scopes, allow publishing **new packages** and new versions for the package pattern `RepoLore.Cli`. If the first push of a not-yet-existing ID is refused despite that scope, the fallback is a one-time, narrowly scoped API key push of the same artifact, and the policy then governs later versions.
+2. GitHub → Settings → Environments → `nuget-preview`: add yourself as required reviewer and restrict deployments to tags `v*`. Add the environment secret `NUGET_USER` = your nuget.org **profile name**, not your email.
+3. Recommended: a tag ruleset that blocks deleting or moving `v*` tags.
+4. Optional, later: request reservation of the `RepoLore.` prefix on nuget.org.
+
+Then, only on an explicit instruction in a session:
+
+1. Commit and push `publish.yml` and the script on `feature/v1-release`; wait for CI green, then merge the branch into `main` by pull request. GitHub offers the manual **Run workflow** button only for a workflow that exists on the default branch; a tag run uses the workflow file at the tagged commit.
+2. Dry run: Actions → publish → Run workflow on `main` with `publish` unticked. Expect the build job green, a `package` artifact, and the SHA-256 in the run summary; the publish job is skipped.
+3. Tag the same `main` commit `v0.1.0-preview.1` and push the tag. The build job reruns; the publish job waits for your approval, then pushes. A published version can be unlisted but not deleted, so read the checksum in the summary before approving.
+4. After NuGet.org indexes the package: in a clean directory with only nuget.org as a source, `dotnet tool install RepoLore.Cli --version 0.1.0-preview.1 --local` and `repolore version`; look at the readme rendering and the displayed author.
+5. Create a GitHub pre-release for the tag carrying the preview label (preview; unsigned; not enterprise-ready or certified; .NET 10 SDK to install, 10.0.x runtime to run; networking-blocked run is Linux-only and there is no network-call trace; format version 1) and the SHA-256 of the pushed file. NuGet.org adds its repository signature after upload, so a later download can differ in bytes from the artifact; the recorded hash is of the file that was pushed.
 
 ## Maintenance notes
 

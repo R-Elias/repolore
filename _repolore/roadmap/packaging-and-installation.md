@@ -65,6 +65,10 @@ Then `dotnet tool restore` and `dotnet tool run repolore -- <command>` (or `dotn
 
 `build/run-without-network.sh` (Linux, root) re-executes a command inside `unshare --net` with only loopback and refuses to continue if outbound TCP to a public address or DNS for `api.nuget.org` still works. CI runs the Packaging tests through it on Linux. Everything the step needs (SDK, built binaries, the pack inputs) already exists because it follows restore/build; the tests themselves need no network.
 
+## Publication
+
+The publish path is the `publish.yml` Trusted Publishing workflow plus `build/smoke-exact-package.sh`; see [dogfood and preview](dogfood-and-preview.md). The Packaging tests above pack their own copy; the smoke script is what exercises the exact file that is pushed.
+
 ## Not covered
 
 - No network-call trace of the smoke path exists; static guards plus the blocked-network run are the evidence. One disconnected success does not prove zero networking.

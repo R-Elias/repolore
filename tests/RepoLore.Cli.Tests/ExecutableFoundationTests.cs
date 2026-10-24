@@ -74,27 +74,32 @@ public class ExecutableFoundationTests
             var project = Path.Combine(temp, "src", "RepoLore.Cli", "RepoLore.Cli.csproj");
             var baseline = TestSupport.Run(temp, "build", project, "--configuration", "Release", "--nologo", "--disable-build-servers");
             baseline.Code.Should().Be(0);
-            var probes = new (string Project, string Code)[]
+            // The guard logs every forbidden reference in an assembly, so each project gets all of its probes at once and
+            // is built alone against the baseline's outputs: three builds instead of nine, each naming every probe.
+            var probes = new (string Project, string Code, string Reported)[]
             {
-                ("Core", "public static object Run() => new System.Net.Http.HttpClient();"),
-                ("Infrastructure", "public static object Run() => System.Net.Dns.GetHostAddresses(\"localhost\");"),
-                ("Cli", "public static object Run() => new System.Net.Sockets.Socket(System.Net.Sockets.SocketType.Stream, System.Net.Sockets.ProtocolType.Tcp);"),
-                ("Core", "public static object? Run() => System.Diagnostics.Process.Start(\"echo\");"),
-                ("Infrastructure", "public static object Run() => System.Reflection.Assembly.Load(\"example\");"),
-                ("Cli", "public static object Run() => System.Runtime.Loader.AssemblyLoadContext.Default;"),
-                ("Core", "[System.Runtime.InteropServices.DllImport(\"example\")] public static extern void Run();"),
-                ("Infrastructure", "public static nint Run() => System.Runtime.InteropServices.NativeLibrary.Load(\"example\");"),
-                ("Cli", "public static object? Run() => System.Type.GetType(\"example\");")
+                ("Core", "public static object Network() => new System.Net.Http.HttpClient();", "forbidden runtime capability: System.Net.Http.HttpClient"),
+                ("Core", "public static object? Process() => System.Diagnostics.Process.Start(\"echo\");", "forbidden runtime capability: System.Diagnostics.Process"),
+                ("Core", "[System.Runtime.InteropServices.DllImport(\"example\")] public static extern void Native();", "native/runtime interop method: Native"),
+                ("Infrastructure", "public static object Dns() => System.Net.Dns.GetHostAddresses(\"localhost\");", "forbidden runtime capability: System.Net.Dns"),
+                ("Infrastructure", "public static object Load() => System.Reflection.Assembly.Load(\"example\");", "forbidden runtime capability: System.Reflection.Assembly"),
+                ("Infrastructure", "public static nint Library() => System.Runtime.InteropServices.NativeLibrary.Load(\"example\");", "forbidden runtime capability: System.Runtime.InteropServices.NativeLibrary"),
+                ("Cli", "public static object Socket() => new System.Net.Sockets.Socket(System.Net.Sockets.SocketType.Stream, System.Net.Sockets.ProtocolType.Tcp);", "forbidden runtime capability: System.Net.Sockets.Socket"),
+                ("Cli", "public static object Context() => System.Runtime.Loader.AssemblyLoadContext.Default;", "forbidden runtime capability: System.Runtime.Loader.AssemblyLoadContext"),
+                ("Cli", "public static object? Lookup() => System.Type.GetType(\"example\");", "forbidden runtime capability: System.Type")
             };
-            foreach (var probe in probes)
+            foreach (var group in probes.GroupBy(probe => probe.Project))
             {
-                var path = Path.Combine(temp, "src", "RepoLore." + probe.Project, "ForbiddenProbe.cs");
-                File.WriteAllText(path, "public static class ForbiddenProbe { " + probe.Code + " }");
+                var directory = Path.Combine(temp, "src", "RepoLore." + group.Key);
+                var path = Path.Combine(directory, "ForbiddenProbe.cs");
+                File.WriteAllText(path, "public static class ForbiddenProbe { " + string.Join(' ', group.Select(probe => probe.Code)) + " }");
                 try
                 {
-                    var result = TestSupport.Run(temp, "build", project, "--configuration", "Release", "--no-restore", "--nologo", "--disable-build-servers");
+                    var result = TestSupport.Run(temp, "build", Path.Combine(directory, "RepoLore." + group.Key + ".csproj"), "--configuration", "Release",
+                        "--no-restore", "--nologo", "--disable-build-servers", "-p:BuildProjectReferences=false");
                     result.Code.Should().NotBe(0);
-                    result.Out.Should().Contain("RLBOUNDARY:");
+                    foreach (var probe in group)
+                        result.Out.Should().Contain("RLBOUNDARY: " + probe.Reported);
                 }
                 finally { File.Delete(path); }
             }

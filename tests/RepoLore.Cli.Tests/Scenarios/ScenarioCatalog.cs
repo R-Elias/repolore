@@ -6,6 +6,11 @@ public static class ScenarioCatalog
 
     public static string CasesDirectory => Path.Combine(AppContext.BaseDirectory, "Scenarios", "Cases");
 
+    public static string GoldenDirectory => Path.Combine(CasesDirectory, "golden");
+
+    // Where REPOLORE_SCENARIO_WRITE_GOLDEN=1 writes golden files: the source tree, so they show up in the Git diff.
+    public static string GoldenSourceDirectory => Path.Combine(TestSupport.Repo, "tests", "RepoLore.Cli.Tests", "Scenarios", "Cases", "golden");
+
     public static string CurrentOs =>
         OperatingSystem.IsWindows() ? "windows" : OperatingSystem.IsMacOS() ? "macos" : "linux";
 

@@ -1,0 +1,15 @@
+// An invalid ignore rule and an invalid history budget are blocking policy errors. Whether writes must also refuse an
+// invalid _repoloreignore is an open contract question (see the design note), so only the finding is asserted for it.
+{
+  "name": "invalid-policies-are-reported",
+  "tags": ["configuration"],
+  "steps": [
+    { "checkout": "s19-invalid-ignore-rule" },
+    { "run": "health-check --json", "expect": { "exit": 3, "json": {
+      "findings.0.id": "policy-error", "findings.0.path": "_repoloreignore",
+      "findings.0.message": "line 2: character classes ([...]) are not supported." } } },
+    { "checkout": "s20-invalid-history-policy" },
+    { "run": "health-check", "expect": { "exit": 3, "stdout": "policy-error _repolore/repolore.json: 'history.maxBytes' must not be negative." } },
+    { "run": "checkpoint --json", "expect": { "exit": 3, "json": { "error.id": "policy-error" }, "file-absent": "_repolore/.history" } }
+  ]
+}

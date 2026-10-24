@@ -14,7 +14,8 @@ public sealed class ScenarioTests(ScenarioFixture fixture)
     {
         var scenario = ScenarioCatalog.Load(name);
         var work = fixture.NewWorkDirectory(name);
-        var outcome = new ScenarioRunner(fixture.RunTool).Run(scenario, fixture.ReferenceRepository, work);
+        var writeGolden = Environment.GetEnvironmentVariable(GoldenText.WriteVariable) == "1" ? ScenarioCatalog.GoldenSourceDirectory : null;
+        var outcome = new ScenarioRunner(fixture.RunTool, goldenWriteDirectory: writeGolden).Run(scenario, fixture.ReferenceRepository, work);
         if (outcome.Passed)
             return;
 

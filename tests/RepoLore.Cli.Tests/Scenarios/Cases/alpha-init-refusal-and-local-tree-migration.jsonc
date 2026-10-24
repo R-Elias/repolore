@@ -1,0 +1,14 @@
+// init refuses to write into alpha knowledge; a local alpha mirror migrates by copying its notes and removing the mirror.
+{
+  "name": "alpha-init-refusal-and-local-tree-migration",
+  "tags": ["migration"],
+  "steps": [
+    { "checkout": "s24-alpha-sparse-committed" },
+    { "run": "init --json", "expect": { "exit": 3, "json": { "error.id": "alpha-needs-migration" }, "file-absent": "_repolore/repolore.json" } },
+    { "checkout": "s25-alpha-local-tree-only" },
+    { "run": "migrate", "expect": { "exit": 0, "stdout": "migrated: format marker written, 4 notes copied, 5 legacy files removed",
+      "file-absent": "_repolore/tree" } },
+    { "run": "health-check", "expect": { "exit": 0, "stdout": "healthy: no findings" } },
+    { "run": "path services/orders/", "expect": { "exit": 0, "stdout": "present _repolore/sparse-tree/services/orders/orders.md" } }
+  ]
+}

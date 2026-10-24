@@ -1,0 +1,18 @@
+// A note edited on main, then merged with a branch edit and resolved by hand: each state can be restored.
+{
+  "name": "merged-note-edits-are-recoverable",
+  "tags": ["recovery", "git"],
+  "steps": [
+    { "checkout": "s28-v1-baseline-again" },
+    { "run": "checkpoint", "expect": { "exit": 0, "stdout": "checkpoint 0000000000000001" } },
+    { "checkout": "s30-main-note-edit" },
+    { "run": "checkpoint", "expect": { "exit": 0, "stdout": "checkpoint 0000000000000002: 19 files, 0 added, 1 changed" } },
+    { "checkout": "s31-merge-resolved" },
+    { "run": "checkpoint", "expect": { "exit": 0, "stdout": "checkpoint 0000000000000003: 19 files, 0 added, 1 changed" } },
+    { "run": "restore 2 --path _repolore/sparse-tree/services/orders/orders.md", "expect": { "exit": 0, "stdout": "0 added, 1 replaced, 0 deleted",
+      "file-equals": { "path": "_repolore/sparse-tree/services/orders/orders.md", "at": "s30-main-note-edit" } } },
+    { "run": "restore 3 --path _repolore/sparse-tree/services/orders/orders.md", "expect": { "exit": 0,
+      "file-equals": { "path": "_repolore/sparse-tree/services/orders/orders.md", "at": "s31-merge-resolved" } } },
+    { "run": "health-check", "expect": { "exit": 0, "stdout": "healthy: no findings" } }
+  ]
+}

@@ -1,0 +1,14 @@
+// Source discovery and history coverage are independent policies: the ignore file's exclusion and re-inclusion show
+// in --explain, and a history.exclude rule keeps a generated note out of every checkpoint.
+{
+  "name": "policy-variants",
+  "tags": ["configuration"],
+  "steps": [
+    { "checkout": "s16-policy-variants" },
+    { "run": "health-check --explain generated/keep/", "expect": { "exit": 0, "stdout": "source discovery: included (user rule '!generated/keep/')" } },
+    { "run": "health-check --explain generated/tmp/", "expect": { "exit": 0, "stdout": "source discovery: excluded (user rule 'generated/*')" } },
+    { "run": "health-check --explain vendor/acme-sdk/", "expect": { "exit": 0, "stdout": "source discovery: excluded (user rule 'vendor/')" } },
+    { "run": "checkpoint", "expect": { "exit": 0, "stdout": "checkpoint 0000000000000001: 20 files" } },
+    { "run": "history", "expect": { "exit": 0, "stdout": "_repoloreignore", "stdout-not": "generated-diagram.md" } }
+  ]
+}

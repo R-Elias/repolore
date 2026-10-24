@@ -1,0 +1,19 @@
+// A session from start to cleanup: every state is checkpointed, and the deleted session can be restored from history.
+{
+  "name": "session-lifecycle",
+  "tags": ["sessions", "recovery"],
+  "steps": [
+    { "checkout": "s07-one-session" },
+    { "run": "checkpoint", "expect": { "exit": 0, "stdout": "checkpoint 0000000000000001: 19 files" } },
+    { "checkout": "s08-two-sessions" },
+    { "run": "checkpoint", "expect": { "exit": 0, "stdout": "checkpoint 0000000000000002: 21 files, 2 added" } },
+    { "checkout": "s09-finding-promoted" },
+    { "run": "checkpoint", "expect": { "exit": 0, "stdout": "checkpoint 0000000000000003: 21 files, 0 added, 2 changed" } },
+    { "checkout": "s10-session-cleaned-up" },
+    { "run": "checkpoint", "expect": { "exit": 0, "stdout": "checkpoint 0000000000000004: 19 files, 0 added, 0 changed, 2 removed" } },
+    { "run": "history", "expect": { "exit": 0, "golden": "history-after-session-cleanup" } },
+    { "run": "restore 3 --path _repolore/sessions/2026-01-11-payment-retries-a1c4/root.md", "expect": { "exit": 0, "stdout": "1 added",
+      "file-equals": { "path": "_repolore/sessions/2026-01-11-payment-retries-a1c4/root.md", "at": "s09-finding-promoted" } } },
+    { "run": "health-check --session 2026-01-11-payment-retries-a1c4", "expect": { "exit": 0, "stdout": "healthy: no findings" } }
+  ]
+}

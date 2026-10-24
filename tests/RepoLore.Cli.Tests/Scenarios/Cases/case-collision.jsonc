@@ -1,0 +1,13 @@
+// Two directories that differ only by case, each with its own note: on a case-sensitive file system both are valid.
+// Windows and macOS clones collide at checkout, so this runs on Linux only.
+{
+  "name": "case-collision",
+  "tags": ["hazards"],
+  "os": ["linux"],
+  "steps": [
+    { "checkout": "s37-case-collision" },
+    { "run": "health-check", "expect": { "exit": 0, "stdout": "healthy: no findings" } },
+    { "run": "path services/Billing/", "expect": { "exit": 0, "stdout": "present _repolore/sparse-tree/services/Billing/Billing.md" } },
+    { "run": "path services/billing/", "expect": { "exit": 0, "stdout": "present _repolore/sparse-tree/services/billing/billing.md" } }
+  ]
+}

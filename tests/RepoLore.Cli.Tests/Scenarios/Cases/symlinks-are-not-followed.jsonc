@@ -1,0 +1,13 @@
+// A symlinked note, a dangling link escaping the repository and a symlinked source directory: none is captured or
+// followed. Windows checks links out as text files unless symlinks are enabled, so this runs on Linux and macOS.
+{
+  "name": "symlinks-are-not-followed",
+  "tags": ["hazards", "history"],
+  "os": ["linux", "macos"],
+  "steps": [
+    { "checkout": "s38-symlinks" },
+    { "run": "health-check", "expect": { "exit": 0, "stdout": "healthy: no findings" } },
+    { "run": "checkpoint", "expect": { "exit": 0, "stdout": "checkpoint 0000000000000001: 19 files" } },
+    { "run": "history", "expect": { "exit": 0, "stdout-not": ["onboarding-link.md", "external.md"] } }
+  ]
+}

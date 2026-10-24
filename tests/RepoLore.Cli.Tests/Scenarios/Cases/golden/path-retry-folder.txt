@@ -1,0 +1,6 @@
+present _repolore/root.md
+present _repolore/sparse-tree/services/services.md
+present _repolore/sparse-tree/services/payments/payments.md
+missing _repolore/sparse-tree/services/payments/src/src.md
+missing _repolore/sparse-tree/services/payments/src/Payments.Api/Payments.Api.md
+present _repolore/sparse-tree/services/payments/src/Payments.Api/Retry/Retry.md

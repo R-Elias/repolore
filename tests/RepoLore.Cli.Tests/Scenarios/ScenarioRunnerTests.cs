@@ -281,12 +281,62 @@ public sealed class ScenarioRunnerTests : IDisposable
         malformed.Should().Throw<FormatException>().WithMessage("*full 40-character hash*");
     }
 
-    private ScenarioOutcome Run(string scenarioText, Func<string, string[], (int Code, string Out, string Error)> tool)
+    [Fact]
+    public void Golden_output_matches_after_masking_timestamps_line_endings_and_the_clone_path()
+    {
+        var golden = Path.Combine(root, "golden");
+        Directory.CreateDirectory(golden);
+        File.WriteAllText(Path.Combine(golden, "listing.txt"), "0000000000000001 <timestamp>\nroot <repo>/_repolore\n");
+
+        var outcome = Run(
+            """{ "name": "golden", "steps": [ { "checkout": "stage-b" }, { "run": "history", "expect": { "exit": 0, "golden": "listing" } } ] }""",
+            (repository, _) => (0, $"0000000000000001 2026-10-24T14:10:59.8134070+00:00\r\nroot {repository}/_repolore\r\n", string.Empty),
+            golden);
+
+        outcome.Failures.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Different_or_missing_golden_output_fails_and_names_the_first_differing_line()
+    {
+        var golden = Path.Combine(root, "golden");
+        Directory.CreateDirectory(golden);
+        File.WriteAllText(Path.Combine(golden, "listing.txt"), "same\nexpected\n");
+        const string steps = """[ { "checkout": "stage-b" }, { "run": "tree", "expect": { "exit": 0, "golden": "GOLDEN" } } ]""";
+        (int, string, string) Tool(string repository, string[] arguments) => (0, "same\nactual\n", string.Empty);
+
+        Run($$"""{ "name": "differs", "steps": {{steps.Replace("GOLDEN", "listing")}} }""", Tool, golden).Failures.Should().Equal(
+            "step 2 (repolore tree): golden: stdout differs from listing.txt: line 2: expected 'expected', got 'actual'");
+        Run($$"""{ "name": "missing", "steps": {{steps.Replace("GOLDEN", "absent")}} }""", Tool, golden).Failures.Should().Equal(
+            "step 2 (repolore tree): golden: absent.txt does not exist; run with REPOLORE_SCENARIO_WRITE_GOLDEN=1 to write it, then review it");
+    }
+
+    [Fact]
+    public void Writing_golden_files_stores_the_masked_output_for_review_and_never_passes()
+    {
+        var golden = Path.Combine(root, "golden");
+        var written = Path.Combine(root, "golden-written");
+
+        var outcome = Run(
+            """{ "name": "writes-golden", "steps": [ { "checkout": "stage-b" }, { "run": "tree", "expect": { "exit": 0, "golden": "new-listing" } } ] }""",
+            (repository, _) => (0, $"at {repository} on 2026-01-02T03:04:05Z\r\n", string.Empty),
+            golden,
+            written);
+
+        outcome.Failures.Should().Equal("step 2 (repolore tree): golden: wrote new-listing.txt for review; a run that writes golden files never passes");
+        File.ReadAllText(Path.Combine(written, "new-listing.txt")).Should().Be("at <repo> on <timestamp>\n");
+    }
+
+    private ScenarioOutcome Run(
+        string scenarioText,
+        Func<string, string[], (int Code, string Out, string Error)> tool,
+        string? goldenDirectory = null,
+        string? goldenWriteDirectory = null)
     {
         var scenario = ScenarioFile.Parse(System.Text.Json.JsonDocument.Parse(scenarioText).RootElement.GetProperty("name").GetString()!, scenarioText);
         var work = Path.Combine(root, "work-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(work);
-        return new ScenarioRunner(tool).Run(scenario, reference, work);
+        return new ScenarioRunner(tool, goldenDirectory ?? Path.Combine(root, "no-golden"), goldenWriteDirectory).Run(scenario, reference, work);
     }
 
     // "echo <text>" prints the rest of the arguments on stdout and "warned" on stderr; anything else succeeds silently.

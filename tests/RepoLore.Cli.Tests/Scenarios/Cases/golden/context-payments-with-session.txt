@@ -1,0 +1,40 @@
+---
+## _repolore/root.md [durable]
+
+# Harbor
+
+Order-to-delivery platform. Read this before changing anything; then read the note of the area
+you touch.
+
+- `services/` holds the three back-end services. Orders orchestrates; payments and inventory are
+  called by orders, never by the front ends.
+- `web/` holds the storefront and the admin console.
+- `libs/` holds shared code. `libs/wide/` and `libs/deep/` are generated and need no notes.
+- `infra/` holds Terraform and Kubernetes manifests.
+- `vendor/` is third-party code; never edit it in place.
+
+Architecture: [overview](architecture/overview.md). Decisions: [ADR 0001](adr/0001-event-bus.md),
+[ADR 0002](adr/0002-idempotent-payments.md).
+---
+## _repolore/sparse-tree/services/services.md [durable]
+
+# services
+
+Each service owns its data. Cross-service calls go through the event bus except the synchronous
+payment request from orders.
+---
+## _repolore/sparse-tree/services/payments/payments.md [durable]
+
+# payments
+
+- Every charge carries an idempotency key ([ADR 0002](../../../adr/0002-idempotent-payments.md)).
+- The card provider is wrapped in `src/Payments.Api/Providers/CardProvider.cs`.
+---
+## _repolore/sessions/2026-01-11-payment-retries-a1c4/root.md [session:2026-01-11-payment-retries-a1c4]
+
+# Session: payment retries
+
+Objective: find why duplicate charges appeared during the provider incident.
+Status: active.
+Findings: retries reuse the idempotency key (likely, not yet verified).
+Next: read `RetryPolicy.cs` and the provider wrapper.

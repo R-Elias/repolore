@@ -19,7 +19,8 @@ public sealed record Expectation(
     IReadOnlyList<string> StderrNot,
     IReadOnlyDictionary<string, JsonElement> Json,
     IReadOnlyList<FileAtStage> FileEquals,
-    IReadOnlyList<string> FileAbsent);
+    IReadOnlyList<string> FileAbsent,
+    string? Golden);
 
 // Reads one scenario file strictly: an unknown key, a missing exit code or a misplaced step is an error, so a typo
 // can never turn an expectation into a no-op.
@@ -28,7 +29,7 @@ public static class ScenarioFile
     public static readonly string[] OperatingSystems = ["windows", "linux", "macos"];
 
     private static readonly string[] ScenarioKeys = ["name", "description", "tags", "os", "steps"];
-    private static readonly string[] ExpectKeys = ["exit", "stdout", "stdout-not", "stderr", "stderr-not", "json", "file-equals", "file-absent"];
+    private static readonly string[] ExpectKeys = ["exit", "stdout", "stdout-not", "stderr", "stderr-not", "json", "file-equals", "file-absent", "golden"];
 
     private static readonly JsonDocumentOptions Options = new() { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
 
@@ -111,6 +112,14 @@ public static class ScenarioFile
             }
         }
 
+        string? golden = null;
+        if (expect.TryGetProperty("golden", out var goldenElement))
+        {
+            golden = goldenElement.ValueKind == JsonValueKind.String ? goldenElement.GetString() : null;
+            if (string.IsNullOrEmpty(golden) || !golden.All(c => char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c == '-'))
+                throw new FormatException($"{label}: 'golden' must name a file in Cases/golden/ (lowercase letters, digits and '-')");
+        }
+
         return new Expectation(
             code,
             OptionalStrings(expect, "stdout", label),
@@ -119,7 +128,8 @@ public static class ScenarioFile
             OptionalStrings(expect, "stderr-not", label),
             json,
             fileEquals,
-            OptionalStrings(expect, "file-absent", label));
+            OptionalStrings(expect, "file-absent", label),
+            golden);
     }
 
     private static string[] OptionalStrings(JsonElement element, string key, string label) =>

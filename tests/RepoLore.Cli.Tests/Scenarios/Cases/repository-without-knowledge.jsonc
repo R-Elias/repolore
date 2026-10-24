@@ -5,6 +5,8 @@
   "steps": [
     { "checkout": "s01-plain-monorepo" },
     { "run": "health-check", "expect": { "exit": 2, "stderr": "no _repolore/ directory found", "file-absent": "_repolore" } },
-    { "run": "context services/", "expect": { "exit": 2, "stderr": "no _repolore/ directory found", "file-absent": "_repolore" } }
+    { "run": "context services/", "expect": { "exit": 2, "stderr": "no _repolore/ directory found", "file-absent": "_repolore" } },
+    { "run": "version --json", "expect": { "exit": 0, "stdout": "{\"version\":\"", "file-absent": "_repolore" } },
+    { "run": "--help", "expect": { "exit": 0, "stdout": ["checkpoint", "restore", "health-check", "migrate"], "file-absent": "_repolore" } }
   ]
 }

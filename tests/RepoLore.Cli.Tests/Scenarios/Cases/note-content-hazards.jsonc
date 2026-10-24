@@ -1,0 +1,19 @@
+// Invalid UTF-8 and a misnamed path note are findings; a BOM and CRLF are read normally; an oversized note is omitted
+// from context for budget without failing.
+{
+  "name": "note-content-hazards",
+  "tags": ["health", "hazards"],
+  "steps": [
+    { "checkout": "s13-note-content-hazards" },
+    { "run": "health-check --json", "expect": { "exit": 1, "json": {
+      "findings.0.id": "invalid-utf8", "findings.0.path": "_repolore/architecture/legacy-notes.md",
+      "findings.1.id": "invalid-note-name", "findings.1.path": "_repolore/sparse-tree/libs/common/notes.md" } } },
+    { "run": "context --node _repolore/adr/0003-bom.md", "expect": { "exit": 0, "stdout": "\n# ADR 0003: Keep a BOM\n" } },
+    { "run": "context --node _repolore/architecture/windows-authored.md --json", "expect": { "exit": 0, "json": {
+      "included.0.text": "# Windows-authored note\n\nThis note uses CRLF line endings." } } },
+    { "run": "context --node _repolore/architecture/generated-catalog.md", "expect": { "exit": 0,
+      "stderr": "omitted: _repolore/architecture/generated-catalog.md (budget)", "stdout-not": "client-00001" } },
+    { "run": "checkpoint", "expect": { "exit": 0, "stdout": "checkpoint 0000000000000001",
+      "file-equals": { "path": "_repolore/architecture/windows-authored.md", "at": "s13-note-content-hazards" } } }
+  ]
+}

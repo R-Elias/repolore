@@ -1,0 +1,12 @@
+// With history disabled, checkpoint and restore refuse and nothing is written; reads still work.
+{
+  "name": "history-disabled-refuses-history-writes",
+  "tags": ["configuration", "history"],
+  "steps": [
+    { "checkout": "s18-history-disabled" },
+    { "run": "checkpoint --json", "expect": { "exit": 3, "json": { "error.id": "history-disabled" }, "file-absent": "_repolore/.history" } },
+    { "run": "restore 1 --json", "expect": { "exit": 3, "json": { "error.id": "history-failure" } } },
+    { "run": "history", "expect": { "exit": 0, "stdout": "no checkpoints" } },
+    { "run": "health-check", "expect": { "exit": 0, "stdout": "healthy: no findings" } }
+  ]
+}

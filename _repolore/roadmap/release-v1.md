@@ -60,7 +60,12 @@ Remaining:
       - The written `method.md` has hash `393afc14…` with no CR, so the line-ending fix shipped.
       - `dotnet nuget verify --all` exited 0. The only signature is NuGet.org's repository signature, as expected with no author signature. The downloaded file is 139432 bytes including that signature.
       - In this checkout, `dotnet tool restore` with the new pin worked, and the candidate read the history written by the preview: `checkpoint` reported no changes, and `health-check`, which verifies every manifest and object, was healthy.
-   2. Attach the checksum file and SBOM to a GitHub pre-release.
+   2. **Done (2026-10-24):** the GitHub pre-release "RepoLore.Cli 1.0.0-rc.1 (release candidate)" for tag `v1.0.0-rc.1` carries the release notes and three files from run #6's `package` artifact:
+      - `RepoLore.Cli.1.0.0-rc.1.nupkg`, the exact pushed file without NuGet.org's signature;
+      - `.cdx.json`;
+      - `.sha256`.
+
+      Downloaded from the release, `shasum -a 256 -c` reported OK for both the package (`cc9cb133…`) and the SBOM (`9ba3f566…`). The SBOM is CycloneDX 1.7 for `RepoLore.Cli 1.0.0-rc.1`, with components `RepoLore.Core` and `RepoLore.Infrastructure`. Attaching the `.nupkg` is what lets anyone use the checksum, since NuGet.org serves a re-signed copy with different bytes.
    3. Branch `chore/pin-1.0.0-rc.1` moves `.config/dotnet-tools.json` to `1.0.0-rc.1`. It also carries two edits that missed the PR #10 commits: the AGENTS.md paragraph on the removed alpha tools, and the `CheckoutIgnoreRulesTests` example path.
 5. **Use the candidate on real work** and fix what it shows (as `1.0.0-rc.2` if a fix is needed).
 6. **The cut:**

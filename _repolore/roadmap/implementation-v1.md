@@ -68,7 +68,7 @@ Examples:
 
 **Matcher decision:** paths use `/` and ordinal case-sensitive matching. Every rule is root-relative; optional leading `/` is cosmetic. A bare `build` only matches root `build`; use `**/build/` for any depth. `*` and `?` do not cross `/`; `**` must be a whole segment and matches zero or more segments. A trailing `/` matches a directory and its descendants, not a same-named regular file. An excluded directory's exclusion applies to descendants unless a later rule re-includes them. Last matching rule wins; leading `!` includes. Blank lines and lines starting `#` are ignored; `\#`/`\!` at the start mean literal leading characters. Do not trim meaningful spaces, add shell expansion, or silently claim other Git syntax works. Reject unsupported escape/glob syntax with line numbers.
 
-Source discovery applies: hard safety exclusions → configurable generated-directory defaults → user `_repoloreignore` overrides. Default rules use `**/bin/`, `**/obj/`, `**/node_modules/`, etc.; document the exact finite list. No Git invocation. For v1, if any include/negation rule exists, simply traverse user-excluded directories while still excluding their contents unless re-included. Continue pruning hard exclusions. Do not build a clever possible-descendant analyzer.
+Source discovery applies: hard safety exclusions → configurable generated-directory defaults → user `.repoloreignore` overrides. Default rules use `**/bin/`, `**/obj/`, `**/node_modules/`, etc.; document the exact finite list. No Git invocation. For v1, if any include/negation rule exists, simply traverse user-excluded directories while still excluding their contents unless re-included. Continue pruning hard exclusions. Do not build a clever possible-descendant analyzer.
 
 History coverage is a separate rule evaluation over eligible regular files: top-level controls plus all authored Markdown, including all sessions. Its exclusion paths are repo-root-relative with the same matcher grammar. Always exclude `.history/`, tool temporary paths, and symlinks; ordinary source-discovery rules never apply to authored history. Selecting one session for context never limits checkpoint coverage. Compare recorded coverage as well as content when deciding whether a checkpoint is unchanged.
 
@@ -245,7 +245,7 @@ Track implementation here or in linked PRs; all entries start incomplete. For ea
   - **14a:** the reference repository `repolore-e2e-test-reference` (39 stages, protected tags), the runner in `tests/RepoLore.Cli.Tests/Scenarios/`, its self-tests, the pin, and `scenarios.yml`.
   - **14b:** 28 scenarios, 6 reviewed golden files, the ID coverage test with 5 reviewed exemptions, and 2 `FailureIdTests`.
   - **Evidence:** `scenarios` run #2 on `main` (`9b27435`) was green on Ubuntu (28), Windows (26) and macOS (27). Run #1 found the Windows line-ending defect in the init templates, fixed in PR #7.
-  - **Open:** the invalid-`_repoloreignore` contract question and the `s36` `io-error` message.
+  - **Settled on 2026-10-24:** the invalid ignore-rule question (decided: it blocks nothing else), the rename of the ignore file to `.repoloreignore`, and the `s36` `io-error` message (fixed).
   - Details are in [scenario tests](scenario-tests.md).
 - [ ] 13 — Verifiable v1.0.0 release (author signing deferred by the maintainer, 2026-10-24; the final cut waits for 14a–14b) — not started as a release; plan and open decisions in [v1.0.0 release plan](release-v1.md), cleanups in branch `package-13/release-preparation`
 
@@ -493,3 +493,17 @@ Test projects may now reference an approved test stack: xUnit (`2.9.3`), FluentA
 - New test `InitTests.Init_writes_lf_templates_whatever_line_endings_the_source_was_checked_out_with`. A local CRLF reproduction makes the old code fail it with the Windows hash, and the fixed code pass with `393afc14…`.
 - Checks (macOS): Core 101, Infrastructure 80, Cli 147 excluding Packaging and Scenario, Packaging 18, scenarios 27 of 27.
 - Remaining: the Windows CI job on the pull request, then a re-run of `scenarios` on `main`. A repository-wide `.gitattributes` was deliberately not added.
+
+**Clear message for a file at the history path — 2026-10-24 (branch `package-13/pre-release-fixes`).** This was the first defect the scenarios found (stage `s36`). When `_repolore/.history` was a file, every write command failed with the runtime's raw text, which named the absolute path and no remedy.
+- `WriterLock.Acquire`, the first call of `init`, `checkpoint`, `restore` and `migrate`, now throws `IOException("_repolore/.history is a file, not a directory, so nothing can be written; move that file aside or delete it, then retry")`.
+- The error ID stays `io-error`, so `expected-ids.tsv` and the error mapping are unchanged.
+- Tests: the new `FailureIdTests` theory (`checkpoint`, `restore 1`, `init`) checks the ID, the exact message, that no temp path appears, and that the file is unchanged. All three cases fail without the fix. The `history-path-is-a-file` scenario pins the message.
+- Checks (macOS): Core 101, Infrastructure 80, Cli 150 excluding Packaging and Scenario, Packaging 18, scenarios 27 of 27.
+
+**Ignore file renamed and invalid-rule behavior decided — 2026-10-24 (branch `package-13/pre-release-fixes`).** These are maintainer decisions, recorded in [configuration and policies](configuration-and-policies.md).
+- **Rename:** `_repoloreignore` became `.repoloreignore`. Code: `SourceDiscoveryPolicy.IgnoreFile`/`LegacyIgnoreFile` are used by `HistoryCoveragePolicy`, `PolicyExplanation`, `HistoryEnumerator` and `FormatHealthCheck`. A leftover legacy file is a `policy-error` asking for the rename; it is not read and no longer captured. The error and finding IDs are unchanged, and the knowledge format stays 1.
+- **Invalid rule:** an invalid ignore rule blocks nothing but the `health-check` exit code. This was already the behavior; it is now documented in the user guide, section 6.
+- **Reference repository:** two stages appended, `s40-policy-variants-renamed` and `s41-invalid-ignore-rule-renamed`; `s16` and `s19` now exercise the leftover legacy name. The pin moved to `s41` (`37d832f`).
+- **Scenarios:** `policy-variants` and `invalid-policies-are-reported` cover both names, plus `checkpoint` and `context` succeeding despite an invalid rule.
+- **Tests:** `HistoryCoveragePolicyTests` (new name covered, legacy not); `HealthCheckerTests` gains a legacy-name test whose legacy file holds an invalid rule, proving it is not read.
+- **Limitation:** checkpoints taken by the preview that hold `_repoloreignore` cannot restore that path any more, since it is outside coverage. The file is in Git, and the preview had a very small population.

@@ -4,6 +4,11 @@ namespace RepoLore.Core.Policies;
 
 public sealed class SourceDiscoveryPolicy
 {
+    // The user's source-discovery rules live in this root file. The preview used the name below; a leftover file with
+    // that name is reported, never read.
+    public const string IgnoreFile = ".repoloreignore";
+    public const string LegacyIgnoreFile = "_repoloreignore";
+
     public static readonly IReadOnlyList<string> DefaultExclusions = new[]
     {
         "**/bin/",

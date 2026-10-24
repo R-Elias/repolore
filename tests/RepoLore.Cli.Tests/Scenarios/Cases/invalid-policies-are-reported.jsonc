@@ -1,15 +1,22 @@
-// An invalid ignore rule and an invalid history budget are blocking policy errors. Whether writes must also refuse an
-// invalid _repoloreignore is an open contract question (see the design note), so only the finding is asserted for it.
+// An invalid ignore rule and an invalid history budget are blocking policy errors in health-check. An invalid ignore
+// rule blocks nothing else, because ignore rules only affect source discovery (maintainer decision, 2026-10-24); an
+// invalid history policy refuses writes. A leftover ignore file under the preview's name is reported for renaming.
 {
   "name": "invalid-policies-are-reported",
   "tags": ["configuration"],
   "steps": [
+    { "checkout": "s41-invalid-ignore-rule-renamed" },
+    { "run": "health-check --json", "expect": { "exit": 3, "json": {
+      "findings.0.id": "policy-error", "findings.0.path": ".repoloreignore",
+      "findings.0.message": "line 2: character classes ([...]) are not supported." } } },
+    { "run": "context services/", "expect": { "exit": 0, "stdout": "## _repolore/root.md [durable]" } },
+    { "run": "checkpoint", "expect": { "exit": 0, "stdout": "checkpoint 0000000000000001" } },
     { "checkout": "s19-invalid-ignore-rule" },
     { "run": "health-check --json", "expect": { "exit": 3, "json": {
       "findings.0.id": "policy-error", "findings.0.path": "_repoloreignore",
-      "findings.0.message": "line 2: character classes ([...]) are not supported." } } },
+      "findings.0.message": "the ignore file is now named .repoloreignore; rename this file, whose rules are not read until then" } } },
     { "checkout": "s20-invalid-history-policy" },
     { "run": "health-check", "expect": { "exit": 3, "stdout": "policy-error _repolore/repolore.json: 'history.maxBytes' must not be negative." } },
-    { "run": "checkpoint --json", "expect": { "exit": 3, "json": { "error.id": "policy-error" }, "file-absent": "_repolore/.history" } }
+    { "run": "checkpoint --json", "expect": { "exit": 3, "json": { "error.id": "policy-error" } } }
   ]
 }

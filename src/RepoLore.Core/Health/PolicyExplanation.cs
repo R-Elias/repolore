@@ -28,7 +28,7 @@ public sealed class PolicyExplanation
 
         if (!HistoryCoveragePolicy.IsEligible(path, isDirectory, isSymlink))
             return new PolicyExplanation(path, isDirectory, sourceDecision, false,
-                "not eligible: history covers only _repoloreignore, _repolore/repolore.json and regular Markdown files under _repolore/ outside .history/", null);
+                "not eligible: history covers only " + SourceDiscoveryPolicy.IgnoreFile + ", _repolore/repolore.json and regular Markdown files under _repolore/ outside .history/", null);
 
         var rule = historyExclude.Evaluate(path, isDirectory);
         if (rule is null)

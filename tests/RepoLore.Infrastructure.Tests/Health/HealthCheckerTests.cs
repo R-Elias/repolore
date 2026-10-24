@@ -115,8 +115,20 @@ public class HealthCheckerTests
     {
         WithKnowledgeBase(temp =>
         {
-            Write(temp, "_repoloreignore", "# comment\nab**cd\n");
-            Check(temp).Findings.Should().ContainSingle(f => f.Id == FindingIds.PolicyError && f.Path == "_repoloreignore" && f.Message.StartsWith("line 2"));
+            Write(temp, ".repoloreignore", "# comment\nab**cd\n");
+            Check(temp).Findings.Should().ContainSingle(f => f.Id == FindingIds.PolicyError && f.Path == ".repoloreignore" && f.Message.StartsWith("line 2"));
+        });
+    }
+
+    [Fact]
+    public void A_leftover_ignore_file_with_the_preview_name_is_reported_and_its_rules_are_not_read()
+    {
+        WithKnowledgeBase(temp =>
+        {
+            Write(temp, "_repoloreignore", "ab**cd\n");
+            var report = Check(temp);
+            report.Findings.Should().ContainSingle().Which.Should().Match<Finding>(f => f.Id == FindingIds.PolicyError && f.Path == "_repoloreignore"
+                && f.Message == "the ignore file is now named .repoloreignore; rename this file, whose rules are not read until then");
         });
     }
 

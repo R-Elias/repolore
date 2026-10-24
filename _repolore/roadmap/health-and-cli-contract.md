@@ -48,7 +48,7 @@ A finding is *blocking* (exit 3) when it means RepoLore cannot trust or safely i
 | `migration-needed` | 1 | health | No marker and nonempty `_repolore/`: alpha format |
 | `malformed-format` | 3 | health, errors | `repolore.json` is not valid JSON / missing `formatVersion` / duplicate key |
 | `unsupported-format` | 3 | health, errors | `formatVersion` is not the supported version (higher: upgrade instruction) |
-| `policy-error` | 3 | health, errors | Invalid `history.*` value or rule, or invalid `_repoloreignore` rule (with line number) |
+| `policy-error` | 3 | health, errors | Invalid `history.*` value or rule, or invalid `.repoloreignore` rule (with line number), or a leftover preview-named `_repoloreignore` (rename it). An invalid ignore rule blocks no other command (decision of 2026-10-24) |
 | `conflicting-alpha-notes` | 3 | health, context, path | `tree/` and `sparse-tree/` copies differ |
 | `history-unavailable` | 3 | health | `.history` exists but is a file, a symlink, or unreadable |
 | `history-corrupt` | 3 | health | Malformed completed manifest or `pending.json`; a referenced object is missing or fails its hash |
@@ -93,7 +93,7 @@ malformed or unsupported they exit 3 rather than reading notes. `history` and th
 
 ## `health-check [--explain <path>] [--session <id>]`
 
-Checks, in order: format marker and `_repoloreignore` (rules validated); required notes; alpha
+Checks, in order: format marker and `.repoloreignore` (rules validated; a leftover `_repoloreignore` is reported); required notes; alpha
 inventory classification; local links in durable Markdown (everything under `_repolore/` except
 `sessions/` and `.history/`); the explicitly selected session (links and layout); history
 (`pending.json`, completed manifests, every referenced object's hash). History directory absent is
@@ -102,7 +102,7 @@ normal. Nothing is created, rewritten, or cleaned; no lock is taken.
 `--explain` evaluates a repo-root-relative path with the same matcher the policies use: source
 discovery (hard exclusion → default → user rule, with the rule text) and history coverage
 (eligibility, then `history.exclude`). It never reports Git tracking; it says so and points to Git.
-It is skipped (and a policy finding explains why) when `repolore.json` or `_repoloreignore` is invalid.
+It is skipped (and a policy finding explains why) when `repolore.json` or `.repoloreignore` is invalid.
 
 ### Link subset
 

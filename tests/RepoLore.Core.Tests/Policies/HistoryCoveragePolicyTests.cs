@@ -14,7 +14,8 @@ public class HistoryCoveragePolicyTests
 
         HistoryCoveragePolicy.IsCovered("_repolore/sessions/session-a/root.md", false, false, none).Should().BeTrue();
         HistoryCoveragePolicy.IsCovered("_repolore/sessions/session-a/investigation.md", false, false, none).Should().BeTrue();
-        HistoryCoveragePolicy.IsCovered("_repoloreignore", false, false, none).Should().BeTrue();
+        HistoryCoveragePolicy.IsCovered(".repoloreignore", false, false, none).Should().BeTrue();
+        HistoryCoveragePolicy.IsCovered("_repoloreignore", false, false, none).Should().BeFalse("the preview's file name is no longer read or captured");
         HistoryCoveragePolicy.IsCovered("_repolore/repolore.json", false, false, none).Should().BeTrue();
         HistoryCoveragePolicy.IsCovered("_repolore/method.md", false, false, none).Should().BeTrue();
         HistoryCoveragePolicy.IsCovered("_repolore/root.md", false, false, none).Should().BeTrue();

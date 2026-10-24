@@ -25,7 +25,7 @@ The existing PowerShell scripts and both copies of `method.md` describe the alph
 
 ```text
 <repo>/
-  _repoloreignore                 # optional source-discovery rules
+  .repoloreignore                 # optional source-discovery rules
   _repolore/
     repolore.json                # format marker and configuration
     method.md                    # shipped guidance; explicit updates only
@@ -79,7 +79,7 @@ Human/agent workflow: read durable context and explicitly selected session → c
 ### Detection and storage
 
 - `init` creates the first checkpoint after successful initialization.
-- `checkpoint` enumerates eligible knowledge/configuration files and compares SHA-256 content hashes and paths against the last completed snapshot. Include `method.md`, `root.md`, `repolore.json`, `_repoloreignore`, path notes, custom Markdown, and all session Markdown by default, independently of the session selected for context.
+- `checkpoint` enumerates eligible knowledge/configuration files and compares SHA-256 content hashes and paths against the last completed snapshot. Include `method.md`, `root.md`, `repolore.json`, `.repoloreignore`, path notes, custom Markdown, and all session Markdown by default, independently of the session selected for context.
 - Record additions, modifications, and deletions. Read-only commands never checkpoint or otherwise write.
 - Store complete file contents addressed by hash plus a manifest of paths and hashes for each checkpoint. Unchanged content may share a stored object; no patch chains or database.
 - Hash and store the same bytes. Detect files changing during capture and fail with a retry instruction rather than claiming a consistent checkpoint. Users must pause edits while checkpointing; there is no filesystem-wide transactional snapshot guarantee.
@@ -129,7 +129,7 @@ Session snapshots share the existing history budget; no second cache or retentio
 
 For source discovery, always exclude `_repolore/`, VCS internals, and symlink/reparse-point traversal. Ordinary generated-directory exclusions (`bin`, `obj`, `node_modules`, `build`, `vendor`, etc.) are defaults users can override; they must not be hard-coded prohibitions on authored source.
 
-For v1, implement one documented, bounded glob matcher for `_repoloreignore`; support root-relative paths, `*`, `**`, `?`, directory rules, comments, and ordered `!` negation. Use the anchored, case-sensitive rule grammar in implementation package 03; `build/` is root-only and `**/build/` matches any depth. Freeze that table as fixtures before implementing the matcher. Do not advertise full Git ignore compatibility. No Git subprocess backend is required in v1. `.gitignore` continues to control Git itself and is not implicitly reused for history or discovery. This replaces the old hybrid Git delegate plan.
+For v1, implement one documented, bounded glob matcher for `.repoloreignore`; support root-relative paths, `*`, `**`, `?`, directory rules, comments, and ordered `!` negation. Use the anchored, case-sensitive rule grammar in implementation package 03; `build/` is root-only and `**/build/` matches any depth. Freeze that table as fixtures before implementing the matcher. Do not advertise full Git ignore compatibility. No Git subprocess backend is required in v1. `.gitignore` continues to control Git itself and is not implicitly reused for history or discovery. This replaces the old hybrid Git delegate plan.
 
 For simple correct re-inclusion, traverse user-excluded directories whenever any negation rule exists; continue pruning hard safety exclusions. `health-check --explain <path>` reports source-discovery and history decisions with matching rules; direct users to Git for actual Git tracking status. Explicit path lookup can read existing authored notes even when their source path is excluded from discovery.
 

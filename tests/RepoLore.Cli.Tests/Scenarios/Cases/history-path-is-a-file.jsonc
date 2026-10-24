@@ -1,5 +1,5 @@
-// A regular file where the history directory belongs is reported read-only and refuses writes. The write error's
-// message is a known defect (raw text with an absolute path), so only its ID is pinned.
+// A regular file where the history directory belongs is reported read-only and refuses writes with a clear message
+// that names no machine path (before 2026-10-24 it was the runtime's raw text with the absolute path).
 {
   "name": "history-path-is-a-file",
   "tags": ["history"],
@@ -7,7 +7,8 @@
     { "checkout": "s36-history-path-is-a-file" },
     { "run": "health-check --json", "expect": { "exit": 3, "json": {
       "findings.0.id": "history-unavailable", "findings.0.message": "history path exists but is not a directory" } } },
-    { "run": "checkpoint --json", "expect": { "exit": 3, "json": { "error.id": "io-error" },
+    { "run": "checkpoint --json", "expect": { "exit": 3, "json": { "error.id": "io-error",
+      "error.message": "_repolore/.history is a file, not a directory, so nothing can be written; move that file aside or delete it, then retry" },
       "file-equals": { "path": "_repolore/.history", "at": "s36-history-path-is-a-file" } } },
     { "run": "context services/", "expect": { "exit": 0, "stdout": "## _repolore/root.md [durable]" } }
   ]

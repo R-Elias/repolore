@@ -129,7 +129,7 @@ Original ordered steps:
 2. Dry run: Actions → publish → Run workflow on `main` with `publish` unticked. Expect the build job green, a `package` artifact, and the SHA-256 in the run summary; the publish job is skipped.
 3. Tag the same `main` commit `v0.1.0-preview.1` and push the tag. The build job reruns; the publish job waits for your approval, then pushes. A published version can be unlisted but not deleted, so read the checksum in the summary before approving.
 4. After NuGet.org indexes the package: in a clean directory with only nuget.org as a source, `dotnet tool install RepoLore.Cli --version 0.1.0-preview.1 --local` and `repolore version`; look at the readme rendering and the displayed author.
-5. Create a GitHub pre-release for the tag carrying the preview label (preview; unsigned; not enterprise-ready or certified; .NET 10 SDK to install, 10.0.x runtime to run; networking-blocked run is Linux-only and there is no network-call trace; format version 1) and the SHA-256 of the pushed file. NuGet.org adds its repository signature after upload, so a later download can differ in bytes from the artifact; the recorded hash is of the file that was pushed.
+5. (Done; the maintainer reported it on 2026-10-24.) Create a GitHub pre-release for the tag carrying the preview label (preview; unsigned; not enterprise-ready or certified; .NET 10 SDK to install, 10.0.x runtime to run; networking-blocked run is Linux-only and there is no network-call trace; format version 1) and the SHA-256 of the pushed file. NuGet.org adds its repository signature after upload, so a later download can differ in bytes from the artifact; the recorded hash is of the file that was pushed.
 
 ## Maintenance notes
 

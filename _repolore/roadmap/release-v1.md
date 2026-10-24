@@ -8,15 +8,15 @@ Status: **preparation only; nothing here is a release.** Gates: [implementation 
 
 | Guide deliverable | State |
 |---|---|
-| Public license | **Partly done**: `LICENSE` is the Apache-2.0 text and the package declares `Apache-2.0`; the file names **no copyright holder** — needs the maintainer's name and year |
-| Release notes | **Not written**; the preview's GitHub release text is the starting point |
-| Support/runtime matrix | **Not written**; known facts: .NET 10 SDK to install, 10.0.x runtime to run (`LatestPatch`), CI on `windows-latest`, `ubuntu-latest`, `macos-latest`, networking-blocked run on Linux only |
-| Vulnerability-reporting route | **Blocked on a maintainer decision** (GitHub private vulnerability reporting, which must be enabled in repository settings, or an email address) |
-| SBOM | **Blocked on a format/tool decision**; the shipped package has no third-party dependencies, so the content is the three project assemblies plus the .NET runtime requirement |
+| Public license | **Done**: `LICENSE` is the unmodified Apache-2.0 text; the package declares `Apache-2.0` and carries `Copyright 2026 Elias Aliche` (`<Copyright>`, pinned by the metadata test); the readme names the holder |
+| Release notes | **Done for the preview** (`docs/release-notes/0.1.0-preview.1.md`) and drafted for the next version (`docs/release-notes/unreleased.md`, renamed to `<version>.md` at release). `publish.yml` refuses a version without `docs/release-notes/<version>.md` |
+| Support/runtime matrix | **Done**: `docs/user-guide.md` section 8 (SDK/runtime, tested operating systems, language-agnostic, evidence for the no-network claim) |
+| Vulnerability-reporting route | **Written** (`SECURITY.md`: GitHub private vulnerability reporting, best-effort, scope). **Maintainer action:** enable private vulnerability reporting in repository settings (Settings, Code security); until then the policy points to a feature that is switched off |
+| SBOM | **Implemented, not yet run in CI**: `publish.yml` installs CycloneDX 6.3.1 (`dotnet-cyclonedx`, pinned) and writes `RepoLore.Cli.<version>.cdx.json` (CycloneDX 1.7 JSON). Run locally with the exact flags: application `RepoLore.Cli` depending on the two bundled projects `RepoLore.Core` and `RepoLore.Infrastructure`, no third-party components, no restore (`--disable-package-restore`). The .NET runtime requirement is documented in the guide, not listed as a component |
 | Verification procedure | **Defined by the decision above**: Trusted Publishing, repository signature checked with `dotnet nuget verify` on the downloaded package, recorded SHA-256 of the pushed file, optional GitHub build attestation (pricing for public repositories not confirmed). Author signing: **deferred** |
-| Checksum | **Mechanism exists**: `publish.yml` records `sha256sum` of the exact pushed file; attach it to the GitHub release |
+| Checksum | **Done in the workflow**: one file `RepoLore.Cli.<version>.sha256` covers the exact `.nupkg` and the SBOM; the publish job re-checks it before pushing; the build job writes it to the run summary. Attaching the files to the GitHub release is a manual step |
 | Single tool artifact; tag equals embedded version | **Done** in `publish.yml` (tag-equals-version check, one `.nupkg`) |
-| Network-call trace of the smoke path | **Undecided**: implement, or state the limit (static guards plus the Linux networking-blocked run) in the release notes |
+| Network-call trace | **Dropped by decision (see below)**; the limit is stated in the release notes and the guide |
 | Final-candidate smoke on the exact file | **Mechanism exists** (`build/smoke-exact-package.sh`, run by `publish.yml` on the file that is pushed) |
 
 ## Author signing — research kept in case it is revisited
@@ -36,16 +36,15 @@ Not established (verify before relying on it):
 
 If author signing is ever revisited, the order of work is as follows. while any certificate is registered on the NuGet.org account, every submission, including a preview, must be signed with a registered one. Registration is reversible (removing the certificate lifts the requirement), but publishing is blocked in between, so register only when the signing step is ready and tested on a throwaway package first.
 
-## Decisions still needed from the maintainer
+## Decisions and remaining actions
 
-1. **Vulnerability reporting:** GitHub private reporting (enable it in repository settings) or an email address; then `SECURITY.md`.
-2. **Copyright holder and year** for `LICENSE`/`NOTICE`.
-3. **SBOM:** format and tool (a build-time tool is allowed; the shipped CLI must stay dependency-free).
-4. **Network-call trace:** implement it or document the limit.
-5. **GitHub build attestation:** adopt it or not (confirm that it is free for public repositories first).
-6. **When 1.0.0:** after the preview has been used on real work and the issues found are fixed.
+Decided on 2026-10-24: author signing deferred (top of this note); vulnerability reporting through GitHub private reporting; copyright holder `Elias Aliche`, 2026; SBOM with CycloneDX; **network-call trace dropped** (a trace needs privileged, platform-specific tooling and a single traced run would still not prove zero networking, so the evidence stays the build-time API ban plus the Linux networking-blocked run, stated plainly); **build attestation deferred**: GitHub's attestation pages I read do not state plan or pricing for public repositories, so it is not added, and note that an attestation would cover the pushed file whose bytes differ from the copy NuGet.org serves after adding its repository signature.
 
-Decided: author signing is deferred (2026-10-24), see the top of this note.
+Remaining:
+
+1. **Maintainer:** enable private vulnerability reporting in the repository settings.
+2. **Maintainer:** after the pull request merges, run `publish` once manually on `main` with `publish` unticked; it exercises the Node 24 actions, the release-notes gate and the SBOM step on GitHub for the first time.
+3. **Use the preview on real work**, fix what it shows, then bump `<Version>` in `Directory.Build.props` to `1.0.0`, rename `docs/release-notes/unreleased.md` to `1.0.0.md`, tag `v1.0.0`, approve the publish job, verify the download from NuGet.org as for the preview, and create the GitHub release with the checksum file and SBOM attached.
 
 ## Cleanups done in the package-13 branch (no release behavior)
 

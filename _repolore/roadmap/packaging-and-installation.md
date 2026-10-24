@@ -71,6 +71,6 @@ Then `dotnet tool restore` and `dotnet tool run repolore -- <command>` (or `dotn
 
 ## Not covered
 
-- No network-call trace of the smoke path exists; static guards plus the blocked-network run are the evidence. One disconnected success does not prove zero networking.
+- No network-call trace of the smoke path exists and none is planned (maintainer decision of 2026-10-24, see [v1.0.0 release plan](release-v1.md)); static guards plus the blocked-network run are the evidence. One disconnected success does not prove zero networking.
 - SBOM, checksums and tag/version verification are package 13. Author signing is deferred for v1.0.0 by the maintainer's decision of 2026-10-24 ([v1.0.0 release plan](release-v1.md)); the package carries only NuGet.org's repository signature.
 - NuGet.org ID ownership and any `RepoLore.` prefix reservation cannot be confirmed without an account; a read-only lookup only shows nothing is published.

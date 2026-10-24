@@ -1,6 +1,6 @@
 # RepoLore Method
 
-> **Alpha implementation contract.** The full mirror and generated sparse tree described below apply to the existing PowerShell tools only. The planned v1 instead has one authored `sparse-tree/`, custom long-term knowledge areas, local Gitignored short-term session folders, and explicit checkpoint history. The planned session contract is in `_repolore/product/sessions.md`: select a session explicitly, keep its notes provisional, and promote verified findings through ordinary durable-knowledge review. See `_repolore/roadmap/roadmap.md`, `_repolore/product/product.md`, and `_repolore/product/invariants.md`. Planning files in `product/` and `roadmap/` may be edited directly. This documentation update does not migrate existing knowledge; never use alpha regeneration on a v1 knowledge base.
+> **Superseded for this checkout: it was migrated to knowledge format 1 on 2026-10-24.** The text below is the alpha method (full `tree/` mirror, generated `sparse-tree/`, PowerShell tools). Its mirror and generator rules no longer apply here: this checkout has no `tree/`, `_repolore/sparse-tree/` is authored directly, and the alpha generators (`sync-tree`, `sync-sparse-tree`) must never be run on it. Use the v1 rules instead: one authored `sparse-tree/`, custom long-term areas, local Gitignored `sessions/<session-id>/` folders selected explicitly, explicit checkpoint history and restore, `health-check`, and explicit `migrate` — see `docs/user-guide.md` and `_repolore/product/sessions.md`. The v1 `repolore` CLI (`RepoLore.Cli`, preview `0.1.0-preview.1`, unsigned and unpublished) is verified on disposable fixtures and on this migration. This body is kept only until it is deliberately replaced with the shipped v1 guidance (`repolore init --update-method`), which also needs the repository-root copy updated to stay identical (see `_repolore/roadmap/dogfood-and-preview.md`).
 
 RepoLore is a static knowledge base for this repository.
 
@@ -131,7 +131,6 @@ _repolore/
       API.md
       Controllers/
         Controllers.md
-        UserController.cs.md
 ```
 
 So:
@@ -148,12 +147,7 @@ API/Controllers/
 → _repolore/tree/API/Controllers/Controllers.md
 ```
 
-For repository files, append `.md` to the original filename:
-
-```text
-API/Controllers/UserController.cs
-→ _repolore/tree/API/Controllers/UserController.cs.md
-```
+Only directories get notes; files never do. Any knowledge about a file belongs in the note for its containing directory. The top-level note is always named `root.md`.
 
 ## 7. Sparse Tree
 
@@ -262,9 +256,7 @@ _repolore/tree/src/services/services.md
 _repolore/tree/packages/auth/auth.md
 ```
 
-Use file-level knowledge only when a specific file contains non-obvious behavior, important constraints, or unusual implementation details.
-
-Do not create rich file-level knowledge by default.
+Record non-obvious behavior of a specific file in the note for its containing directory. Do not create a note per file.
 
 ## 12. What to Write
 

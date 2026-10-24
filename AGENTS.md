@@ -6,19 +6,20 @@ RepoLore is an open-source, local knowledge tool maintained by one developer. Ke
 
 Before exploring, modifying, reviewing, or auditing an area:
 
+0. Read the [Engineering Quality Policy](ENGINEERING.md).
 1. Read [`_repolore/method.md`](_repolore/method.md) and [`_repolore/root.md`](_repolore/root.md).
 2. Read the relevant path notes and related knowledge for the area; inspect source only as needed for the task.
 3. For v1 work, read [product direction](_repolore/product/product.md), [invariants](_repolore/product/invariants.md), and the [roadmap](_repolore/roadmap/roadmap.md).
 4. Before implementation, read the [first-release work packages](_repolore/roadmap/implementation-v1.md), including the requested package and its dependencies. Read the [session contract](_repolore/product/sessions.md) when handling short-term knowledge or session behavior.
 5. Inspect the working-tree status and existing implementation/check evidence. Preserve unrelated and user-authored changes; do not assume an unchecked item means no code exists.
 
-The product documents define intended behavior; the implementation guide resolves detailed first-release choices. Its pass/fail gates are required. Do not replace specified path escaping, context ordering, history scope, or recovery rules with an easier approximation. If these documents conflict, identify the exact conflict rather than silently choosing a convenient interpretation.
+The product documents define intended behavior; the implementation guide resolves detailed first-release choices. Its pass/fail gates are required. Do not replace specified path mapping, context ordering, history scope, or recovery rules with an easier approximation. If these documents conflict, identify the exact conflict rather than silently choosing a convenient interpretation.
 
 Code remains the source of truth for current behavior. Verify discrepancies and update stale implementation notes. A bug does not redefine an intended requirement: surface that conflict and fix within the authorized task.
 
 ## Distinguish alpha from v1
 
-The current method copies and PowerShell scripts describe the alpha full mirror and generated sparse tree. They are historical implementation references, not the v1 specification. The .NET CLI, session-aware commands, and recovery features are planned; verify what has actually landed before using or claiming them.
+The current method copies and PowerShell scripts describe the alpha full mirror and generated sparse tree. They are historical implementation references, not the v1 specification. The .NET CLI, session-aware commands, and recovery features are implemented through package 11 and exercised by the packaged-tool acceptance journey on disposable fixtures (user-facing instructions: [user guide](docs/user-guide.md)). The preview is unsigned and unpublished. This checkout was migrated to knowledge format 1 on 2026-10-24 ([dogfood and preview](_repolore/roadmap/dogfood-and-preview.md)): it has `_repolore/repolore.json` and a local, Gitignored `_repolore/.history/`, but no committed tool manifest because there is no published version to pin. Never run the PowerShell alpha generators here. Verify what has actually landed before claiming more.
 
 - Do not recreate the complete empty mirror in v1. Its canonical authored path notes live in `_repolore/sparse-tree/`, alongside custom durable areas.
 - Do not delete, migrate, or regenerate this checkout's knowledge just because the design changed. A sparse-only clone may contain its only knowledge copy there.
@@ -38,7 +39,7 @@ For each work package:
 4. Update affected durable knowledge and the implementation completion record with the behavior delivered, exact check commands/results, fixture names, and remaining limitations.
 5. Mark the package complete only when its required gates passed. Distinguish local validation from CI/platform checks not yet run. Compilation, a stub returning success, or a documentation edit alone is not completion.
 
-Use one deterministic test project with small fixtures, injected time/IDs, and narrow failure injection. Do not introduce a benchmark service, broad research program, speculative framework, or duplicate test infrastructure. After required checks pass, broaden testing only for a specific unresolved risk or regression.
+Use small deterministic test projects (one per shipped assembly) with small fixtures, injected time/IDs, and narrow failure injection. Do not introduce a benchmark service, broad research program, speculative framework, or duplicate test infrastructure. After required checks pass, broaden testing only for a specific unresolved risk or regression. The shipped projects stay BCL-only, but test projects may use the approved test stack (xUnit, FluentAssertions, FsCheck, CliWrap, Newtonsoft.Json); prefer those over a hand-rolled harness for new tests.
 
 ## Boundaries that must survive every change
 
@@ -58,7 +59,7 @@ Sessions are optional local working knowledge under `_repolore/sessions/<session
 
 Before creating sessions, ensure session/history paths are Gitignored; never commit their contents. Gitignore does not untrack previously tracked files. Session folders and recovery history are different things. Do not delete sessions or expire their contents automatically.
 
-When checkpoint tooling is implemented and validated, checkpoint before and after direct knowledge edits, including session edits. Until then, do not invent a working checkpoint command or claim recovery protection. Follow the documented backup procedure for any authorized destructive operation.
+Checkpoint tooling is implemented and validated. Checkpoint before and after direct knowledge edits in this checkout, including session edits. Run the tool from a local build (`dotnet src/RepoLore.Cli/bin/Release/net10.0/RepoLore.Cli.dll <command>` after `dotnet build -c Release`) or from a local-feed install kept outside the checkout. Recovery protects only states observed at a successful checkpoint and is not a backup: follow the documented backup procedure before any authorized destructive operation, and do not run `init --update-method` or change the method copies without the maintainer's decision.
 
 After meaningful changes, update RepoLore for behavior, architecture, responsibilities, dependencies, conventions, important paths, or maintenance assumptions. Keep notes concise and evidence-backed. Do not duplicate obvious source code or record guesses as facts. A session-only note is insufficient for a change future maintainers need to understand.
 

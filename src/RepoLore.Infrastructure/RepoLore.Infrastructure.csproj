@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><EnforceRuntimeBoundary>true</EnforceRuntimeBoundary></PropertyGroup>
+  <ItemGroup><ProjectReference Include="../RepoLore.Core/RepoLore.Core.csproj" /></ItemGroup>
+</Project>

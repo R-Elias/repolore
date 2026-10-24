@@ -1,0 +1,100 @@
+name: publish
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish to nuget.org (only honored when run from a tag)'
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: '1'
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Read the version from its single source
+        id: version
+        run: |
+          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)
+          test -n "$version"
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+      - name: Require the tag to match that version
+        if: github.ref_type == 'tag'
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: test "$GITHUB_REF_NAME" = "v$VERSION"
+      - run: dotnet restore --locked-mode
+      - run: dotnet build --no-restore --configuration Release
+      - run: dotnet test --no-build --configuration Release tests/RepoLore.Core.Tests
+      - run: dotnet test --no-build --configuration Release tests/RepoLore.Infrastructure.Tests
+      - run: dotnet test --no-build --configuration Release tests/RepoLore.Cli.Tests --filter "FullyQualifiedName!~RepoLore.Cli.Tests.Packaging"
+      - run: dotnet test --no-build --configuration Release tests/RepoLore.Cli.Tests --filter "FullyQualifiedName~RepoLore.Cli.Tests.Packaging"
+      - name: Pack the single tool package from the tested build
+        run: dotnet pack src/RepoLore.Cli/RepoLore.Cli.csproj --no-build --configuration Release --output artifacts
+      - name: Smoke-test the exact package file that would be published
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          test "$(ls artifacts/*.nupkg | wc -l)" -eq 1
+          bash build/smoke-exact-package.sh "artifacts/RepoLore.Cli.$VERSION.nupkg" "$VERSION"
+      - name: Record the checksum of the exact package file
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          cd artifacts
+          sha256sum "RepoLore.Cli.$VERSION.nupkg" | tee "RepoLore.Cli.$VERSION.nupkg.sha256"
+          {
+            echo "### RepoLore.Cli $VERSION"
+            echo "commit: $GITHUB_SHA"
+            echo '```'
+            cat "RepoLore.Cli.$VERSION.nupkg.sha256"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package
+          path: artifacts/
+          if-no-files-found: error
+  publish:
+    needs: build
+    if: github.ref_type == 'tag' && (github.event_name == 'push' || inputs.publish)
+    runs-on: ubuntu-latest
+    environment: nuget-preview
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: package
+          path: artifacts
+      - name: Verify the downloaded package against the recorded checksum
+        run: cd artifacts && sha256sum --check "RepoLore.Cli.$VERSION.nupkg.sha256"
+      - name: NuGet login (OIDC, short-lived API key)
+        id: login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          user: ${{ secrets.NUGET_USER }}
+      - name: Push the package
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: >
+          dotnet nuget push "artifacts/RepoLore.Cli.$VERSION.nupkg"
+          --api-key "$NUGET_API_KEY"
+          --source https://api.nuget.org/v3/index.json

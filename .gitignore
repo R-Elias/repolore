@@ -1,1 +1,9 @@
 _repolore/tree/
+_repolore/sessions/
+_repolore/.history/
+**/bin/
+**/obj/
+.idea/
+.vs/
+*.user
+.DS_Store

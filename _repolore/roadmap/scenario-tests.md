@@ -171,9 +171,20 @@ Until 14b, no CLI-level test asserted `history-locked` or `operation-interrupted
 **Evidence (2026-10-24, macOS arm64):**
 - The scenarios pass twice, 27 of 27 (28 minus the Linux-only one), in about 26 seconds, and the reference clone stayed clean.
 - With the CI filters: Core 101, Infrastructure 80, Cli 146 excluding Packaging and Scenario (which includes 38 scenario self- and coverage tests and the 2 `FailureIdTests`), and Packaging 18.
-- Not run yet: Windows, Linux (`case-collision` has never run anywhere), and the scheduled workflow with this catalog.
+- **First `scenarios` run on `main`** (2026-10-24, run #1, commit `3a8b7c3`):
+  - Ubuntu green with all 28 scenarios, including `case-collision`, its first run anywhere (about 1 minute).
+  - macOS green with 27 (about 8 minutes).
+  - Windows red with a single failure, `init-reproduces-the-adoption`. Every Unicode, long-path and golden scenario passed there.
+  - GitHub recorded no or incomplete step lists for these runs and for the CI runs at the time. Results were read from job conclusions and the failure artifact.
 
 **Open contract question (for the maintainer):** on `s19`, an invalid `_repoloreignore` rule is a blocking `policy-error` in `health-check` (exit 3). Yet `checkpoint` succeeds and `context` reads normally. Package 03 says "reject … invalid rules before mutations", while ignore rules affect only source discovery, never history coverage. Both readings are defensible, so the scenario asserts only the `health-check` finding until this is decided.
+
+**Defect found and fixed (branch `fix/lf-templates`): line endings of the init templates depended on the build machine.**
+- `EmbeddedTemplates.Method` and `.Root` were multi-line verbatim literals. The repository has no `.gitattributes`, so a Windows checkout gave the source file, and therefore the compiled templates, CRLF line endings.
+- On Windows, `init` wrote a `method.md` with hash `105dd6d8…` instead of `393afc14…`: 48 extra bytes. A Windows build of the tool therefore shipped a different method. The published `0.1.0-preview.1` was built on Ubuntu and is not affected.
+- **Fix:** both templates are now `static readonly` and normalized with `.ReplaceLineEndings("\n")`, which holds however the source arrives.
+- **Regression test:** `InitTests.Init_writes_lf_templates_whatever_line_endings_the_source_was_checked_out_with`. It runs on every pull request, and its Windows job builds from a CRLF checkout.
+- **Local proof:** with `EmbeddedTemplates.cs` converted to CRLF, the old code fails the test and writes `105dd6d8…`, exactly the Windows CI artifact. The fixed code passes and writes `393afc14…` from either a CRLF or an LF checkout.
 
 **Defect still open:** the `s36` `io-error` message is raw .NET text containing an absolute path. Only its ID is pinned.
 

@@ -481,3 +481,10 @@ Test projects may now reference an approved test stack: xUnit (`2.9.3`), FluentA
 - Each probe's API must now be named in the output (for example `RLBOUNDARY: forbidden runtime capability: System.Type`), not just any `RLBOUNDARY:` line.
 - The test takes 15 seconds, and the Cli step 20 seconds instead of 45 (macOS).
 - Mutation check: removing `System.Type` from `build/CheckRuntimeBoundary.cs` made the test fail on exactly that line. The file was then restored.
+
+**Init templates normalized to LF — 2026-10-24 (branch `fix/lf-templates`).** The first Windows `scenarios` run failed `init-reproduces-the-adoption`. A Windows checkout gives `src/RepoLore.Cli/Embedded/EmbeddedTemplates.cs` CRLF line endings (no `.gitattributes`), and the multi-line verbatim templates inherited them, so a Windows-built tool wrote a different `method.md` (`105dd6d8…` versus `393afc14…`).
+- Fix: `Method` and `Root` are `static readonly` strings normalized with `.ReplaceLineEndings("\n")`. The only use is `InitCommand`, which passes them by value.
+- Linux and macOS output is byte-identical to before, and the published `0.1.0-preview.1` (built on Ubuntu) is unaffected.
+- New test `InitTests.Init_writes_lf_templates_whatever_line_endings_the_source_was_checked_out_with`. A local CRLF reproduction makes the old code fail it with the Windows hash, and the fixed code pass with `393afc14…`.
+- Checks (macOS): Core 101, Infrastructure 80, Cli 147 excluding Packaging and Scenario, Packaging 18, scenarios 27 of 27.
+- Remaining: the Windows CI job on the pull request, then a re-run of `scenarios` on `main`. A repository-wide `.gitattributes` was deliberately not added.

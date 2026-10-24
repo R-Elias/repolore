@@ -61,7 +61,7 @@ jobs:
         run: |
           dotnet tool install CycloneDX --version 6.3.1 --tool-path "$RUNNER_TEMP/cyclonedx"
           export DOTNET_ROOT="$(dirname "$(readlink -f "$(command -v dotnet)")")"
-          "$RUNNER_TEMP/cyclonedx/dotnet-cyclonedx" src/RepoLore.Cli/RepoLore.Cli.csproj \
+          "$RUNNER_TEMP/cyclonedx/dotnet-CycloneDX" src/RepoLore.Cli/RepoLore.Cli.csproj \
             --output artifacts --filename "RepoLore.Cli.$VERSION.cdx.json" --output-format Json \
             --set-version "$VERSION" --set-name RepoLore.Cli --include-project-references \
             --disable-package-restore --set-nuget-purl --no-serial-number

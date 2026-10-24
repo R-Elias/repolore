@@ -39,11 +39,12 @@ public sealed class PackageContentsTests(PackedToolFixture package)
     [Fact]
     public void Package_metadata_is_complete_and_not_the_sdk_placeholder()
     {
-        var values = package.Nuspec().Descendants().Where(node => node.Name.LocalName is "authors" or "description" or "license" or "projectUrl")
+        var values = package.Nuspec().Descendants().Where(node => node.Name.LocalName is "authors" or "copyright" or "description" or "license" or "projectUrl")
             .ToDictionary(node => node.Name.LocalName, node => node.Value);
         values["license"].Should().Be("Apache-2.0");
         values["description"].Should().NotBe("Package Description").And.Contain("RepoLore");
         values["authors"].Should().Be("Elias Aliche");
+        values["copyright"].Should().Be("Copyright 2026 Elias Aliche");
         values["projectUrl"].Should().StartWith("https://");
     }
 

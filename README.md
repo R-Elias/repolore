@@ -33,6 +33,6 @@ repolore health-check                                # structure, links, history
 
 Read the [user guide](docs/user-guide.md) for installation from an internal feed, daily use, sessions, migration from the alpha scripts, and recovery limits.
 
-## License
+## License and security
 
-Apache-2.0.
+Apache-2.0. Copyright 2026 Elias Aliche. Report suspected vulnerabilities privately, as described in [SECURITY.md](SECURITY.md).

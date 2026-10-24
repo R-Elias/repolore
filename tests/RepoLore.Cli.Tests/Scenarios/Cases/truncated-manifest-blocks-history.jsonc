@@ -1,0 +1,12 @@
+// A truncated checkpoint manifest makes history unreadable; nothing is repaired or deleted.
+{
+  "name": "truncated-manifest-blocks-history",
+  "tags": ["history"],
+  "steps": [
+    { "checkout": "s34-corrupt-history-manifest" },
+    { "run": "health-check", "expect": { "exit": 3, "stdout": "history-corrupt _repolore/.history/checkpoints" } },
+    { "run": "history", "expect": { "exit": 3, "stderr": "corrupt manifest '0000000000000002.json'" } },
+    { "run": "checkpoint", "expect": { "exit": 3, "stderr": "corrupt manifest '0000000000000002.json'",
+      "file-equals": { "path": "_repolore/.history/checkpoints/0000000000000002.json", "at": "s34-corrupt-history-manifest" } } }
+  ]
+}

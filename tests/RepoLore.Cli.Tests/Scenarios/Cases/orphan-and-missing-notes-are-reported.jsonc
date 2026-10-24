@@ -1,0 +1,16 @@
+// Moving or deleting a directory leaves its note behind; losing method.md is a missing required note.
+{
+  "name": "orphan-and-missing-notes-are-reported",
+  "tags": ["smoke", "health"],
+  "steps": [
+    { "checkout": "s11-structure-hazards" },
+    { "run": "health-check --json",
+      "expect": { "exit": 1, "json": {
+        "healthy": false,
+        "findings.0.id": "missing-note", "findings.0.path": "_repolore/method.md",
+        "findings.1.id": "orphan-path-note", "findings.1.path": "_repolore/sparse-tree/infra/k8s/k8s.md",
+        "findings.2.id": "orphan-path-note", "findings.2.path": "_repolore/sparse-tree/services/inventory/inventory.md" } } },
+    { "checkout": "s10-session-cleaned-up" },
+    { "run": "health-check", "expect": { "exit": 0, "stdout": "healthy: no findings" } }
+  ]
+}

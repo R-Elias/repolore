@@ -1,0 +1,16 @@
+// Committed alpha knowledge migrates cleanly; restoring the migration baseline removes the marker again.
+{
+  "name": "alpha-knowledge-migrates-and-rolls-back",
+  "tags": ["smoke", "migration"],
+  "steps": [
+    { "checkout": "s24-alpha-sparse-committed" },
+    { "run": "health-check", "expect": { "exit": 1, "stdout": "migration-needed _repolore/" } },
+    { "run": "migrate --check",
+      "expect": { "exit": 1, "stdout": ["candidate _repolore/sparse-tree/services/orders/orders.md", "unchanged _repolore/product/"],
+                  "file-absent": "_repolore/repolore.json" } },
+    { "run": "migrate", "expect": { "exit": 0, "stdout": "migrated: format marker written, 0 notes copied, 0 legacy files removed (checkpoint 0000000000000002)" } },
+    { "run": "health-check", "expect": { "exit": 0, "stdout": "healthy: no findings" } },
+    { "run": "restore 1", "expect": { "exit": 0, "stdout": "restore complete: 0 added, 0 replaced, 1 deleted", "file-absent": "_repolore/repolore.json" } },
+    { "run": "health-check", "expect": { "exit": 1, "stdout": "migration-needed _repolore/" } }
+  ]
+}

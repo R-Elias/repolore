@@ -1,0 +1,20 @@
+// Differing copies of one note, or a loose file in the reserved sessions folder, block migration without writing.
+{
+  "name": "alpha-conflicts-block-migration",
+  "tags": ["smoke", "migration"],
+  "steps": [
+    { "checkout": "s26-alpha-conflicting-copies" },
+    { "run": "health-check", "expect": { "exit": 3, "stdout": "conflicting-alpha-notes _repolore/sparse-tree/services/orders/orders.md" } },
+    { "run": "migrate",
+      "expect": { "exit": 3, "stdout": "conflict _repolore/sparse-tree/services/orders/orders.md: alpha tree/ and sparse-tree/ copies differ",
+                  "stderr": "migration blocked by unresolved conflicts",
+                  "file-absent": "_repolore/repolore.json",
+                  "file-equals": [
+                    { "path": "_repolore/tree/services/orders/orders.md", "at": "s26-alpha-conflicting-copies" },
+                    { "path": "_repolore/sparse-tree/services/orders/orders.md", "at": "s26-alpha-conflicting-copies" } ] } },
+    { "checkout": "s27-alpha-sessions-conflict" },
+    { "run": "migrate",
+      "expect": { "exit": 3, "stdout": "conflict _repolore/sessions/ does not match the session layout",
+                  "stderr": "migration blocked", "file-absent": "_repolore/repolore.json" } }
+  ]
+}

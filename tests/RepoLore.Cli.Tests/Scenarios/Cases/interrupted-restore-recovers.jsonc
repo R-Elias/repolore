@@ -1,0 +1,19 @@
+// A restore interrupted after its first file: reads keep working, writes refuse with the recovery id, and restoring
+// that id returns to the pre-operation state.
+{
+  "name": "interrupted-restore-recovers",
+  "tags": ["smoke", "recovery"],
+  "steps": [
+    { "checkout": "s35-pending-operation" },
+    { "run": "health-check", "expect": { "exit": 3, "stdout": ["history-pending _repolore/.history/pending.json", "repolore restore 2"] } },
+    { "run": "checkpoint --json", "expect": { "exit": 3, "json": { "error.id": "history-pending", "error.recoveryId": 2 } } },
+    { "run": "context services/orders/", "expect": { "exit": 0, "stdout": "## _repolore/sparse-tree/services/orders/orders.md [durable]" } },
+    { "run": "restore 2",
+      "expect": { "exit": 0, "stdout": "recovered 1 files to the pre-operation state (checkpoint 0000000000000002)",
+                  "file-absent": "_repolore/.history/pending.json",
+                  "file-equals": [
+                    { "path": "_repolore/sparse-tree/services/orders/orders.md", "at": "s33-corrupt-history-object" },
+                    { "path": "_repolore/sparse-tree/services/payments/payments.md", "at": "s35-pending-operation" } ] } },
+    { "run": "health-check", "expect": { "exit": 0, "stdout": "healthy: no findings" } }
+  ]
+}

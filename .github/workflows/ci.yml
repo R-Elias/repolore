@@ -29,7 +29,7 @@ jobs:
       - run: dotnet build --no-restore --configuration Release
       - run: dotnet test --no-build --configuration Release tests/RepoLore.Core.Tests
       - run: dotnet test --no-build --configuration Release tests/RepoLore.Infrastructure.Tests
-      - run: dotnet test --no-build --configuration Release tests/RepoLore.Cli.Tests --filter "FullyQualifiedName!~RepoLore.Cli.Tests.Packaging"
+      - run: dotnet test --no-build --configuration Release tests/RepoLore.Cli.Tests --filter "FullyQualifiedName!~RepoLore.Cli.Tests.Packaging&Category!=Scenario"
       - name: Pack the tool and smoke-test the installed package from a local-only feed
         run: dotnet test --no-build --configuration Release tests/RepoLore.Cli.Tests --filter "FullyQualifiedName~RepoLore.Cli.Tests.Packaging"
       - name: Repeat the package smoke with networking blocked (Linux)

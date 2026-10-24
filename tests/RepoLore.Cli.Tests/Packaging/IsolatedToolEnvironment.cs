@@ -33,10 +33,12 @@ public sealed class IsolatedToolEnvironment : IDisposable
         Directory.CreateDirectory(PackageCache);
     }
 
-    public void PinTool(string packageId, string version)
+    public void PinTool(string packageId, string version) => PinToolIn(ConsumerRepository, packageId, version);
+
+    public void PinToolIn(string directory, string packageId, string version)
     {
-        Directory.CreateDirectory(Path.Combine(ConsumerRepository, ".config"));
-        File.WriteAllText(Path.Combine(ConsumerRepository, ".config", "dotnet-tools.json"),
+        Directory.CreateDirectory(Path.Combine(directory, ".config"));
+        File.WriteAllText(Path.Combine(directory, ".config", "dotnet-tools.json"),
             $$"""
             {
               "version": 1,
@@ -63,7 +65,10 @@ public sealed class IsolatedToolEnvironment : IDisposable
     public void Dispose()
     {
         foreach (var file in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
-            File.SetAttributes(file, FileAttributes.Normal);
+        {
+            try { File.SetAttributes(file, FileAttributes.Normal); }
+            catch (FileNotFoundException) { } // a dangling symlink from a scenario stage
+        }
         Directory.Delete(root, recursive: true);
     }
 

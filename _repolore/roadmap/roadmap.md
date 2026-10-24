@@ -229,6 +229,7 @@ Use [First Release — Implementation Work Packages](implementation-v1.md) as th
 | Recovery foundation | 05–07: capture, retention, restore | Byte recovery, budgeted undo pair, and explicit interrupted-operation recovery pass before destructive commands. |
 | Adoption and diagnostics | 08–10: init, migration, health/CLI contract | Retryable initialization, conflict-free migration/rollback, stable findings, and write-free previews. |
 | Distribution | 11–12: actual NuGet package and preview workflow | Clean-cache local-feed install, explicit session workflow, and usable fresh clone. |
+| Confidence | 14a–14b: scenario tests on a reference repository ([design](scenario-tests.md)) | Deterministic user-reproduction scenarios on three operating systems; required before the v1.0.0 cut. |
 | Stable release | 13: verifiable v1.0.0 (no author signature) | Verified final artifact, required tests, supported-platform smoke, and complete local recovery guidance. |
 
 Do not weaken a preservation gate to reach a preview date. Later work may proceed only where its dependencies are already satisfied. Release credentials may be prepared independently; the absence of an author signature does not justify calling a preview or release enterprise-ready.

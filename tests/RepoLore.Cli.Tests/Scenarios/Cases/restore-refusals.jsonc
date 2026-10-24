@@ -1,0 +1,14 @@
+// Restore refuses an unknown checkpoint and a path outside saved coverage, and changes nothing.
+{
+  "name": "restore-refusals",
+  "tags": ["recovery"],
+  "steps": [
+    { "checkout": "s04-knowledge-adopted" },
+    { "run": "restore 99 --json", "expect": { "exit": 3, "json": { "error.id": "unknown-checkpoint" } } },
+    { "run": "checkpoint", "expect": { "exit": 0, "stdout": "checkpoint 0000000000000001" } },
+    { "run": "restore 1 --path services/orders/README.md --json", "expect": { "exit": 3, "json": { "error.id": "restore-plan-invalid" },
+      "file-equals": { "path": "services/orders/README.md", "at": "s04-knowledge-adopted" } } },
+    { "run": "restore 1 --path _repolore/sparse-tree/services/orders/orders.md --json", "expect": { "exit": 0, "json": { "noOp": true } } },
+    { "run": "history --json", "expect": { "exit": 0, "json": { "checkpoints.0.id": 1 } } }
+  ]
+}

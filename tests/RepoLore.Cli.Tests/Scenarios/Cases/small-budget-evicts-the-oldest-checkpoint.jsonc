@@ -1,0 +1,13 @@
+// A budget that holds one checkpoint evicts the older one when the next is taken; the latest is never evicted.
+{
+  "name": "small-budget-evicts-the-oldest-checkpoint",
+  "tags": ["history", "configuration"],
+  "steps": [
+    { "checkout": "s10-session-cleaned-up" },
+    { "run": "checkpoint", "expect": { "exit": 0, "stdout": "checkpoint 0000000000000001: 19 files" } },
+    { "checkout": "s17-tiny-history-budget" },
+    { "run": "checkpoint", "expect": { "exit": 0, "stdout": "checkpoint 0000000000000002: 19 files, 0 added, 1 changed, 0 removed, 1 evicted, 1 reclaimed" } },
+    { "run": "history --json", "expect": { "exit": 0, "json": { "checkpoints.0.id": 2 } } },
+    { "run": "restore 1 --json", "expect": { "exit": 3, "json": { "error.id": "unknown-checkpoint" } } }
+  ]
+}

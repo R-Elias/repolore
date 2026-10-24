@@ -1,0 +1,16 @@
+// A commit that adds two notes and deletes one: the checkpoint records both, and the deleted note can be restored.
+{
+  "name": "added-and-removed-notes-are-recoverable",
+  "tags": ["recovery", "git"],
+  "steps": [
+    { "checkout": "s05-note-edited" },
+    { "run": "checkpoint", "expect": { "exit": 0, "stdout": "checkpoint 0000000000000001: 17 files" } },
+    { "checkout": "s06-notes-added-removed" },
+    { "run": "checkpoint", "expect": { "exit": 0, "stdout": "checkpoint 0000000000000002: 18 files, 2 added, 0 changed, 1 removed" } },
+    { "run": "restore 1 --path _repolore/sparse-tree/web/storefront/storefront.md --dry-run", "expect": { "exit": 0,
+      "stdout": "add _repolore/sparse-tree/web/storefront/storefront.md (present in snapshot, absent now)",
+      "file-absent": "_repolore/sparse-tree/web/storefront/storefront.md" } },
+    { "run": "restore 1 --path _repolore/sparse-tree/web/storefront/storefront.md", "expect": { "exit": 0, "stdout": "1 added, 0 replaced, 0 deleted",
+      "file-equals": { "path": "_repolore/sparse-tree/web/storefront/storefront.md", "at": "s05-note-edited" } } }
+  ]
+}

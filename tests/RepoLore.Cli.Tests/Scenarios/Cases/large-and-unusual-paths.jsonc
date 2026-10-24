@@ -1,0 +1,25 @@
+// Hazard folders, a thousand directories, non-ASCII names and paths over 260 characters map and checkpoint normally.
+{
+  "name": "large-and-unusual-paths",
+  "tags": ["hazards"],
+  "steps": [
+    { "checkout": "s04-knowledge-adopted" },
+    { "run": ["context", "docs/Design Docs/"], "expect": { "exit": 0, "stdout": "## _repolore/sparse-tree/docs/Design Docs/Design Docs.md [durable]" } },
+    { "run": ["path", "docs/équipe/"], "expect": { "exit": 0, "stdout": "present _repolore/sparse-tree/docs/équipe/équipe.md" } },
+    { "run": "path tools/bin/", "expect": { "exit": 0, "stdout": "present _repolore/sparse-tree/tools/bin/bin.md" } },
+    { "run": "path libs/deep/l01/l02/l03/l04/l05/l06/l07/l08/l09/l10/l11/l12/l13/l14/l15/l16/", "expect": { "exit": 0,
+      "stdout": "present _repolore/sparse-tree/libs/deep/l01/l02/l03/l04/l05/l06/l07/l08/l09/l10/l11/l12/l13/l14/l15/l16/l16.md" } },
+    { "checkout": "s14-huge-tree" },
+    { "run": "health-check", "expect": { "exit": 0, "stdout": "healthy: no findings" } },
+    { "run": "checkpoint", "expect": { "exit": 0, "stdout": "checkpoint 0000000000000001: 519 files, 519 added" } },
+    { "run": "path generated/clients/c0500/", "expect": { "exit": 0, "stdout": "present _repolore/sparse-tree/generated/clients/c0500/c0500.md" } },
+    { "checkout": "s15-unicode-paths" },
+    { "run": ["path", "web/Ünïcødé Ŝtore/"], "expect": { "exit": 0, "stdout": "present _repolore/sparse-tree/web/Ünïcødé Ŝtore/Ünïcødé Ŝtore.md" } },
+    { "run": ["context", "libs/emoji-📦/", "--json"], "expect": { "exit": 0, "json": { "included.1.path": "_repolore/sparse-tree/libs/emoji-📦/emoji-📦.md" } } },
+    { "run": "health-check", "expect": { "exit": 0, "stdout": "healthy: no findings" } },
+    { "checkout": "s39-long-paths" },
+    { "run": "path libs/long/a-segment-name-long-enough-to-push-the-path-past-the-limit/b-segment-name-long-enough-to-push-the-path-past-the-limit/c-segment-name-long-enough-to-push-the-path-past-the-limit/d-segment-name-long-enough-to-push-the-path-past-the-limit/e-segment-name-long-enough-to-push-the-path-past-the-limit/f-segment-name-long-enough-to-push-the-path-past-the-limit/",
+      "expect": { "exit": 0, "stdout": "present _repolore/sparse-tree/libs/long/a-segment-name-long-enough-to-push-the-path-past-the-limit/b-segment-name-long-enough-to-push-the-path-past-the-limit/c-segment-name-long-enough-to-push-the-path-past-the-limit/d-segment-name-long-enough-to-push-the-path-past-the-limit/e-segment-name-long-enough-to-push-the-path-past-the-limit/f-segment-name-long-enough-to-push-the-path-past-the-limit/f-segment-name-long-enough-to-push-the-path-past-the-limit.md" } },
+    { "run": "health-check", "expect": { "exit": 0, "stdout": "healthy: no findings" } }
+  ]
+}

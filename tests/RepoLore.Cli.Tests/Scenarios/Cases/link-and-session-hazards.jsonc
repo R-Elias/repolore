@@ -1,0 +1,17 @@
+// Broken and escaping links, a durable link into a session, and malformed sessions. A session's link into another
+// session is deliberately not checked: sessions never read each other.
+{
+  "name": "link-and-session-hazards",
+  "tags": ["health", "sessions"],
+  "steps": [
+    { "checkout": "s12-link-and-session-hazards" },
+    { "run": "health-check --json", "expect": { "exit": 1, "json": {
+      "findings.0.id": "broken-link", "findings.0.message": "link '../../../../../shared-notes.md' escapes the repository",
+      "findings.1.id": "broken-link", "findings.1.message": "link '../../../../docs/runbooks/orders-outage.md' does not exist: docs/runbooks/orders-outage.md",
+      "findings.2.id": "session-link-in-durable-note", "findings.2.path": "_repolore/sparse-tree/services/payments/payments.md" } } },
+    { "run": "health-check --session 2026-01-14-no-root-c3d1 --json", "expect": { "exit": 1, "json": {
+      "findings.0.id": "invalid-session", "findings.0.path": "_repolore/sessions/2026-01-14-no-root-c3d1/root.md" } } },
+    { "run": "health-check --session 2026-01-12-checkout-latency-b7e2", "expect": { "exit": 1, "stdout-not": "2026-01-11-payment-retries-a1c4" } },
+    { "run": ["context", "services/", "--session", "Temp Notes", "--json"], "expect": { "exit": 2, "json": { "error.id": "usage" } } }
+  ]
+}

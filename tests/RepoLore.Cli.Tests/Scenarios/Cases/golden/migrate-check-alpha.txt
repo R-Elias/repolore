@@ -1,0 +1,6 @@
+candidate _repolore/root.md
+candidate _repolore/sparse-tree/services/orders/orders.md
+candidate _repolore/sparse-tree/services/payments/payments.md
+unchanged _repolore/method.md
+unchanged _repolore/product/
+unchanged _repolore/roadmap/

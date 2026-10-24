@@ -1,0 +1,14 @@
+// init on the adopter's starting point produces exactly the marker and method the adoption commit holds, so a change
+// to init's output shows up here.
+{
+  "name": "init-reproduces-the-adoption",
+  "tags": ["smoke", "init"],
+  "steps": [
+    { "checkout": "s03-ready-for-init" },
+    { "run": "init", "expect": { "exit": 0,
+      "stdout": ["created _repolore/repolore.json", "checkpoint 0000000000000001", "recommended .gitignore additions: _repolore/sessions/ _repolore/.history/"],
+      "file-equals": [ { "path": "_repolore/repolore.json", "at": "s04-knowledge-adopted" }, { "path": "_repolore/method.md", "at": "s04-knowledge-adopted" } ] } },
+    { "run": "init", "expect": { "exit": 0, "stdout-not": "created" } },
+    { "run": "health-check", "expect": { "exit": 0, "stdout": "healthy: no findings" } }
+  ]
+}

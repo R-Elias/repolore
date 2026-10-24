@@ -1,0 +1,16 @@
+// Full outputs of the main read commands, compared with reviewed golden files.
+{
+  "name": "key-outputs-match-golden-files",
+  "tags": ["golden"],
+  "steps": [
+    { "checkout": "s04-knowledge-adopted" },
+    { "run": "tree", "expect": { "exit": 0, "golden": "tree-after-adoption" } },
+    { "run": "path services/payments/src/Payments.Api/Retry/", "expect": { "exit": 0, "golden": "path-retry-folder" } },
+    { "checkout": "s08-two-sessions" },
+    { "run": "context services/payments/ --session 2026-01-11-payment-retries-a1c4", "expect": { "exit": 0, "golden": "context-payments-with-session" } },
+    { "checkout": "s12-link-and-session-hazards" },
+    { "run": "health-check", "expect": { "exit": 1, "golden": "health-check-link-hazards" } },
+    { "checkout": "s24-alpha-sparse-committed" },
+    { "run": "migrate --check", "expect": { "exit": 1, "golden": "migrate-check-alpha" } }
+  ]
+}

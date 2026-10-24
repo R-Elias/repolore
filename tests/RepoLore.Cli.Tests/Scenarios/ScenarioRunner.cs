@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using RepoLore.Cli.Tests.Packaging.Journey;
 
 namespace RepoLore.Cli.Tests.Scenarios;
@@ -12,7 +13,12 @@ public sealed record ScenarioOutcome(IReadOnlyList<string> Failures, string Log)
 
 // Runs one scenario in <work>/repo, a fresh clone of the reference repository. The only actions are a checkout of a
 // stage and a tool run; the runner never writes into the clone itself. The first failing step ends the scenario.
-public sealed class ScenarioRunner(Func<string, string[], (int Code, string Out, string Error)> tool)
+// Golden files are read from goldenDirectory; when goldenWriteDirectory is set, a missing or different golden file is
+// written there for review and the step still fails, so a run that writes golden files never passes.
+public sealed class ScenarioRunner(
+    Func<string, string[], (int Code, string Out, string Error)> tool,
+    string? goldenDirectory = null,
+    string? goldenWriteDirectory = null)
 {
     private static readonly string[] ReadOnlyCommands = ["context", "path", "tree", "history", "health-check", "version"];
 
@@ -60,7 +66,7 @@ public sealed class ScenarioRunner(Func<string, string[], (int Code, string Out,
         || arguments.Contains("--help")
         || (arguments[0] == "migrate" && arguments.Contains("--check"));
 
-    private static List<string> Check(Expectation expect, int code, string output, string error, string repository, GitRepository git)
+    private List<string> Check(Expectation expect, int code, string output, string error, string repository, GitRepository git)
     {
         var failures = new List<string>();
         if (code != expect.Exit)
@@ -88,7 +94,28 @@ public sealed class ScenarioRunner(Func<string, string[], (int Code, string Out,
                 failures.Add($"file-absent: '{path}' exists");
         }
 
+        if (expect.Golden is not null && CheckGolden(expect.Golden, output, repository) is { } goldenFailure)
+            failures.Add(goldenFailure);
+
         return failures;
+    }
+
+    private string? CheckGolden(string name, string output, string repository)
+    {
+        var actual = GoldenText.Mask(output, repository);
+        var file = Path.Combine(goldenDirectory ?? ScenarioCatalog.GoldenDirectory, name + ".txt");
+        var expected = File.Exists(file) ? TestSupport.Normalize(File.ReadAllText(file)) : null;
+        if (expected == actual)
+            return null;
+        if (goldenWriteDirectory is not null)
+        {
+            Directory.CreateDirectory(goldenWriteDirectory);
+            File.WriteAllText(Path.Combine(goldenWriteDirectory, name + ".txt"), actual);
+            return $"golden: wrote {name}.txt for review; a run that writes golden files never passes";
+        }
+        if (expected is null)
+            return $"golden: {name}.txt does not exist; run with {GoldenText.WriteVariable}=1 to write it, then review it";
+        return $"golden: stdout differs from {name}.txt: {GoldenText.FirstDifference(expected, actual)}";
     }
 
     private static IEnumerable<string> CheckJson(IReadOnlyDictionary<string, JsonElement> expected, string output)
@@ -132,6 +159,37 @@ public sealed class ScenarioRunner(Func<string, string[], (int Code, string Out,
                 return null;
         }
         return current;
+    }
+}
+
+// Golden output is stdout with line endings normalized, timestamps replaced by <timestamp> and the clone's absolute
+// path replaced by <repo>, so it is identical on every machine and operating system.
+public static class GoldenText
+{
+    public const string WriteVariable = "REPOLORE_SCENARIO_WRITE_GOLDEN";
+
+    private static readonly Regex Timestamp = new(@"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})", RegexOptions.CultureInvariant);
+
+    public static string Mask(string output, string repository)
+    {
+        var masked = Timestamp.Replace(TestSupport.Normalize(output), "<timestamp>");
+        foreach (var path in new[] { repository, repository.Replace('\\', '/') }.Distinct())
+            masked = masked.Replace(path, "<repo>", StringComparison.Ordinal);
+        return masked;
+    }
+
+    public static string FirstDifference(string expected, string actual)
+    {
+        var want = expected.Split('\n');
+        var got = actual.Split('\n');
+        for (var line = 0; line < Math.Max(want.Length, got.Length); line++)
+        {
+            var wanted = line < want.Length ? want[line] : "<end of output>";
+            var found = line < got.Length ? got[line] : "<end of output>";
+            if (wanted != found)
+                return $"line {line + 1}: expected '{wanted}', got '{found}'";
+        }
+        return "the outputs differ only in their final line ending";
     }
 }
 

@@ -116,7 +116,66 @@ On 2026-10-24 the maintainer decided the suite lives in `tests/RepoLore.Cli.Test
   - Three deliberate mutations were each caught: disabling the read-only check, dropping `git clean`, and ignoring the exit code.
   - The scenarios pass twice, 10 of 10, against the local clone of the published repository, in about 10 to 14 seconds. A deliberately wrong expectation in the built case file failed with `step 5 (repolore checkpoint): stdout: missing …` and left `log.txt` plus the clone's files in the artifacts directory. `REPOLORE_SCENARIO_TAGS=recovery` selected two scenarios. Without `REPOLORE_REFERENCE_REPO`, the scenarios are skipped and the fixture is not built.
   - With the CI filters, all suites pass: Core 101, Infrastructure 80, Cli 136 excluding Packaging and Scenario (which includes the self-tests), and Packaging 18. The reference clone stayed clean.
-- **Not yet done:** the GitHub run on Windows, Linux and macOS, which needs the merge, and everything in 14b.
+- **Not yet done:** the GitHub run on Windows, Linux and macOS. It was possible from the merge of PR #5 on 2026-10-24.
+
+## Catalog (14b, branch `package-14b/scenario-catalog`)
+
+There are 28 scenarios. One is Linux only (`case-collision`) and one is Linux and macOS only (`symlinks-are-not-followed`); the other 26 run on every OS. They are grouped by tag:
+
+- `smoke`: the nine 14a smoke scenarios, plus `init-reproduces-the-adoption`. On `s03`, `init` must produce exactly the marker and method committed at `s04`.
+- **Health and sessions:**
+  - `link-and-session-hazards`: broken and escaping links, a durable link into a session, a session without `root.md`, and an invalid session id, which is a usage error. A session's link into another session is not checked.
+  - `note-content-hazards`: invalid UTF-8 and a misnamed note are findings. A BOM and CRLF are read normally. The 1.5 MB note is omitted from context for budget, with exit 0.
+- **Configuration:**
+  - `invalid-policies-are-reported`
+  - `history-disabled-refuses-history-writes`
+  - `small-budget-evicts-the-oldest-checkpoint`
+  - `policy-variants`: re-inclusion in `--explain`, and `history.exclude` keeping a note out of checkpoints.
+- **Recovery and Git:**
+  - `restore-refusals`: unknown checkpoint, a path outside coverage, and a no-op.
+  - `merged-note-edits-are-recoverable`
+  - `added-and-removed-notes-are-recoverable`
+  - `session-lifecycle`: a deleted session is restored from history.
+- **History:** `history-path-is-a-file`.
+- **Migration:** `alpha-init-refusal-and-local-tree-migration`.
+- **CLI:** `usage-errors`. `repository-without-knowledge` also checks `version` and `--help`.
+- **Hazards:**
+  - `large-and-unusual-paths`: hazard folders, 1000 directories, non-ASCII names, paths over 260 characters.
+  - `case-collision` (Linux only).
+  - `symlinks-are-not-followed` (Linux and macOS): links are neither captured nor followed.
+- **Golden:** `key-outputs-match-golden-files`, plus the `history` step of `session-lifecycle`.
+
+Every command now has a normal case and a failure case. `path` and `tree` refuse format 2, and `version` and `--help` work outside a knowledge base.
+
+**Golden files** (`Cases/golden/*.txt`, six files, reviewed against the stage content on 2026-10-24):
+- The `golden` expectation compares the whole stdout after normalizing line endings and masking ISO timestamps as `<timestamp>` and the clone's absolute path as `<repo>`.
+- `REPOLORE_SCENARIO_WRITE_GOLDEN=1` writes missing or different golden files into the source tree for review. That step still fails, so a run that writes golden files never passes.
+- `tree` order is pinned as implemented: per directory, its subdirectories, then its files, sorted ordinally, then each subdirectory's contents.
+
+**ID coverage** (`ScenarioCoverageTests`):
+- Every ID in `expected-ids.tsv` must be asserted by a scenario, either as a JSON `...id` value or as a finding line `<id> _repolore...`.
+- The alternative is a reviewed exemption that names the ordinary test asserting it. These exemptions are listed below.
+- An exemption fails as soon as a scenario covers its ID, and `internal-error` is the only one allowed without a test.
+- A mutation check passed: removing `history-path-is-a-file` makes the test name `history-unavailable` and `io-error`.
+
+| ID | Why no scenario | Asserted by |
+|---|---|---|
+| `history-locked` | Needs a second writer holding the lock | New `FailureIdTests.Checkpoint_while_another_writer_holds_the_lock_fails_with_history_locked` (CLI process) |
+| `operation-interrupted` | Needs a write to fail mid-restore | New `FailureIdTests.A_restore_that_cannot_write_a_file_is_interrupted_and_names_its_recovery_id`: the note's directory is read-only on Unix, and the note is held open with read-only sharing on Windows. It checks `recoveryId` 2, then `restore 2` recovers |
+| `init-incomplete` | Only fault injection fails the first checkpoint after init created files. A history path that is a file or read-only fails earlier, with `io-error` | `InitEngineTests.Failure_creating_the_first_checkpoint_is_visible_and_retryable` (engine level) |
+| `migration-blocked` | `migrate` prints a blocked plan before the engine runs; the engine refusal behind it is defensive | `MigrationEngineTests.Differing_copies_conflict_and_write_nothing` (engine level) |
+| `internal-error` | Only raised by a defect | none |
+
+Until 14b, no CLI-level test asserted `history-locked` or `operation-interrupted`. They appeared only in `expected-ids.tsv`.
+
+**Evidence (2026-10-24, macOS arm64):**
+- The scenarios pass twice, 27 of 27 (28 minus the Linux-only one), in about 26 seconds, and the reference clone stayed clean.
+- With the CI filters: Core 101, Infrastructure 80, Cli 146 excluding Packaging and Scenario (which includes 38 scenario self- and coverage tests and the 2 `FailureIdTests`), and Packaging 18.
+- Not run yet: Windows, Linux (`case-collision` has never run anywhere), and the scheduled workflow with this catalog.
+
+**Open contract question (for the maintainer):** on `s19`, an invalid `_repoloreignore` rule is a blocking `policy-error` in `health-check` (exit 3). Yet `checkpoint` succeeds and `context` reads normally. Package 03 says "reject … invalid rules before mutations", while ignore rules affect only source discovery, never history coverage. Both readings are defensible, so the scenario asserts only the `health-check` finding until this is decided.
+
+**Defect still open:** the `s36` `io-error` message is raw .NET text containing an absolute path. Only its ID is pinned.
 
 ## Sub-packages
 

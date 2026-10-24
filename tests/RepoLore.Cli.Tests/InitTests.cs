@@ -27,6 +27,20 @@ public class InitTests
     }
 
     [Fact]
+    public void Init_writes_lf_templates_whatever_line_endings_the_source_was_checked_out_with()
+    {
+        // A Windows checkout gives EmbeddedTemplates.cs CRLF line endings; found by the init-reproduces-the-adoption
+        // scenario on Windows (2026-10-24).
+        TestSupport.WithTemp(temp =>
+        {
+            TestSupport.Run(temp, TestSupport.Cli, "init").Code.Should().Be(0);
+
+            File.ReadAllText(Path.Combine(temp, "_repolore", "method.md")).Should().NotContain("\r");
+            File.ReadAllText(Path.Combine(temp, "_repolore", "root.md")).Should().NotContain("\r");
+        });
+    }
+
+    [Fact]
     public void Second_init_changes_nothing()
     {
         TestSupport.WithTemp(temp =>

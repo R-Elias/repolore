@@ -1,6 +1,6 @@
 # Distribution beyond NuGet
 
-Status: **set up on branch `feature/distribution` (2026-10-25); no channel other than NuGet has been published yet.** The first release using it is the one after 1.0.0.
+Status: **set up in PR #21 (merged 2026-10-25); no channel other than NuGet has been published yet.** The publish dry run #13 from that branch (`b3dc529`) was green on all six platforms, including the assemble job. The first release using it is `1.1.0`, prepared on branch `release/1.1.0` (2026-10-25), straight to stable by the maintainer's choice, so Homebrew, winget and the website are part of it.
 
 ## Decision (maintainer, 2026-10-25)
 

@@ -15,11 +15,11 @@ Needs a .NET 10 SDK to install and a .NET 10.0.x runtime to run. Pin the version
 
 ```text
 dotnet new tool-manifest
-dotnet tool install RepoLore.Cli --version 1.0.0 --local
+dotnet tool install RepoLore.Cli --version 1.1.0 --local
 dotnet tool run repolore -- init
 ```
 
-Without .NET, from the release after 1.0.0: `curl -fsSL https://repolore.org/install.sh | sh`, `irm https://repolore.org/install.ps1 | iex`, `brew install repolore-org/tap/repolore`, `winget install repolore`, `pipx install repolore` or `npm install -g repolore-cli` install the same tool as a native executable ([user guide](docs/user-guide.md#1-install)).
+Without .NET: `curl -fsSL https://repolore.org/install.sh | sh`, `irm https://repolore.org/install.ps1 | iex`, `brew install repolore-org/tap/repolore`, `winget install repolore`, `pipx install repolore` or `npm install -g repolore-cli` install the same tool as a native executable ([user guide](docs/user-guide.md#1-install)).
 
 Then add `_repolore/sessions/` and `_repolore/.history/` to `.gitignore`, as `init` suggests, before creating any session.
 

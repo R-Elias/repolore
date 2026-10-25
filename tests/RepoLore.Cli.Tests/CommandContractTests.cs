@@ -157,6 +157,21 @@ public class CommandContractTests
         TestSupport.Normalize(result.Error).Split('\n')[0].Should().Be("Usage: repolore <command> [options]; run 'repolore --help' for the commands and options.");
     }
 
+    [Theory]
+    [InlineData("minimal", "path src/ --quiet")]
+    [InlineData("minimal", "context src/ --quiet")]
+    [InlineData("minimal", "tree --quiet")]
+    [InlineData("minimal", "health-check --quiet")]
+    [InlineData("checkpointed", "history --quiet")]
+    [InlineData("checkpointed", "restore 1 --dry-run --quiet")]
+    public void Quiet_silences_the_normal_output_of_every_command_that_accepts_it(string arrangement, string arguments)
+    {
+        var result = RunArranged(arrangement, arguments, out _);
+
+        result.Code.Should().Be(0);
+        result.Out.Should().BeEmpty();
+    }
+
     [Fact]
     public void Repeating_node_is_intentional_and_reads_nodes_in_argument_order()
     {

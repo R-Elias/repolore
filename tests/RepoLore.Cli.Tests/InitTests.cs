@@ -148,6 +148,7 @@ public class InitTests
 
             var update = TestSupport.Run(temp, TestSupport.Cli, "init", "--update-method");
             update.Code.Should().Be(0);
+            update.Out.Should().Contain("updated _repolore/method.md; undo with 'repolore restore 1'");
             var method = File.ReadAllText(Path.Combine(temp, "_repolore", "method.md"));
             method.Should().StartWith("# RepoLore Method");
             method.Should().NotContain("OLD_METHOD_SENTINEL");
@@ -155,6 +156,26 @@ public class InitTests
             var undo = TestSupport.Run(temp, TestSupport.Cli, "restore", "1");
             undo.Code.Should().Be(0);
             File.ReadAllText(Path.Combine(temp, "_repolore", "method.md")).Should().Be("OLD_METHOD_SENTINEL");
+        });
+    }
+
+    [Fact]
+    public void Init_below_an_existing_knowledge_base_refuses_unless_the_root_is_explicit()
+    {
+        TestSupport.WithTemp(temp =>
+        {
+            TestSupport.Run(temp, TestSupport.Cli, "init").Code.Should().Be(0);
+            var nested = Path.Combine(temp, "services", "orders");
+            Directory.CreateDirectory(nested);
+
+            var refused = TestSupport.Run(nested, TestSupport.Cli, "init", "--json");
+            refused.Code.Should().Be(2);
+            refused.Out.Should().Contain("\"usage\"").And.Contain("a knowledge base already exists in");
+            Directory.Exists(Path.Combine(nested, "_repolore")).Should().BeFalse();
+
+            TestSupport.Run(nested, TestSupport.Cli, "init", "--repo-root", ".").Code.Should().Be(0);
+            File.Exists(Path.Combine(nested, "_repolore", "repolore.json")).Should().BeTrue();
+            TestSupport.Run(nested, TestSupport.Cli, "init").Code.Should().Be(0, "init in the directory that holds the knowledge base stays idempotent");
         });
     }
 

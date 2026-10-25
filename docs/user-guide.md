@@ -36,7 +36,7 @@ All examples below write `repolore <command>`; with the manifest, run `dotnet to
 
 Run these in this order:
 
-1. `repolore init` in the repository root. It creates `_repolore/repolore.json`, `method.md`, `root.md` and `sparse-tree/`, then takes the first checkpoint. Running it again changes nothing, and it never overwrites notes you wrote.
+1. `repolore init` in the repository root. It creates `_repolore/repolore.json`, `method.md`, `root.md` and `sparse-tree/`, then takes the first checkpoint. Running it again changes nothing, and it never overwrites notes you wrote. Below a directory that already has `_repolore/`, it refuses (exit 2), because every command run there would then use the new knowledge base and hide the existing notes; pass `--repo-root .` when you do want a separate one.
 2. Add the two lines `init` prints to `.gitignore`, **before** you create any session:
 
    ```text
@@ -46,13 +46,15 @@ Run these in this order:
 
 3. Commit `.gitignore`, `.config/dotnet-tools.json`, `NuGet.Config` and the new `_repolore/` files.
 
+**A teammate who clones the repository** gets the committed notes, but no sessions and no checkpoints. They run `repolore init` once: it adds only what is missing and takes the first local checkpoint, so recovery works from then on.
+
 Create sessions only after `init`. If you created a session folder first, `init` refuses (exit 3, nothing changed) because `_repolore/` already holds files but has no `repolore.json`. Move `_repolore/sessions/` aside, run `repolore init`, then move it back.
 
 ## 3. Daily use
 
 | You want to | Run |
 |---|---|
-| Read what is known before changing `src/payments/` | `repolore context src/payments/` (root note plus each ancestor's note, in that order) |
+| Read what is known before changing `src/payments/` | `repolore context src/payments/` (the root note, then the note of each directory down to `src/payments/`, in that order) |
 | See which notes exist for a path | `repolore path src/payments/` |
 | Read a specific custom note | `repolore context --node _repolore/architecture/overview.md` |
 | List durable knowledge | `repolore tree` |
@@ -61,13 +63,34 @@ Create sessions only after `init`. If you created a session folder first, `init`
 
 Path notes live in `_repolore/sparse-tree/`: the directory `src/payments/` maps to `_repolore/sparse-tree/src/payments/payments.md`, and the repository root maps to `_repolore/root.md`. Files get no notes of their own; a note exists only when it holds knowledge. Custom areas such as `_repolore/architecture/` are equally valid.
 
-Add `--json` to any command for one machine-readable document on stdout. Exit codes: `0` success, `1` findings (or `--strict` omissions), `2` usage error, `3` operational, format, conflict or recovery failure.
+**Targets** are paths relative to the repository root, written with `/`. `src/payments/` works from any directory inside the repository, because the tool finds the root by walking up to the nearest `_repolore/` (or takes it from `--repo-root <dir>`); from `src/`, `payments/` would mean a top-level `payments/` directory. `./`, `..`, `\` and absolute paths are refused (exit 2). `context <path>` never pulls in custom areas: add each note you need with `--node`, which can be repeated. Letter case follows your file system: on macOS and Windows a target in the wrong case still finds its note, on Linux it does not, so write paths in their exact case.
+
+**Context budget.** `context` keeps its output within about 8000 tokens, estimated at 4 characters per token; `--budget-tokens <n>` changes the limit. Notes are taken in order, root first, and a note that does not fit is left out while the later ones are still tried. Each left-out note is named on stderr as `omitted: <note> (budget)` (in JSON, under `omitted`), and the exit code stays `0` unless you pass `--strict`.
+
+| Option | Commands | Effect |
+|---|---|---|
+| `--json` | all | One machine-readable document on stdout, including for errors |
+| `--quiet` | all except `version` | No normal output: only the exit code, and diagnostics on stderr |
+| `--repo-root <dir>` | all except `version` | Use this repository root instead of searching upward from the current directory |
+| `--node <note>` | `context` | Also read this note under `_repolore/`, after the path notes; repeatable |
+| `--session <id>` | `context`, `health-check` | Include or check this session (section 4) |
+| `--budget-tokens <n>`, `--strict` | `context` | Change the budget; exit `1` when a note was left out |
+| `--include-method` | `path`, `context` | List or read `_repolore/method.md` first |
+| `--start <dir>` | `tree` | List only below this directory under `_repolore/` |
+| `--path <file>`, `--dry-run` | `restore` | Restore one file; preview without writing (section 7) |
+| `--check`, `--dry-run` | `migrate` | Report or preview a migration without writing (section 6) |
+| `--explain <path>` | `health-check` | Show which rules decide discovery and history coverage for a path (section 6) |
+| `--update-method` | `init` | Replace `method.md` with the installed version's (section 6) |
+
+`repolore --help` lists the commands. Exit codes: `0` success, `1` findings (or `--strict` omissions), `2` usage error, `3` operational, format, conflict or recovery failure.
+
+`health-check` checks inline links and images with a relative target, such as `[text](../payments/payments.md)`, after decoding escapes such as `%20`. It does not check reference-style links (`[text][ref]`), links starting with `/`, web links, or anything in code spans and fenced blocks.
 
 A routine for one change: `repolore context <path>` → `repolore checkpoint` → edit code and notes → `repolore checkpoint` → `repolore health-check` → review everything in one Git diff. Reads (`context`, `path`, `tree`, `history`, `health-check`, `--dry-run`) never write anything.
 
 ## 4. Sessions: short-term, local, provisional
 
-A session is a folder `_repolore/sessions/<session-id>/` for one investigation or handoff. Use a portable unique id such as `2026-10-23-retry-path-a1c4`, create the folder yourself, and put a `root.md` in it (objective, status, findings with their uncertainty, next steps).
+A session is a folder `_repolore/sessions/<session-id>/` for one investigation or handoff. Use a portable unique id such as `2026-10-23-retry-path-a1c4`: 1 to 100 ASCII letters, digits, `-` and `_`, starting with a letter or a digit, and not a reserved Windows device name such as `CON`. Create the folder yourself, and put a `root.md` in it (objective, status, findings with their uncertainty, next steps).
 
 ```text
 repolore context src/ --session 2026-10-23-retry-path-a1c4
@@ -94,9 +117,30 @@ repolore context src/ --session 2026-10-23-retry-path-a1c4 --node _repolore/sess
 
 ## 6. Format and migration
 
-`_repolore/repolore.json` holds `{"formatVersion":1}` and optional history settings. A format the tool does not know fails safely: `context`, `path`, `tree` and every command that writes refuse with an upgrade message (exit 3) and change nothing. Updating the tool never migrates knowledge.
+`_repolore/repolore.json` holds `{"formatVersion":1}` and optional history settings, shown here with their defaults except `exclude`:
 
-An optional `.repoloreignore` at the repository root holds source-discovery rules, in the same syntax as `history.exclude`. Today these rules only change what `health-check --explain` reports. An invalid rule is a blocking `policy-error` in `health-check` (exit 3, with its line number), but it blocks nothing else: reads and writes go on, because the rules never decide what history protects. The `0.1.0-preview.1` release named this file `_repoloreignore`. A leftover file with that name is reported by `health-check`, and its rules are not read until you rename it.
+```json
+{
+  "formatVersion": 1,
+  "history": {
+    "enabled": true,
+    "maxBytes": 209715200,
+    "exclude": ["_repolore/drafts/"]
+  }
+}
+```
+
+Other keys are ignored without a warning, so check the spelling: `repolore health-check --explain _repolore/root.md` shows whether history covers a note. A format the tool does not know fails safely: `context`, `path`, `tree` and every command that writes refuse with an upgrade message (exit 3) and change nothing. Updating the tool never migrates knowledge.
+
+An optional `.repoloreignore` at the repository root holds source-discovery rules, in the same syntax as `history.exclude`. Today these rules only change what `health-check --explain` reports. An invalid rule is a blocking `policy-error` in `health-check` (exit 3, with its line number), but it blocks nothing else: reads and writes go on, because the rules never decide what history protects. The `0.1.0-preview.1` release named this file `_repoloreignore`. A leftover file with that name is a blocking `policy-error` too (`health-check` exits 3 until you rename it), and its rules are not read.
+
+The rules look like `.gitignore` rules but differ in three ways:
+
+- **Every rule is anchored at the repository root.** `*.pyc` matches only `x.pyc` at the top; write `**/*.pyc` for any depth. A leading `/` changes nothing.
+- **`!` re-includes a path even below an excluded directory** (`generated/` then `!generated/schemas/`), which Git cannot do.
+- **Only `*` and `?` (within one path segment) and `**` (a whole segment) are special.** Character classes (`[abc]`) and backslash escapes are refused, except `\#` and `\!` at the start. Spaces belong to the pattern, so a trailing space or comment makes a rule match nothing.
+
+One rule per line; empty lines and lines starting with `#` are skipped. A trailing `/` matches directories only, a rule that matches a directory also matches everything below it, and the last matching rule wins. Matching is case-sensitive. In `history.exclude`, each array item is one rule, and errors give its position (`rule #2`). `--explain` treats a path that does not exist as a file: add a trailing `/` to ask about a directory.
 
 Knowledge from the alpha PowerShell tools (no `repolore.json`, a `tree/` and/or `sparse-tree/`) is migrated only on request:
 
@@ -121,9 +165,11 @@ repolore restore 2 --path <note>                   # apply to one path
 repolore restore 2                                 # apply a whole checkpoint within its coverage
 ```
 
-Applying a restore first checkpoints the current state of everything it will change, so you can undo it with the checkpoint that `restore` reports. If a restore (or `migrate`, or `init --update-method`) is interrupted, the tool records a pending operation and refuses other writes with the recovery id; run `repolore restore <that id>` to return to the pre-operation state. `history`, `context` and `health-check` keep working meanwhile.
+Applying a restore first checkpoints the current state of everything it will change, and then reports how to undo it: `restore complete: ... (checkpoint 0000000000000003); undo with 'repolore restore 2'` (in JSON, `recoveryId`). `migrate` and `init --update-method` report their undo command the same way. If a restore (or `migrate`, or `init --update-method`) is interrupted, the tool records a pending operation and refuses other writes with the recovery id; run `repolore restore <that id>` to return to the pre-operation state. `history`, `context` and `health-check` keep working meanwhile.
 
-To stop protecting a file, add it to `history.exclude` in `repolore.json` or set `history.enabled` to `false`. That does not erase existing checkpoints. To purge all local history, delete `_repolore/.history/` with ordinary tools when `health-check` shows no pending operation; recovery of everything captured so far is then gone. Checkpoints are local copies on the same disk and do not replace Git or a backup.
+To stop protecting a file, add it to `history.exclude` in `repolore.json` or set `history.enabled` to `false`. That does not erase existing checkpoints, but with history disabled `checkpoint` fails (exit 3), and so does applying a `restore`, `migrate` or `init --update-method`, because each needs a checkpoint of the state before it. `history` and every preview still work. A `history.maxBytes` too small for one checkpoint blocks the same commands.
+
+When history is damaged, `health-check` reports `history-corrupt` and writes are refused rather than risk your notes. The message names the way out: a corrupt stored copy can be deleted, and the next checkpoint of the same content stores a fresh one; a corrupt checkpoint file can be moved out of `_repolore/.history/`, which gives up only that checkpoint. To purge all local history, delete `_repolore/.history/` with ordinary tools when `health-check` shows no pending operation; recovery of everything captured so far is then gone. Checkpoints are local copies on the same disk and do not replace Git or a backup.
 
 ## 8. Supported environments, privacy evidence, and verifying a release
 

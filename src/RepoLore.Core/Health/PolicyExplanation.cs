@@ -22,13 +22,16 @@ public sealed class PolicyExplanation
     public string HistoryReason { get; }
     public CompiledRule? HistoryRule { get; }
 
-    public static PolicyExplanation Explain(string path, bool isDirectory, bool isSymlink, SourceDiscoveryPolicy discovery, RuleSet historyExclude)
+    public static PolicyExplanation Explain(string path, bool isDirectory, bool isSymlink, SourceDiscoveryPolicy discovery, RuleSet historyExclude, bool historyEnabled = true)
     {
         var sourceDecision = discovery.Decide(path, isDirectory);
 
         if (!HistoryCoveragePolicy.IsEligible(path, isDirectory, isSymlink))
             return new PolicyExplanation(path, isDirectory, sourceDecision, false,
                 "not eligible: history covers only " + SourceDiscoveryPolicy.IgnoreFile + ", _repolore/repolore.json and regular Markdown files under _repolore/ outside .history/", null);
+
+        if (!historyEnabled)
+            return new PolicyExplanation(path, isDirectory, sourceDecision, false, "eligible, but history is disabled: history.enabled is false in _repolore/repolore.json", null);
 
         var rule = historyExclude.Evaluate(path, isDirectory);
         if (rule is null)

@@ -12,7 +12,7 @@ public class MigrateTests
         {
             var result = TestSupport.Run(temp, TestSupport.Cli, "migrate");
             result.Code.Should().Be(0);
-            result.Out.Should().Contain("format marker written");
+            result.Out.Should().Contain("format marker written").And.Contain("undo with 'repolore restore 1'");
 
             File.ReadAllText(Path.Combine(temp, "_repolore", "repolore.json")).Should().Be("{\"formatVersion\":1}");
             TestSupport.Normalize(File.ReadAllText(Path.Combine(temp, "_repolore", "sparse-tree", "src", "src.md")))
@@ -33,6 +33,7 @@ public class MigrateTests
             using var document = System.Text.Json.JsonDocument.Parse(result.Out);
             document.RootElement.GetProperty("markerWritten").GetBoolean().Should().BeTrue();
             document.RootElement.TryGetProperty("created", out _).Should().BeTrue();
+            document.RootElement.GetProperty("recoveryId").GetInt64().Should().Be(1);
         });
     }
 

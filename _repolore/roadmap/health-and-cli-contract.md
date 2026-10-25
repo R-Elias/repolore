@@ -85,7 +85,9 @@ IDs are public API: add new ones, never rename. Update the fixture first, then t
 `CommandRules` lists the options each command accepts; `--repo-root`, `--json`, `--quiet` are
 common (except `version`, which takes only `--json`). Unknown options, options a command does not
 accept, a repeated singleton option, and extra positionals are usage errors. `--node` is the only
-repeatable option. `--help` and `version` need no repository.
+repeatable option. `--help` and `version` need no repository. `--quiet` suppresses all normal stdout
+of every command that accepts it (`path` and `tree` ignored it until 2026-10-25); diagnostics stay
+on stderr.
 
 Read commands (`path`, `context`, `tree`) call `FormatGate`: if `repolore.json` exists but is
 malformed or unsupported they exit 3 rather than reading notes. `history` and the recovery route of
@@ -103,14 +105,17 @@ normal. Nothing is created, rewritten, or cleaned; no lock is taken.
 discovery (hard exclusion → default → user rule, with the rule text) and history coverage
 (eligibility, then `history.exclude`). It never reports Git tracking; it says so and points to Git.
 It is skipped (and a policy finding explains why) when `repolore.json` or `.repoloreignore` is invalid.
+With `history.enabled` false every eligible path is `not covered`, with that reason (it said
+`covered` until 2026-10-25).
 
 ### Link subset
 
 Inline `[text](target)` and `![alt](target)` links only. Skipped: targets with a URL scheme
 (`http:`, `mailto:`, …), fragment-only, root-absolute (`/…`), links inside fenced code blocks
 (``` or ~~~) and inline code spans. `<target>` and `target "title"` forms are read; the `#fragment`
-is stripped and only file/directory existence is checked. Limits: no percent-decoding, no nested
-parentheses in targets, no reference-style links, no HTML. A link from a selected session to
+is stripped, valid `%XX` escapes are decoded as UTF-8 (since 2026-10-25; an encoded `..` is still an
+escape, and a target whose escapes are not valid UTF-8 is kept as written), and only file/directory
+existence is checked. Limits: no nested parentheses in targets, no reference-style links, no HTML. A link from a selected session to
 another session is neither followed nor validated.
 
 ## Known limits

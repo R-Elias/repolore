@@ -37,7 +37,7 @@ public static class Renderer
             Console.Error.WriteLine($"omitted: {omission.Path} ({omission.Reason})");
     }
 
-    public static void Path(List<ResolvedNote> notes, bool json)
+    public static void Path(List<ResolvedNote> notes, bool json, bool quiet)
     {
         if (json)
         {
@@ -55,11 +55,14 @@ public static class Renderer
             return;
         }
 
+        if (quiet)
+            return;
+
         foreach (var note in notes)
             Console.WriteLine($"{StatusName(note.Status)} {note.Path}");
     }
 
-    public static void Tree(List<TreeEntry> entries, bool json)
+    public static void Tree(List<TreeEntry> entries, bool json, bool quiet)
     {
         if (json)
         {
@@ -76,6 +79,9 @@ public static class Renderer
             Console.WriteLine(JsonWriter.Write(root));
             return;
         }
+
+        if (quiet)
+            return;
 
         foreach (var entry in entries)
             Console.WriteLine(entry.IsDirectory ? entry.Path + "/" : entry.Path);
@@ -166,6 +172,7 @@ public static class Renderer
             root.Members.Add(new JsonMember("historyDisabled", new JsonBooleanValue(result.HistoryDisabled)));
             root.Members.Add(new JsonMember("checkpointId", result.PublishedId is long id ? Number(id) : new JsonNullValue()));
             root.Members.Add(new JsonMember("methodUpdated", new JsonBooleanValue(result.MethodUpdated)));
+            root.Members.Add(new JsonMember("recoveryId", result.RecoveryId is long recoveryId ? Number(recoveryId) : new JsonNullValue()));
             root.Members.Add(new JsonMember("recommendedGitExclusions", StringArray(exclusions)));
             Console.WriteLine(JsonWriter.Write(root));
             return;
@@ -184,7 +191,7 @@ public static class Renderer
             Console.WriteLine("created " + path);
 
         if (result.MethodUpdated)
-            Console.WriteLine("updated _repolore/method.md");
+            Console.WriteLine("updated _repolore/method.md" + UndoHint(result.RecoveryId!.Value));
 
         if (result.HistoryDisabled)
         {
@@ -266,8 +273,12 @@ public static class Renderer
             return;
         }
 
-        Console.WriteLine($"restore complete: {result.Added} added, {result.Replaced} replaced, {result.Deleted} deleted (checkpoint {ManifestId.Format(result.PublishedId!.Value)})");
+        Console.WriteLine($"restore complete: {result.Added} added, {result.Replaced} replaced, {result.Deleted} deleted (checkpoint {ManifestId.Format(result.PublishedId!.Value)})" + UndoHint(result.RecoveryId));
     }
+
+    // The pre-operation checkpoint holds the state before the mutation; the checkpoint published after it holds the
+    // result, so restoring that one would change nothing.
+    private static string UndoHint(long preOperationId) => $"; undo with 'repolore restore {preOperationId}'";
 
     public static void MigratePlan(MigrationInventory inventory, IReadOnlyList<MigrationMapping> mappings, IReadOnlyList<string> destinationProblems, bool blocked, bool json, bool quiet, bool dryRun)
     {
@@ -355,6 +366,7 @@ public static class Renderer
         {
             var root = new JsonObject();
             root.Members.Add(new JsonMember("checkpointId", result.PublishedId is long id ? Number(id) : new JsonNullValue()));
+            root.Members.Add(new JsonMember("recoveryId", Number(result.RecoveryId)));
             root.Members.Add(new JsonMember("markerWritten", new JsonBooleanValue(true)));
             root.Members.Add(new JsonMember("created", Number(result.Created)));
             root.Members.Add(new JsonMember("removed", Number(result.Removed)));
@@ -370,7 +382,7 @@ public static class Renderer
             return;
 
         var checkpoint = result.PublishedId is long published ? ManifestId.Format(published) : "?";
-        Console.WriteLine($"migrated: format marker written, {result.Created} notes copied, {result.Removed} legacy files removed (checkpoint {checkpoint})");
+        Console.WriteLine($"migrated: format marker written, {result.Created} notes copied, {result.Removed} legacy files removed (checkpoint {checkpoint})" + UndoHint(result.RecoveryId));
     }
 
     private static string MappingStatusName(MappingStatus status) => status switch

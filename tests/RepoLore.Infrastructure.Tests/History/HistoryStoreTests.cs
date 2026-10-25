@@ -41,7 +41,12 @@ public class ObjectStoreTests
 
             File.WriteAllBytes(Path.Combine(store.ObjectsDirectory, hash), Encoding.UTF8.GetBytes("TAMPERED"));
             store.Validate(hash).Should().BeFalse();
-            new Action(() => store.Store(bytes)).Should().Throw<HistoryStoreException>("corrupt object must fail, not overwrite");
+            new Action(() => store.Store(bytes)).Should().Throw<HistoryStoreException>("corrupt object must fail, not overwrite")
+                .WithMessage($"*delete _repolore/.history/objects/{hash} and retry*");
+
+            File.Delete(Path.Combine(store.ObjectsDirectory, hash));
+            store.Store(bytes).Should().Be(hash, "the advised remedy stores a fresh copy under the same name");
+            store.Validate(hash).Should().BeTrue();
         });
     }
 }
@@ -95,7 +100,8 @@ public class CheckpointStoreTests
             var store = new CheckpointStore(Path.Combine(temp, ".history"));
             store.EnsureDirectory();
             File.WriteAllText(Path.Combine(store.CheckpointsDirectory, "0000000000000001.json"), "{not json");
-            new Action(() => store.ListCompleted()).Should().Throw<HistoryStoreException>();
+            new Action(() => store.ListCompleted()).Should().Throw<HistoryStoreException>()
+                .WithMessage("corrupt manifest '0000000000000001.json': *; move that file out of _repolore/.history/ to give up only that checkpoint");
         });
     }
 

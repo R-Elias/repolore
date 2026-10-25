@@ -61,7 +61,8 @@ public sealed class ObjectStore
         if (File.Exists(final))
         {
             if (!Validate(hash))
-                throw new HistoryStoreException($"stored object {hash} is corrupt");
+                throw new HistoryStoreException(
+                    $"stored object {hash} is corrupt; delete _repolore/.history/objects/{hash} and retry, which stores a fresh copy of the same content");
             return hash;
         }
 
@@ -109,7 +110,7 @@ public sealed class CheckpointStore
             }
             catch (JsonParseException ex)
             {
-                throw new HistoryStoreException($"corrupt manifest '{Path.GetFileName(file)}': {ex.Message}");
+                throw CorruptManifest(file, ex.Message);
             }
 
             CheckpointManifest manifest;
@@ -119,7 +120,7 @@ public sealed class CheckpointStore
             }
             catch (ManifestFormatException ex)
             {
-                throw new HistoryStoreException($"corrupt manifest '{Path.GetFileName(file)}': {ex.Message}");
+                throw CorruptManifest(file, ex.Message);
             }
 
             manifests.Add(manifest);
@@ -128,6 +129,9 @@ public sealed class CheckpointStore
         manifests.Sort((a, b) => a.Id.CompareTo(b.Id));
         return manifests;
     }
+
+    private static HistoryStoreException CorruptManifest(string file, string reason) =>
+        new($"corrupt manifest '{Path.GetFileName(file)}': {reason}; move that file out of _repolore/.history/ to give up only that checkpoint");
 
     public CheckpointManifest? ReadHighestCompleted()
     {

@@ -60,6 +60,19 @@ public class HealthCheckerTests
     }
 
     [Fact]
+    public void A_percent_encoded_link_to_an_existing_note_is_not_broken_and_an_encoded_escape_still_is()
+    {
+        WithKnowledgeBase(temp =>
+        {
+            Write(temp, "_repolore/architecture/Design Notes.md", "design");
+            File.WriteAllText(Path.Combine(temp, "_repolore", "root.md"), "[ok](architecture/Design%20Notes.md) [up](%2E%2E/%2E%2E/escape.md)");
+
+            Check(temp).Findings.Should().ContainSingle()
+                .Which.Message.Should().Be("link '../../escape.md' escapes the repository");
+        });
+    }
+
+    [Fact]
     public void A_note_that_does_not_match_its_directory_has_an_invalid_name()
     {
         WithKnowledgeBase(temp =>
@@ -226,6 +239,9 @@ public class HealthCheckerTests
             explanation.HistoryCovered.Should().BeFalse();
 
             new Action(() => Check(temp, explain: "../outside.txt")).Should().Throw<PathResolutionException>();
+
+            Write(temp, "_repolore/repolore.json", "{\"formatVersion\":1,\"history\":{\"enabled\":false}}");
+            Check(temp, explain: "_repolore/root.md").Explanation!.HistoryCovered.Should().BeFalse();
         });
     }
 

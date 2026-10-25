@@ -34,6 +34,25 @@ public class RestoreTests
     }
 
     [Fact]
+    public void The_reported_undo_command_names_the_pre_operation_checkpoint_and_undoes_the_restore()
+    {
+        WithRepo(temp =>
+        {
+            TestSupport.Run(temp, TestSupport.Cli, "checkpoint").Code.Should().Be(0); // id 1
+            File.WriteAllText(A(temp), "A2");
+
+            var restore = TestSupport.Run(temp, TestSupport.Cli, "restore", "1", "--path", "_repolore/architecture/a.md");
+            restore.Code.Should().Be(0);
+            TestSupport.Normalize(restore.Out).Should().Be(
+                "restore complete: 0 added, 1 replaced, 0 deleted (checkpoint 0000000000000003); undo with 'repolore restore 2'\n");
+            File.ReadAllText(A(temp)).Should().Be("A");
+
+            TestSupport.Run(temp, TestSupport.Cli, "restore", "2", "--path", "_repolore/architecture/a.md").Code.Should().Be(0);
+            File.ReadAllText(A(temp)).Should().Be("A2");
+        });
+    }
+
+    [Fact]
     public void Dry_run_lists_actions_and_writes_nothing()
     {
         WithRepo(temp =>

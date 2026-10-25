@@ -46,6 +46,14 @@ by the existing `CommandLine`.
   never truncates in place); each file is rechecked against its recorded before-state immediately
   before replacement. The post-checkpoint is published (with the pre-op and target pinned), then
   pending is cleared. No whole-directory atomicity claim.
+- The result reports both ids. The post-checkpoint holds the restored state, so the undo point is the
+  pre-operation checkpoint: text output ends with `undo with 'repolore restore <preOpId>'`, JSON has it
+  as `recoveryId`. Until 2026-10-25 text output named only the post-checkpoint, so following it undid
+  nothing (field-test finding E21). `migrate` reports its baseline the same way.
+- Corrupt history blocks writes instead of being repaired automatically. The messages name the manual
+  way out: a corrupt object can be deleted, and the next capture of the same content stores it again
+  under the same hash, which also heals older checkpoints that reference it; a corrupt manifest can be
+  moved out of `.history/`, losing only that checkpoint (cleanup then reclaims objects only it used).
 
 ## Recovery
 

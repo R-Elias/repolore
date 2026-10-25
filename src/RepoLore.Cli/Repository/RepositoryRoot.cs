@@ -16,12 +16,18 @@ public static class RepositoryRoot
             return root;
         }
 
+        return FindEnclosing(cwd)
+            ?? throw new UsageException($"no {RepoLoreDirectory}/ directory found from the current directory or its parents");
+    }
+
+    public static string? FindEnclosing(string cwd)
+    {
         for (var current = new DirectoryInfo(cwd); current is not null; current = current.Parent)
         {
             if (Directory.Exists(Path.Combine(current.FullName, RepoLoreDirectory)))
                 return current.FullName;
         }
 
-        throw new UsageException($"no {RepoLoreDirectory}/ directory found from the current directory or its parents");
+        return null;
     }
 }

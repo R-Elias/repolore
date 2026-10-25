@@ -99,7 +99,7 @@
       "repolore.infrastructure": {
         "type": "Project",
         "dependencies": {
-          "RepoLore.Core": "[1.0.0-rc.1, )"
+          "RepoLore.Core": "[1.0.0-rc.2, )"
         }
       }
     }

@@ -54,6 +54,14 @@ public class PolicyExplanationTests
     }
 
     [Fact]
+    public void Disabled_history_covers_nothing_and_says_why()
+    {
+        var explanation = PolicyExplanation.Explain("_repolore/root.md", false, false, NoUserRules, RuleSet.Empty, historyEnabled: false);
+        explanation.HistoryCovered.Should().BeFalse();
+        explanation.HistoryReason.Should().Contain("history.enabled is false");
+    }
+
+    [Fact]
     public void Ineligible_paths_are_not_covered_whatever_the_rules_say()
     {
         PolicyExplanation.Explain("src/main.cs", false, false, NoUserRules, RuleSet.Empty).HistoryCovered.Should().BeFalse();

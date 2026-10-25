@@ -31,14 +31,8 @@ jobs:
       - name: Clone the pinned reference repository
         shell: bash
         run: |
-          pin=tests/RepoLore.Cli.Tests/Scenarios/reference-repo.version
-          repository=$(awk '$1 == "repository" { print $2 }' "$pin")
-          tag=$(awk '$1 == "tag" { print $2 }' "$pin")
-          commit=$(awk '$1 == "commit" { print $2 }' "$pin")
-          reference="$RUNNER_TEMP/reference"
-          git -c core.longpaths=true -c core.autocrlf=false clone --quiet --no-checkout "$repository" "$reference"
-          test "$(git -C "$reference" rev-parse --verify "$tag^{commit}")" = "$commit"
-          echo "REPOLORE_REFERENCE_REPO=$reference" >> "$GITHUB_ENV"
+          bash build/clone-reference-repo.sh "$RUNNER_TEMP/reference"
+          echo "REPOLORE_REFERENCE_REPO=$RUNNER_TEMP/reference" >> "$GITHUB_ENV"
           echo "REPOLORE_SCENARIO_ARTIFACTS=$RUNNER_TEMP/scenario-failures" >> "$GITHUB_ENV"
       - run: dotnet restore --locked-mode
       - run: dotnet build --no-restore --configuration Release

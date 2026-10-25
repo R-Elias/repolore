@@ -40,7 +40,7 @@ public static class TreeCommand
         var sessionsRootOnly = start == "_repolore/sessions";
         Walk(fullStart, start, sessionsRootOnly, entries);
 
-        Renderer.Tree(entries, cl.Json);
+        Renderer.Tree(entries, cl.Json, cl.Quiet);
         return ExitCodes.Success;
     }
 

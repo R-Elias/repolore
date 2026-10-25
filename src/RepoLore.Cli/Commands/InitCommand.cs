@@ -1,4 +1,5 @@
 using RepoLore.Cli.Arguments;
+using RepoLore.Cli.Repository;
 using RepoLore.Cli.Failures;
 using RepoLore.Cli.Embedded;
 using RepoLore.Cli.Rendering;
@@ -26,6 +27,19 @@ public static class InitCommand
         return ExitCodes.Success;
     }
 
-    private static string ResolveInitRoot(string? explicitRoot, string cwd) =>
-        explicitRoot is not null ? Path.GetFullPath(explicitRoot) : Path.GetFullPath(cwd);
+    // Without --repo-root, init must not create a knowledge base below an existing one: every other command run from
+    // here would then use the nested one and hide the enclosing notes. --repo-root is the deliberate way to do that.
+    private static string ResolveInitRoot(string? explicitRoot, string cwd)
+    {
+        if (explicitRoot is not null)
+            return Path.GetFullPath(explicitRoot);
+
+        var root = Path.GetFullPath(cwd);
+        var enclosing = RepositoryRoot.FindEnclosing(root);
+        if (enclosing is not null && !string.Equals(enclosing, new DirectoryInfo(root).FullName, StringComparison.Ordinal))
+            throw new UsageException(
+                $"a knowledge base already exists in {Path.Combine(enclosing, RepositoryRoot.RepoLoreDirectory)}, which commands run here use; " +
+                "run init there, or pass --repo-root . to create a separate knowledge base in this directory");
+        return root;
+    }
 }

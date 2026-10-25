@@ -1,4 +1,4 @@
 # Pinned version of the scenario reference repository. Move it forward only, together with the scenarios that need it.
 repository https://github.com/R-Elias/repolore-e2e-test-reference.git
-tag s41-invalid-ignore-rule-renamed
-commit 37d832f74efe58e9b5543d16408921ca50467fc6
+tag s42-method-guides-context
+commit 89e6b10b044b5116ef2c0f82494b10377cde5b74

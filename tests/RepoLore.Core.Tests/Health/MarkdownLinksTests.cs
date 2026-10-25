@@ -37,6 +37,17 @@ public class MarkdownLinksTests
         MarkdownLinks.ExtractLocalTargets(markdown).Should().Equal("real.md", "after.md");
     }
 
+    [Theory]
+    [InlineData("[a](Design%20Notes/Design%20Notes.md)", "Design Notes/Design Notes.md")]
+    [InlineData("[a](caf%C3%A9.md#top)", "café.md")]
+    [InlineData("[a](%2E%2E/%2e%2e/x.md)", "../../x.md")]
+    [InlineData("[a](100%.md)", "100%.md")]
+    [InlineData("[a](bad%FF.md)", "bad%FF.md")]
+    public void Valid_percent_escapes_are_decoded_and_invalid_ones_are_kept_as_written(string markdown, string expected)
+    {
+        MarkdownLinks.ExtractLocalTargets(markdown).Should().Equal(expected);
+    }
+
     [Fact]
     public void Duplicate_targets_are_reported_once()
     {

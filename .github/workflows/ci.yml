@@ -40,3 +40,20 @@ jobs:
           bash build/run-without-network.sh
           dotnet test --no-build --configuration Release tests/RepoLore.Cli.Tests
           --filter "FullyQualifiedName~RepoLore.Cli.Tests.Packaging"
+      # The scenarios act as regression tests, so they run before a merge too; the scheduled workflow still catches
+      # runner and SDK changes in weeks without pull requests. A pin moved to an unpushed stage fails here.
+      - name: Clone the pinned reference repository
+        shell: bash
+        run: |
+          bash build/clone-reference-repo.sh "$RUNNER_TEMP/reference"
+          echo "REPOLORE_REFERENCE_REPO=$RUNNER_TEMP/reference" >> "$GITHUB_ENV"
+          echo "REPOLORE_SCENARIO_ARTIFACTS=$RUNNER_TEMP/scenario-failures" >> "$GITHUB_ENV"
+      - name: Run the scenarios on the packed tool
+        run: dotnet test --no-build --configuration Release tests/RepoLore.Cli.Tests --filter "Category=Scenario"
+      - name: Keep the failed scenarios' command logs and files
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: scenario-failures-${{ matrix.os }}
+          path: ${{ runner.temp }}/scenario-failures/
+          if-no-files-found: ignore

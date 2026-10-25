@@ -1,3 +1,4 @@
+using RepoLore.Core.Configuration;
 using RepoLore.Core.Health;
 using RepoLore.Core.Matching;
 using RepoLore.Core.Policies;
@@ -99,7 +100,8 @@ public sealed class HealthChecker
             return null;
 
         var historyExclude = format.Config?.HistoryExclude ?? RuleSet.Empty;
-        return PolicyExplanation.Explain(target.Path, target.IsDirectory, false, new SourceDiscoveryPolicy(format.UserIgnore), historyExclude);
+        var historyEnabled = format.Config?.HistoryEnabled ?? RepoLoreConfig.DefaultHistoryEnabled;
+        return PolicyExplanation.Explain(target.Path, target.IsDirectory, false, new SourceDiscoveryPolicy(format.UserIgnore), historyExclude, historyEnabled);
     }
 
     private sealed class ExplainTarget

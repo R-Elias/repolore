@@ -35,13 +35,14 @@ public sealed class InitIncompleteException : Exception
 
 public sealed class InitResult
 {
-    public InitResult(IReadOnlyList<string> created, bool historyDisabled, long? publishedId, bool checkpointNoOp, bool methodUpdated)
+    public InitResult(IReadOnlyList<string> created, bool historyDisabled, long? publishedId, bool checkpointNoOp, bool methodUpdated, long? recoveryId = null)
     {
         Created = created;
         HistoryDisabled = historyDisabled;
         PublishedId = publishedId;
         CheckpointNoOp = checkpointNoOp;
         MethodUpdated = methodUpdated;
+        RecoveryId = recoveryId;
     }
 
     public IReadOnlyList<string> Created { get; }
@@ -49,6 +50,7 @@ public sealed class InitResult
     public long? PublishedId { get; }
     public bool CheckpointNoOp { get; }
     public bool MethodUpdated { get; }
+    public long? RecoveryId { get; }
 
     public bool WasNoOp => Created.Count == 0 && CheckpointNoOp && !MethodUpdated;
 }
@@ -197,7 +199,7 @@ public sealed class InitEngine
             throw new InitException("method update was interrupted; recover with 'repolore restore " + preOpId + "'", preOpId, ex);
         }
 
-        return new InitResult(created, false, null, false, true);
+        return new InitResult(created, false, null, false, true, preOpId);
     }
 
     private static bool HasAuthoredContent(string dir)

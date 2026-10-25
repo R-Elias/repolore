@@ -44,15 +44,17 @@ public sealed class MigrationInventory
 
 public sealed class MigrationResult
 {
-    public MigrationResult(long? publishedId, int created, int removed, IReadOnlyList<string> leftBehind)
+    public MigrationResult(long? publishedId, long recoveryId, int created, int removed, IReadOnlyList<string> leftBehind)
     {
         PublishedId = publishedId;
+        RecoveryId = recoveryId;
         Created = created;
         Removed = removed;
         LeftBehind = leftBehind;
     }
 
     public long? PublishedId { get; }
+    public long RecoveryId { get; }
     public int Created { get; }
     public int Removed { get; }
     public IReadOnlyList<string> LeftBehind { get; }
@@ -215,7 +217,7 @@ public sealed class MigrationEngine
             var postConfig = HistoryConfigLoader.Load(_repositoryRoot);
             var post = _engine.Capture(postConfig, protectedIds: new HashSet<long> { preOpId });
             _pending.Clear();
-            return new MigrationResult(post.PublishedId, CountCopies(mappings), inventory.LegacyToRemove.Count, inventory.UnknownFiles);
+            return new MigrationResult(post.PublishedId, preOpId, CountCopies(mappings), inventory.LegacyToRemove.Count, inventory.UnknownFiles);
         }
         catch (MigrationException)
         {

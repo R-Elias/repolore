@@ -27,6 +27,14 @@ Read `method.md`, then `root.md`, then the non-empty notes along the path to the
 then inspect source. Prefer `repolore context <path>` and `repolore path <path>` over opening many
 files by hand.
 
+Targets are relative to the repository root (`src/payments/`), whatever the current directory.
+`context` reads only the notes on the path to the target; read the custom-area notes that
+`root.md` points to with `--node`, for example
+`repolore context src/payments/ --node _repolore/architecture/overview.md`. `context` stays within
+a token budget (8000 by default; `--budget-tokens <n>` changes it): a note that does not fit is
+named on stderr as `omitted:`, and `--strict` makes that exit 1. Add `--json` when a program reads
+the output.
+
 ## Writing after work
 
 Update RepoLore when a change affects operational memory: behavior, architecture, responsibilities,

@@ -44,7 +44,7 @@ public static class PathCommand
             notes.Add(resolved);
         }
 
-        Renderer.Path(notes, cl.Json);
+        Renderer.Path(notes, cl.Json, cl.Quiet);
         return hasConflict ? ExitCodes.Failure : ExitCodes.Success;
     }
 }

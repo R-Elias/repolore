@@ -45,7 +45,7 @@ The vocabulary stays this small on purpose; a need for more is a signal that the
 
 ## Stages (built 2026-10-24)
 
-The fictional "Harbor" monorepo had 39 commits on `main` when first built (41 with `s40`–`s41`), one annotated tag per stage, and one merge. `STAGES.md` in every commit is the authoritative per-tag list: content, intended tool behavior, and the rules (never modify, append-only, tags are the interface, `.gitattributes` `* -text` so every OS checks out identical bytes).
+The fictional "Harbor" monorepo had 39 commits on `main` when first built (42 with `s40`–`s42`), one annotated tag per stage, and one merge. `STAGES.md` in every commit is the authoritative per-tag list: content, intended tool behavior, and the rules (never modify, append-only, tags are the interface, `.gitattributes` `* -text` so every OS checks out identical bytes).
 
 | Tags | Purpose |
 |---|---|
@@ -56,7 +56,8 @@ The fictional "Harbor" monorepo had 39 commits on `main` when first built (41 wi
 | `s28`–`s32` | Back to the baseline; a branch edit and a main edit of one note, merged with a hand resolution; release 1 |
 | `s33`–`s36` | Committed `.history/` made by the real tool, then damaged: an altered object, a truncated manifest, an interrupted restore (`pending.json`), and `.history` as a file |
 | `s37`–`s39` | OS hazards: a case collision built through the index (Linux only), symlinks, paths over 260 characters |
-| `s40`–`s41` | Appended 2026-10-24: `s16` and `s19` with the ignore file under its final name `.repoloreignore`. `s16` and `s19` now test the leftover preview name `_repoloreignore`. Pin: `s41` (`37d832f`) |
+| `s40`–`s41` | Appended 2026-10-24: `s16` and `s19` with the ignore file under its final name `.repoloreignore`. `s16` and `s19` now test the leftover preview name `_repoloreignore` |
+| `s42` | Appended 2026-10-25: the baseline `s10` with the method that `init` writes after the field-test fixes (root-relative targets, `--node`, the context budget). Pin: `s42` (`89e6b10`) |
 
 The repository was built by a one-off script with fixed authors and dates and an isolated Git configuration. Commits through `s32` are byte-reproducible; `s33`–`s35` contain real checkpoint timestamps. Because the repository is append-only, the script is never rerun against it. New stages are appended by hand.
 
@@ -75,7 +76,7 @@ Checking out commits cannot reproduce these four IDs: `history-locked`, `operati
 
 ## Execution and cost
 
-A dedicated workflow runs the suite on Windows, Linux and macOS **twice a week and on demand** (`schedule` plus `workflow_dispatch` with a tag filter), not on pull requests. The `smoke` tag selects a short subset for on-demand quick runs. Before the 1.0.0 tag the full suite must be run on demand on the exact release commit and be green. A failing scenario uploads its temp directory and command log as an artifact. Scheduled runs only fire from the default branch, and GitHub disables scheduled workflows in a public repository after 60 days without activity.
+The suite runs on Windows, Linux and macOS **in every `ci` run** (pull requests and pushes to `main` that touch code or tests), and a dedicated workflow also runs it **twice a week and on demand** (`schedule` plus `workflow_dispatch` with a tag filter). Until 2026-10-25 it ran only in that workflow, to save CI time; the maintainer moved it into `ci` because the suite acts as a regression test and costs about a minute per job. The scheduled run now mainly catches runner-image and SDK changes in weeks without pull requests. Both workflows clone the pin with `build/clone-reference-repo.sh`, which fails with a clear message when the pinned tag is missing or moved, so a pull request that moves the pin to an unpushed stage fails its own checks. The `smoke` tag selects a short subset for on-demand quick runs. Before the 1.0.0 tag the full suite must be run on demand on the exact release commit and be green. A failing scenario uploads its temp directory and command log as an artifact. Scheduled runs only fire from the default branch, and GitHub disables scheduled workflows in a public repository after 60 days without activity.
 
 ## Implementation (14a)
 
@@ -128,7 +129,7 @@ On 2026-10-24 the maintainer decided the suite lives in `tests/RepoLore.Cli.Test
 
 There are 28 scenarios. One is Linux only (`case-collision`) and one is Linux and macOS only (`symlinks-are-not-followed`); the other 26 run on every OS. They are grouped by tag:
 
-- `smoke`: the nine 14a smoke scenarios, plus `init-reproduces-the-adoption`. On `s03`, `init` must produce exactly the marker and method committed at `s04`.
+- `smoke`: the nine 14a smoke scenarios, plus `init-reproduces-the-adoption`. On `s03`, `init` must produce exactly the marker committed at `s04` and the method committed at `s42` (it compared the method with `s04` until the method changed on 2026-10-25).
 - **Health and sessions:**
   - `link-and-session-hazards`: broken and escaping links, a durable link into a session, a session without `root.md`, and an invalid session id, which is a usage error. A session's link into another session is not checked.
   - `note-content-hazards`: invalid UTF-8 and a misnamed note are findings. A BOM and CRLF are read normally. The 1.5 MB note is omitted from context for budget, with exit 0.

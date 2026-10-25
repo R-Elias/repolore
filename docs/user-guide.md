@@ -37,7 +37,7 @@ dotnet tool run repolore -- version
 | Script, macOS or Linux | `curl -fsSL https://repolore.org/install.sh \| sh` | `REPOLORE_VERSION=<version>` |
 | Script, Windows | `irm https://repolore.org/install.ps1 \| iex` | `$env:REPOLORE_VERSION = '<version>'` |
 | Homebrew | `brew install repolore-org/tap/repolore` | not offered |
-| winget | `winget install RepoLore.RepoLore` | `--version <version>` |
+| winget | `winget install repolore` (identifier `RepoLore.RepoLore`) | `--version <version>` |
 | pipx or uv | `pipx install repolore` or `uv tool install repolore` | `repolore==<version>` |
 | npm | `npm install -g repolore-cli` | `repolore-cli@<version>`, or a dev dependency |
 | Download | the archives attached to the GitHub release | the release tag |

@@ -354,6 +354,8 @@ def winget_manifests(version, url, sums):
         f"{WINGET_ID}.locale.en-US.yaml": common
         + "PackageLocale: en-US\nPublisher: Elias Aliche\n"
         + f"PublisherUrl: {WEBSITE}\nPackageName: RepoLore\nPackageUrl: {WEBSITE}\nLicense: Apache-2.0\n"
+        # The identifier needs a dot; the moniker is the short name 'winget install' also accepts.
+        + "Moniker: repolore\n"
         + f"LicenseUrl: {REPOSITORY}/blob/main/LICENSE\nShortDescription: {SUMMARY}\n"
         + "Tags:\n- knowledge\n- markdown\n- cli\n- agents\n"
         + f"ReleaseNotesUrl: {REPOSITORY}/releases/tag/v{version}\nManifestType: defaultLocale\n" + tail,

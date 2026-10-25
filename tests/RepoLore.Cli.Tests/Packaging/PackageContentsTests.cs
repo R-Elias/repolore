@@ -12,10 +12,10 @@ public sealed class PackageContentsTests(PackedToolFixture package)
     private static readonly string[] AllowedLibraries = ["RepoLore.Cli", "RepoLore.Core", "RepoLore.Infrastructure"];
 
     [Fact]
-    public void Packing_all_shipped_projects_produces_exactly_one_package_named_RepoLore_Cli()
+    public void Packing_all_shipped_projects_produces_exactly_one_package_named_RepoLore()
     {
-        package.PackagePaths.Select(Path.GetFileName).Should().Equal($"RepoLore.Cli.{package.SourceVersion}.nupkg");
-        package.PackageId.Should().Be("RepoLore.Cli");
+        package.PackagePaths.Select(Path.GetFileName).Should().Equal($"RepoLore.{package.SourceVersion}.nupkg");
+        package.PackageId.Should().Be("RepoLore");
     }
 
     [Fact]
@@ -66,7 +66,7 @@ public sealed class PackageContentsTests(PackedToolFixture package)
             "[Content_Types].xml",
             "_rels/.rels",
             "README.md",
-            "RepoLore.Cli.nuspec",
+            "RepoLore.nuspec",
             ToolFolder + "DotnetToolSettings.xml",
             ToolFolder + "RepoLore.Cli.deps.json",
             ToolFolder + "RepoLore.Cli.dll",

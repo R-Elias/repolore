@@ -5,15 +5,11 @@ on:
   workflow_dispatch:
     inputs:
       nuget:
-        description: 'NuGet: RepoLore.Cli'
+        description: 'NuGet: RepoLore'
         type: boolean
         default: true
-      nuget_repolore:
-        description: 'NuGet: the same tool under the ID RepoLore'
-        type: boolean
-        default: false
       github_release:
-        description: 'GitHub release: native executables, NuGet packages, SBOMs and checksums'
+        description: 'GitHub release: native executables, the NuGet package, SBOMs and checksums'
         type: boolean
         default: true
       pypi:
@@ -79,9 +75,6 @@ jobs:
       - run: dotnet test --no-build --configuration Release tests/RepoLore.Cli.Tests --filter "FullyQualifiedName~RepoLore.Cli.Tests.Packaging"
       - name: Pack the tool package from the tested build
         run: dotnet pack src/RepoLore.Cli/RepoLore.Cli.csproj --no-build --configuration Release --output artifacts
-      - name: Pack the same build under the ID RepoLore
-        if: inputs.nuget_repolore
-        run: dotnet pack src/RepoLore.Cli/RepoLore.Cli.csproj --no-build --configuration Release --output artifacts -p:PackageId=RepoLore
       - name: Smoke-test the exact package files that would be published
         env:
           VERSION: ${{ steps.version.outputs.value }}
@@ -94,8 +87,8 @@ jobs:
           dotnet tool install CycloneDX --version 6.3.1 --tool-path "$RUNNER_TEMP/cyclonedx"
           export DOTNET_ROOT="$(dirname "$(readlink -f "$(command -v dotnet)")")"
           "$RUNNER_TEMP/cyclonedx/dotnet-CycloneDX" src/RepoLore.Cli/RepoLore.Cli.csproj \
-            --output artifacts --filename "RepoLore.Cli.$VERSION.cdx.json" --output-format Json \
-            --set-version "$VERSION" --set-name RepoLore.Cli --include-project-references \
+            --output artifacts --filename "RepoLore.$VERSION.cdx.json" --output-format Json \
+            --set-version "$VERSION" --set-name RepoLore --include-project-references \
             --disable-package-restore --set-nuget-purl --no-serial-number
       - uses: actions/upload-artifact@v6
         with:
@@ -171,7 +164,7 @@ jobs:
 
   publish-nuget:
     needs: [build, assemble]
-    if: github.ref_type == 'tag' && (inputs.nuget || inputs.nuget_repolore)
+    if: github.ref_type == 'tag' && inputs.nuget
     runs-on: ubuntu-24.04
     environment: nuget-preview
     permissions:
@@ -191,15 +184,7 @@ jobs:
         uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
         with:
           user: ${{ secrets.NUGET_USER }}
-      - name: Push RepoLore.Cli
-        if: inputs.nuget
-        env:
-          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
-        run: >
-          dotnet nuget push "release/RepoLore.Cli.$VERSION.nupkg" --api-key "$NUGET_API_KEY"
-          --source https://api.nuget.org/v3/index.json --skip-duplicate
       - name: Push RepoLore
-        if: inputs.nuget_repolore
         env:
           NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
         run: >

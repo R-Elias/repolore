@@ -4,7 +4,7 @@ RepoLore is a local, offline tool maintained by one person. Please report suspec
 
 ## Supported versions
 
-Only the latest published version of RepoLore receives fixes, on every channel: the `RepoLore.Cli` .NET tool and, since 1.1.0, the native executables and their PyPI, npm, Homebrew and winget packages, which are built from the same commit. A fix is always a newer version, never a change to a published one; the preview and the release candidates receive no fixes of their own.
+Only the latest published version of RepoLore receives fixes, on every channel: the `RepoLore` .NET tool (`RepoLore.Cli` up to 1.1.0) and, since 1.1.0, the native executables and their PyPI, npm, Homebrew and winget packages, which are built from the same commit. A fix is always a newer version, never a change to a published one; the preview and the release candidates receive no fixes of their own.
 
 ## How to report
 
@@ -18,6 +18,6 @@ This is best-effort work by one maintainer. There is no guaranteed response time
 
 ## Scope
 
-In scope: the `RepoLore.Cli` package, for example path handling and escapes from the repository, unintended file writes or deletions, loss of recoverable history, and anything that makes the tool perform a network or process operation (it must perform none).
+In scope: the `RepoLore` package and the native executables, for example path handling and escapes from the repository, unintended file writes or deletions, loss of recoverable history, and anything that makes the tool perform a network or process operation (it must perform none).
 
 Out of scope: what editors, coding agents, or other programs do with content they read from a RepoLore knowledge base (RepoLore cannot prevent them from transmitting it), and the behavior of NuGet.org, GitHub, or the .NET SDK and runtime themselves.

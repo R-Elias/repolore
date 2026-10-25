@@ -200,3 +200,23 @@ public class SnapshotDifferTests
     private static CheckpointManifest Manifest(IReadOnlyList<FileEntry> files) =>
         new(1, "t", HistoryVersion.Current, 1, Scope, files);
 }
+
+public class CheckpointTimestampTests
+{
+    [Fact]
+    public void New_timestamps_have_six_fractional_digits_and_the_offset()
+    {
+        var value = new DateTimeOffset(2026, 10, 25, 9, 31, 1, TimeSpan.Zero).AddTicks(8461480);
+        CheckpointTimestamp.Format(value).Should().Be("2026-10-25T09:31:01.846148+00:00");
+    }
+
+    [Theory]
+    [InlineData("2026-10-24T13:30:00.9187570+00:00", "2026-10-24T13:30:00.918757+00:00")]
+    [InlineData("2026-10-24T13:30:00.918757+00:00", "2026-10-24T13:30:00.918757+00:00")]
+    [InlineData("2026-10-24T13:30:00+00:00", "2026-10-24T13:30:00.000000+00:00")]
+    [InlineData("t", "t")]
+    public void Stored_timestamps_are_shown_normalized_and_unparseable_ones_unchanged(string stored, string shown)
+    {
+        CheckpointTimestamp.Normalize(stored).Should().Be(shown);
+    }
+}

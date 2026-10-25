@@ -182,12 +182,13 @@ public sealed class InitEngine
             config.HistoryExcludeRules,
             new[] { new PendingPlanEntry(MethodPath, before, after) }));
 
+        CheckpointResult post;
         try
         {
             beforeFirstReplacement?.Invoke();
             WriteMethod(methodTemplate);
             beforePostCheckpoint?.Invoke();
-            _engine.Capture(config, protectedIds: new HashSet<long> { preOpId });
+            post = _engine.Capture(config, protectedIds: new HashSet<long> { preOpId });
             _pending.Clear();
         }
         catch (InitException)
@@ -199,7 +200,7 @@ public sealed class InitEngine
             throw new InitException("method update was interrupted; recover with 'repolore restore " + preOpId + "'", preOpId, ex);
         }
 
-        return new InitResult(created, false, null, false, true, preOpId);
+        return new InitResult(created, false, post.PublishedId, false, true, preOpId);
     }
 
     private static bool HasAuthoredContent(string dir)

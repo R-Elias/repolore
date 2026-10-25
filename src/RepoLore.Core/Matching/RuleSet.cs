@@ -28,10 +28,13 @@ public sealed class CompiledRule
 
     public static CompiledRule? TryParse(int line, string text)
     {
-        if (text.Length == 0)
+        if (text.Trim().Length == 0)
             return null;
         if (text[0] == '#')
             return null;
+        // Git strips trailing spaces; keeping them would make the rule match nothing, silently.
+        if (char.IsWhiteSpace(text[^1]))
+            throw new RuleSyntaxException(line, "rule ends with whitespace; remove it (a comment must be on its own line).");
 
         var negated = false;
         if (text[0] == '!')

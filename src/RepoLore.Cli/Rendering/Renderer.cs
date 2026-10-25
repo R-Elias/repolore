@@ -133,7 +133,7 @@ public static class Renderer
             {
                 var obj = new JsonObject();
                 obj.Members.Add(new JsonMember("id", Number(manifest.Id)));
-                obj.Members.Add(new JsonMember("timestamp", new JsonStringValue(manifest.Timestamp)));
+                obj.Members.Add(new JsonMember("timestamp", new JsonStringValue(CheckpointTimestamp.Normalize(manifest.Timestamp))));
                 var files = new JsonArray();
                 foreach (var file in manifest.Files)
                     files.Items.Add(new JsonStringValue(file.Path));
@@ -154,7 +154,7 @@ public static class Renderer
 
         foreach (var manifest in ordered)
         {
-            Console.WriteLine($"{ManifestId.Format(manifest.Id)} {manifest.Timestamp}");
+            Console.WriteLine($"{ManifestId.Format(manifest.Id)} {CheckpointTimestamp.Normalize(manifest.Timestamp)}");
             foreach (var file in manifest.Files)
                 Console.WriteLine("  " + file.Path);
         }

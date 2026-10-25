@@ -1,0 +1,14 @@
+// 1.0 contract: checkpoint times are ISO 8601 with six fractional digits, which common parsers accept. The committed
+// history of s35 was written with seven digits by an earlier version and is shown normalized.
+{
+  "name": "contract-history-timestamps",
+  "tags": ["contract", "history"],
+  "steps": [
+    { "checkout": "s35-pending-operation" },
+    { "run": "history --json", "expect": { "exit": 0, "json": {
+      "checkpoints.0.id": 2, "checkpoints.0.timestamp": "2026-10-24T13:30:00.918757+00:00",
+      "checkpoints.1.id": 1, "checkpoints.1.timestamp": "2026-10-24T13:30:00.870420+00:00" } } },
+    { "run": "history", "expect": { "exit": 0,
+      "stdout": ["0000000000000002 2026-10-24T13:30:00.918757+00:00", "0000000000000001 2026-10-24T13:30:00.870420+00:00"] } }
+  ]
+}

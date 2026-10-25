@@ -76,7 +76,9 @@ Finding IDs and the exit rule are the shared catalog in
   hand-written, not `Encoding.GetString` span overloads.
 - `tree` skips `sessions/` and `.history/` only at the `_repolore/` level; `--start
   _repolore/sessions/` lists session IDs without recursing, and `--start` into one session
-  lists its notes.
+  lists its notes. Since 2026-10-25 it lists only Markdown notes and the directories leading to
+  one (no other files, symlinks, note-less directories or `repolore.json`), depth first: a
+  directory's notes, then each subdirectory followed by its contents, ordinal order.
 - Selection, estimation, session-id validation, and alpha resolution are all pure and unit
   tested in `tests/RepoLore.Core.Tests/Context/`; end-to-end behavior is exercised by
   `tests/RepoLore.Cli.Tests/DurableSessionContextTests.cs` against the frozen fixtures.

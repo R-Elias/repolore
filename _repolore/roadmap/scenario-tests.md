@@ -45,7 +45,7 @@ The vocabulary stays this small on purpose; a need for more is a signal that the
 
 ## Stages (built 2026-10-24)
 
-The fictional "Harbor" monorepo had 39 commits on `main` when first built (42 with `s40`–`s42`), one annotated tag per stage, and one merge. `STAGES.md` in every commit is the authoritative per-tag list: content, intended tool behavior, and the rules (never modify, append-only, tags are the interface, `.gitattributes` `* -text` so every OS checks out identical bytes).
+The fictional "Harbor" monorepo had 39 commits on `main` when first built (46 with `s40`–`s46`), one annotated tag per stage, and one merge. `STAGES.md` in every commit is the authoritative per-tag list: content, intended tool behavior, and the rules (never modify, append-only, tags are the interface, `.gitattributes` `* -text` so every OS checks out identical bytes).
 
 | Tags | Purpose |
 |---|---|
@@ -57,7 +57,8 @@ The fictional "Harbor" monorepo had 39 commits on `main` when first built (42 wi
 | `s33`–`s36` | Committed `.history/` made by the real tool, then damaged: an altered object, a truncated manifest, an interrupted restore (`pending.json`), and `.history` as a file |
 | `s37`–`s39` | OS hazards: a case collision built through the index (Linux only), symlinks, paths over 260 characters |
 | `s40`–`s41` | Appended 2026-10-24: `s16` and `s19` with the ignore file under its final name `.repoloreignore`. `s16` and `s19` now test the leftover preview name `_repoloreignore` |
-| `s42` | Appended 2026-10-25: the baseline `s10` with the method that `init` writes after the field-test fixes (root-relative targets, `--node`, the context budget). Pin: `s42` (`89e6b10`) |
+| `s42` | Appended 2026-10-25: the baseline `s10` with the method that `init` writes after the field-test fixes (root-relative targets, `--node`, the context budget) |
+| `s43`–`s46` | Appended 2026-10-25 for the 1.0 contract scenarios, each the baseline plus one hazard: files under `_repolore/` that are not notes, misspelled and unknown `repolore.json` keys, a `.repoloreignore` rule and a `history.exclude` rule ending with a space. Pin: `s46` (`f503a5a`) |
 
 The repository was built by a one-off script with fixed authors and dates and an isolated Git configuration. Commits through `s32` are byte-reproducible; `s33`–`s35` contain real checkpoint timestamps. Because the repository is append-only, the script is never rerun against it. New stages are appended by hand.
 
@@ -194,6 +195,18 @@ Until 14b, no CLI-level test asserted `history-locked` or `operation-interrupted
 - **Local proof:** with `EmbeddedTemplates.cs` converted to CRLF, the old code fails the test and writes `105dd6d8…`, exactly the Windows CI artifact. The fixed code passes and writes `393afc14…` from either a CRLF or an LF checkout.
 
 **`s36` defect fixed (2026-10-24, branch `package-13/pre-release-fixes`):** `WriterLock.Acquire`, which every write command (`init`, `checkpoint`, `restore`, `migrate`) calls first, now checks for a file at the history path. In that case it throws its own `IOException`, still mapped to `io-error`, with the message "_repolore/.history is a file, not a directory, so nothing can be written; move that file aside or delete it, then retry". The message names no machine path. The scenario now pins this exact message. The new `FailureIdTests.A_file_in_place_of_the_history_directory_fails_writes_with_a_clear_message_and_no_machine_path` covers `checkpoint`, `restore 1` and `init`; all three cases fail without the fix and pass with it. Other raw runtime messages, such as "access denied" inside `operation-interrupted`, can still name absolute paths; that is unchanged.
+
+## 1.0 contract scenarios (2026-10-25)
+
+Cases tagged `contract` pin what scripts and agents may rely on from 1.0, so a change shows up as a failing scenario rather than as a surprise for an adopter. They were written after the review of the field-test friction list, when the maintainer settled six items before 1.0 and froze the rest.
+- `contract-tree-lists-notes-depth-first` (`s43`): only notes and the folders leading to one, in depth-first order, checked through `tree --json` positions. `symlinks-are-not-followed` (`s38`) also checks that `tree` leaves symlinked notes out.
+- `contract-history-timestamps` (`s35`): the committed seven-digit times are shown with six digits.
+- `contract-update-method-reports-its-checkpoints` (`s04`): `checkpointId` 2 and `recoveryId` 1, and the reported undo works.
+- `contract-rules-reject-trailing-whitespace` (`s45`, `s46`): a `policy-error` with the line or rule number; the ignore file blocks only `health-check`, `history.exclude` refuses writes.
+- `usage-errors` gained `migrate --check --dry-run` (exit 2).
+- `contract-frozen-for-1-0` (`s10`, `s44`): the budget order (root first, skip and keep trying, exit 1 only with `--strict`) and ignored unknown keys. A `restore --path` outside coverage exiting 3 is pinned by `restore-refusals`.
+
+Check: run against the published `1.0.0-rc.2` behavior (source changes stashed), all five cases for the changed items failed with precise messages, and `contract-frozen-for-1-0` passed. With the changes, all 32 macOS scenarios pass.
 
 ## Sub-packages
 

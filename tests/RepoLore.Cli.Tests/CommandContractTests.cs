@@ -140,6 +140,7 @@ public class CommandContractTests
     [InlineData("checkpoint extra")]
     [InlineData("context src/ other/")]
     [InlineData("health-check --node _repolore/root.md")]
+    [InlineData("migrate --check --dry-run")]
     public void Unknown_misplaced_or_duplicated_options_and_extra_arguments_are_usage_errors(string arguments)
     {
         var result = RunArranged("minimal", arguments, out var writes);

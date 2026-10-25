@@ -203,6 +203,26 @@ public class DurableSessionContextTests
     }
 
     [Fact]
+    public void Tree_lists_notes_and_their_folders_depth_first_and_nothing_else()
+    {
+        WithFixture("two-sessions", temp =>
+        {
+            var area = Path.Combine(temp, "_repolore", "area");
+            Directory.CreateDirectory(Path.Combine(area, "b", "deep"));
+            Directory.CreateDirectory(Path.Combine(area, "empty"));
+            File.WriteAllText(Path.Combine(area, "z.md"), "z");
+            File.WriteAllText(Path.Combine(area, "b", "deep", "n.md"), "n");
+            File.WriteAllText(Path.Combine(area, "b", "image.png"), "not a note");
+
+            var tree = TestSupport.Run(temp, TestSupport.Cli, "tree", "--start", "_repolore/area");
+            tree.Code.Should().Be(0);
+            TestSupport.Normalize(tree.Out).Should().Be(
+                "_repolore/area/z.md\n_repolore/area/b/\n_repolore/area/b/deep/\n_repolore/area/b/deep/n.md\n");
+            TestSupport.Normalize(TestSupport.Run(temp, TestSupport.Cli, "tree").Out).Should().NotContain("repolore.json");
+        });
+    }
+
+    [Fact]
     public void Json_and_plain_context_render_the_same_logical_sets()
     {
         TestSupport.WithTemp(temp =>

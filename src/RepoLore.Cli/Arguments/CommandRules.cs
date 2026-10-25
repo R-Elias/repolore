@@ -34,6 +34,9 @@ public static class CommandRules
                 throw new UsageException($"{command} does not accept {option}");
         }
 
+        if (command == "migrate" && commandLine.SeenOptions.Contains("--check") && commandLine.SeenOptions.Contains("--dry-run"))
+            throw new UsageException("migrate takes --check or --dry-run, not both");
+
         if (commandLine.Target is not null && Array.IndexOf(CommandsWithPositional, command) < 0)
             throw new UsageException($"{command} takes no positional argument: {commandLine.Target}");
     }

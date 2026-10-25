@@ -57,7 +57,7 @@ public sealed class InstalledToolTests(PackedToolFixture package)
     }
 
     [Theory]
-    [InlineData("RepoLore.Cli", null)]
+    [InlineData("RepoLore", null)]
     [InlineData("dotnetsay", "2.1.7")]
     public void Empty_local_feed_with_an_empty_cache_fails_instead_of_finding_a_cached_or_public_copy(string packageId, string? version)
     {

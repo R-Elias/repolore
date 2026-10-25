@@ -15,7 +15,7 @@ Needs a .NET 10 SDK to install and a .NET 10.0.x runtime to run. Pin the version
 
 ```text
 dotnet new tool-manifest
-dotnet tool install RepoLore.Cli --version 1.1.0 --local
+dotnet tool install RepoLore --version 1.1.1 --local
 dotnet tool run repolore -- init
 ```
 

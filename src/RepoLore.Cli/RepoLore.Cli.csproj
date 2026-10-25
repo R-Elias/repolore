@@ -5,7 +5,7 @@
     <IsPackable>true</IsPackable>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>repolore</ToolCommandName>
-    <PackageId>RepoLore.Cli</PackageId>
+    <PackageId>RepoLore</PackageId>
     <RollForward>LatestPatch</RollForward>
     <Authors>Elias Aliche</Authors>
     <Copyright>Copyright 2026 Elias Aliche</Copyright>

@@ -2,9 +2,9 @@
 
 The channels other than NuGet (native executables, PyPI, npm, Homebrew, winget, the website) are in [distribution](distribution.md).
 
-`RepoLore.Cli` ships as one framework-dependent .NET tool package. See the
+The NuGet package `RepoLore` (`RepoLore.Cli` up to 1.1.0, renamed by the maintainer's decision of 2026-10-25, see [distribution](distribution.md)) ships as one framework-dependent .NET tool package. See the
 [implementation guide](implementation-v1.md#11--verify-the-package-users-will-actually-install) for the gates and
-[roadmap section 8](roadmap.md) for the release contract. Nothing has been published; no placeholder was pushed to reserve the ID.
+[roadmap section 8](roadmap.md) for the release contract. Published versions are listed in [distribution](distribution.md).
 
 ## Identity and version sources
 
@@ -54,7 +54,7 @@ and an approved `NuGet.Config` that clears other sources:
 </configuration>
 ```
 
-Then `dotnet tool restore` and `dotnet tool run repolore -- <command>` (or `dotnet repolore`). Commit no credentials. `dotnet tool install RepoLore.Cli --version <v> --local` after `dotnet new tool-manifest` writes the same manifest (verified manually). Global installation (`dotnet tool install --global`) is an individual-user alternative and is **not** exercised by the package tests. This checkout deliberately has no tool manifest: the tool is unpublished and the checkout was migrated by running the packed tool from a manifest kept outside it ([dogfood and preview](dogfood-and-preview.md)); a committed manifest needs a published version to pin.
+Then `dotnet tool restore` and `dotnet tool run repolore -- <command>` (or `dotnet repolore`). Commit no credentials. `dotnet tool install RepoLore --version <v> --local` after `dotnet new tool-manifest` writes the same manifest (verified manually). Global installation (`dotnet tool install --global`) is an individual-user alternative and is **not** exercised by the package tests. This checkout commits a tool manifest pinning a published version (`.config/dotnet-tools.json`); before the first publication it was migrated by running the packed tool from a manifest kept outside it ([dogfood and preview](dogfood-and-preview.md)).
 
 ## Checks
 

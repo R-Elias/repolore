@@ -21,7 +21,7 @@ Not everyone has or wants .NET, so the same tool also ships as a native executab
 
 | Channel | Name | Notes |
 |---|---|---|
-| NuGet | `RepoLore.Cli`; optionally `RepoLore` | The same build packed twice. Which ID is the main one is still open; NuGet's deprecation with an alternate package can steer users. Request the `RepoLore` ID prefix reservation with NuGet.org |
+| NuGet | `RepoLore` (`RepoLore.Cli` up to 1.1.0) | Renamed in 1.1.1 by the maintainer's decision of 2026-10-25, while few users pinned the old ID; once 1.1.1 is published, every `RepoLore.Cli` version is to be deprecated with `RepoLore` as the alternate (a manual step on nuget.org). A NuGet.org ID stays its owner's for good, so nobody can take `RepoLore.Cli`. Request the `RepoLore` ID prefix reservation with NuGet.org |
 | GitHub release | `repolore-<version>-<rid>.zip` / `.tar.gz` | `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`, `osx-x64`, `osx-arm64`; each archive holds the executable, `LICENSE` and `THIRD-PARTY-NOTICES.txt` |
 | PyPI | `repolore` | One wheel per platform, the executable in the wheel's scripts folder: no Python launcher, no Python at run time |
 | npm | `repolore-cli`, platform packages `@repolore-org/cli-<platform>-<arch>` | `repolore` on npm is an unrelated, similar project (created 2026-07-18) that also installs a `repolore` command. The launcher starts the executable as a child process: the npm channel's addition, not RepoLore's |

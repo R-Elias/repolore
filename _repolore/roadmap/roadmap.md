@@ -9,7 +9,7 @@ The alpha PowerShell scripts and the alpha method text described the alpha layou
 ## 1. Scope and decisions
 
 - Open-source tool maintained by one developer. Enterprise usability means straightforward approval, installation, review, and recovery; no commercial platform is implied.
-- v1 ships the core functionality and CLI as **one NuGet .NET tool package, `RepoLore.Cli`**, invoking `repolore`. Confirm package ID availability before publishing.
+- v1 ships the core functionality and CLI as **one NuGet .NET tool package, `RepoLore.Cli`**, invoking `repolore`; from 1.1.1 the package is named `RepoLore` (maintainer decision, 2026-10-25, [distribution](distribution.md)).
 - `RepoLore.Core` and `RepoLore.Infrastructure` remain internal projects whose assemblies are bundled in that tool. Do not publish separate library packages in v1.
 - No plugins, plugin discovery or plugin commands in v1. Native executables and their npm, PyPI, Homebrew and winget wrappers were added after 1.0.0 by maintainer decision (2026-10-25); they ship the same code from the same tag ([distribution](distribution.md)).
 - One authoritative, authored path-based knowledge tree: `_repolore/sparse-tree/`. Keep that name to avoid an unnecessary rename. Remove the complete physical mirror from the design; do not generate empty nodes.
@@ -189,7 +189,7 @@ RepoLore's privacy guarantee covers its own code and behavior. Package-manager f
 
 ## 8. NuGet release and enterprise adoption
 
-Pack only `RepoLore.Cli` with `PackAsTool=true`, `ToolCommandName=repolore`, `PackageId=RepoLore.Cli`. Bundle the referenced Core and Infrastructure assemblies. It is a framework-dependent .NET tool, not an application library dependency or a self-contained binary release.
+Pack only `RepoLore.Cli` with `PackAsTool=true`, `ToolCommandName=repolore`, `PackageId=RepoLore` (`RepoLore.Cli` up to 1.1.0). Bundle the referenced Core and Infrastructure assemblies. It is a framework-dependent .NET tool, not an application library dependency or a self-contained binary release.
 
 Document the .NET SDK installation prerequisite and compatible .NET 10 runtime. Do not claim that installing the NuGet package installs the SDK/runtime, and do not silently opt users into untested major runtime roll-forward.
 

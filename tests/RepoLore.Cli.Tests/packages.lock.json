@@ -99,11 +99,11 @@
           "xunit.extensibility.core": "[2.9.3]"
         }
       },
-      "repolore.cli": {
+      "RepoLore": {
         "type": "Project",
         "dependencies": {
-          "RepoLore.Core": "[1.1.0, )",
-          "RepoLore.Infrastructure": "[1.1.0, )"
+          "RepoLore.Core": "[1.1.1, )",
+          "RepoLore.Infrastructure": "[1.1.1, )"
         }
       },
       "repolore.core": {
@@ -112,7 +112,7 @@
       "repolore.infrastructure": {
         "type": "Project",
         "dependencies": {
-          "RepoLore.Core": "[1.1.0, )"
+          "RepoLore.Core": "[1.1.1, )"
         }
       }
     }

@@ -90,13 +90,15 @@ Remaining:
      - `dotnet nuget verify --all` exited 0 with only NuGet.org's repository signature. The downloaded file is 141440 bytes with that signature; the pushed file is 128351 bytes.
      - The GitHub pre-release "RepoLore.Cli 1.0.0-rc.3 (release candidate)" carries the `.nupkg`, `.cdx.json` and `.sha256` from run #10. Downloaded from the release, `shasum -a 256 -c` reported OK for the package (`b5929245…`) and the SBOM (`99a5deee…`); the SBOM is CycloneDX 1.7 for `RepoLore.Cli 1.0.0-rc.3` with `RepoLore.Core` and `RepoLore.Infrastructure`.
      - Branch `chore/pin-1.0.0-rc.3` moves the pin. Here the candidate read the 45 existing checkpoints (the newest, written by the source build, already with six digits), took checkpoint 46 and was healthy, and `init --update-method` had nothing to do.
-   - Then: use rc.3 briefly, and cut 1.0.0 from it.
-6. **The cut:**
-   - bump `<Version>` to `1.0.0` and write `docs/release-notes/1.0.0.md` from the candidate's notes plus `unreleased.md`;
-   - run `scenarios` on that commit;
+   - PR #18 moved the pin to `1.0.0-rc.3` (`d7df583`).
+   - **Cut without a further use period (maintainer decision, 2026-10-25):** the field test already exercised the candidates harder than ordinary use would, and rc.3 changed only contract items that the `contract` scenarios pin.
+6. **The cut** (branch `release/1.0.0`, prepared 2026-10-25):
+   - **Done on the branch:** `<Version>` is `1.0.0`, and the lock files were regenerated (only the project version changed). `docs/release-notes/1.0.0.md` summarizes the changes since the preview, links the three candidates' notes, gives upgrade steps and states what stays stable in 1.x (exit codes, IDs, JSON fields, options, format 1 and its history, the `contract` scenarios); `unreleased.md` was reset for changes after 1.0.0. The readme and the guide lost their release-candidate labels but keep the no-author-signature statement, which the package-readme test checks. `SECURITY.md` says the preview and the candidates get no fixes of their own. The `publish` environment keeps its name `nuget-preview`, which is a GitHub setting.
+   - `scenarios` run in `ci` on the merge commit, and the publish dry run repeats every test step;
    - tag `v1.0.0` and approve the publish job;
    - verify the download from NuGet.org;
-   - create the GitHub release with the checksum file and SBOM attached.
+   - create the GitHub release (not a pre-release) with the package, the checksum file and the SBOM attached;
+   - move the pin to `1.0.0`, and mark package 13 complete in the [implementation record](implementation-v1.md).
 
 ## Cleanups done in the package-13 branch (no release behavior)
 

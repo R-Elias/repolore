@@ -247,7 +247,7 @@ Track implementation here or in linked PRs; all entries start incomplete. For ea
   - **Evidence:** `scenarios` run #2 on `main` (`9b27435`) was green on Ubuntu (28), Windows (26) and macOS (27). Run #1 found the Windows line-ending defect in the init templates, fixed in PR #7.
   - **Settled on 2026-10-24:** the invalid ignore-rule question (decided: it blocks nothing else), the rename of the ignore file to `.repoloreignore`, and the `s36` `io-error` message (fixed).
   - Details are in [scenario tests](scenario-tests.md).
-- [ ] 13 — Verifiable v1.0.0 release (author signing deferred by the maintainer, 2026-10-24; the final cut waits for 14a–14b) — not started as a release; plan and open decisions in [v1.0.0 release plan](release-v1.md), cleanups in branch `package-13/release-preparation`
+- [ ] 13 — Verifiable v1.0.0 release (author signing deferred by the maintainer, 2026-10-24) — three release candidates published and verified (`1.0.0-rc.1` to `rc.3`); the 1.0.0 cut is prepared on branch `release/1.0.0` (2026-10-25) and complete once published and verified; plan and open decisions in [v1.0.0 release plan](release-v1.md), cleanups in branch `package-13/release-preparation`
 
 ### Package 01 — local evidence, 2026-09-05
 

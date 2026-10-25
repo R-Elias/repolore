@@ -4,7 +4,7 @@ RepoLore is a local, offline tool maintained by one person. Please report suspec
 
 ## Supported versions
 
-Only the latest published version of `RepoLore.Cli` receives fixes. Preview versions are fixed by publishing a newer version, never by changing a published one.
+Only the latest published version of `RepoLore.Cli` receives fixes. A fix is always a newer version, never a change to a published one; the preview and the release candidates receive no fixes of their own.
 
 ## How to report
 

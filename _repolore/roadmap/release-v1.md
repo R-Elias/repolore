@@ -83,7 +83,9 @@ Remaining:
      - **Frozen as is:** the budget order; unknown `repolore.json` keys ignored (newer 1.x keys must not fail older tools, and misspellings fail toward more protection); exit 3 for a `restore --path` outside coverage; `migrate` JSON `ambiguous` versus text `conflict`; no `.gitignore` check (needs Git); disabled history or a too-small limit blocking `restore`.
      - **After 1.0:** `-h`, `--version`, per-command help, directory restore, preview diffs, per-checkpoint changes in `history`, restored paths in JSON, `./` and absolute targets, source paths for `tree --start`, new findings for real defects (conflict markers, a pending operation in `context`, missing or mismatched manifests, leftover alpha `tree/`, invalid session names, links into `.history/`), and wording fixes.
      - Scenarios tagged `contract` pin both the fixed and the frozen items ([scenario tests](scenario-tests.md)).
-   - Then: ship these as `1.0.0-rc.3`, use it briefly, and cut 1.0.0 from it.
+   - PR #16 merged them (`f555624`) after the maintainer pushed `s43`–`s46`; `ci` was green on all three operating systems, scenarios included (reported 2026-10-25).
+   - **Release candidate `1.0.0-rc.3`, branch `release/1.0.0-rc.3`:** `<Version>` is `1.0.0-rc.3`, the lock files were regenerated (only the project version changed), `docs/release-notes/1.0.0-rc.3.md` holds the contract entries from `unreleased.md` (reset), and the readme and the guide name `1.0.0-rc.3`. Its upgrade note warns about rules ending with a space. The tool pin stays at `1.0.0-rc.2` until rc.3 is published.
+   - Then: dry run, tag `v1.0.0-rc.3`, verify, move the pin, use it briefly, and cut 1.0.0 from it.
 6. **The cut:**
    - bump `<Version>` to `1.0.0` and write `docs/release-notes/1.0.0.md` from the candidate's notes plus `unreleased.md`;
    - run `scenarios` on that commit;

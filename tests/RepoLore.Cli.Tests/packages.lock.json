@@ -102,8 +102,8 @@
       "repolore.cli": {
         "type": "Project",
         "dependencies": {
-          "RepoLore.Core": "[1.0.0, )",
-          "RepoLore.Infrastructure": "[1.0.0, )"
+          "RepoLore.Core": "[1.1.0, )",
+          "RepoLore.Infrastructure": "[1.1.0, )"
         }
       },
       "repolore.core": {
@@ -112,7 +112,7 @@
       "repolore.infrastructure": {
         "type": "Project",
         "dependencies": {
-          "RepoLore.Core": "[1.0.0, )"
+          "RepoLore.Core": "[1.1.0, )"
         }
       }
     }

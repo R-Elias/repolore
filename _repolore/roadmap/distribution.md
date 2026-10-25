@@ -10,6 +10,7 @@ Status: **set up in PR #21; `1.1.0` (PR #22, tag `v1.1.0`, publish run #14) publ
 - npm: the run's npm job failed (see the `./` note below), so the maintainer published the run's checksum-verified tarballs from the maintainer's machine with `build/npm-publish.sh`, after enabling 2FA (a passkey; npm requires 2FA to publish). The registry's seven tarballs equal those files; these versions carry no provenance attestation. New packages show a `0.0.0-stage` placeholder for a few minutes while npm processes them. Trusted publishing (`R-Elias/repolore`, `publish.yml`, environment `npm`) was then set on all seven with `npm trust github`, so `NPM_TOKEN` is to be removed.
 - Homebrew: the tap's formula equals the run's, and its URLs and checksums match the release.
 - Website: the first deployment was refused because `github-pages` allowed only `main`; with the tag rule `v*` added, a re-run of the job deployed it, and `install.sh` installs a running 1.1.0.
+- This checkout pins `1.1.0` since branch `chore/pin-1.1.0`: it read the 59 existing checkpoints, had nothing to checkpoint, was healthy, and the method is unchanged since `1.0.0-rc.2`.
 - winget: pull request microsoft/winget-pkgs#461674. Its URL check failed because the homepage was still 404 at the time; after the CLA comment, an empty commit pushed to the pull request's branch restarted validation (`@wingetbot run` is documented among the moderators' tools).
 
 ## Decision (maintainer, 2026-10-25)

@@ -100,6 +100,13 @@ Remaining:
    - create the GitHub release (not a pre-release) with the package, the checksum file and the SBOM attached;
    - move the pin to `1.0.0`, and mark package 13 complete in the [implementation record](implementation-v1.md).
 
+   **Published (2026-10-25):** PR #19 merged the cut (`b1cec96`); `ci` was green on the PR head, whose tree is identical, and on the merge commit. `publish` dry run #11 on `b1cec96` was green. The maintainer tagged `v1.0.0` (lightweight) on that commit, which started run #12: build green, and the approved publish job completed at 12:55:27 UTC. NuGet.org's website showed it first; the registration index that `dotnet tool install` resolves served it about 8 minutes after the push.
+   - A clean install from nuget.org only, with empty caches, succeeded. `version` reported `RepoLore 1.0.0`; `init` and `health-check` worked; the written method is byte-identical to this repository's; `history --json` showed a six-digit time; `tree` listed only the notes; `init` below the new knowledge base exited 2.
+   - `dotnet nuget verify --all` exited 0 with only NuGet.org's repository signature. The downloaded file is 141340 bytes with that signature; the pushed file is 128251 bytes.
+   - The GitHub release "RepoLore.Cli 1.0.0" is a full release and the repository's latest. It carries the `.nupkg`, `.cdx.json` and `.sha256` from run #12; downloaded from the release, `shasum -a 256 -c` reported OK for both files, and the SBOM is CycloneDX 1.7 for `RepoLore.Cli 1.0.0` with `RepoLore.Core` and `RepoLore.Infrastructure`.
+   - Branch `chore/pin-1.0.0` moves the pin. Here 1.0.0 read the 48 existing checkpoints, `checkpoint` had no changes, `health-check` was healthy, and `init --update-method` had nothing to do.
+   - Package 13 is complete. After 1.0.0: package 14c and the post-1.0 list from the contract review.
+
 ## Cleanups done in the package-13 branch (no release behavior)
 
 `publish.yml` and `ci.yml` use Node 24-native action majors (`checkout` v5, `setup-dotnet` v5, `upload-artifact` v6, `download-artifact` v7, chosen as the smallest jump from v4 after reading each action's `action.yml`) and `publish.yml` runs on `ubuntu-24.04`; `ci.yml` no longer runs on every branch push (see below); the obsolete `_repolore/tree/` ignore line is gone; the readme says "no author signature" and the pinning test matches. These take effect for the next tag and for manual runs on `main`; the published `0.1.0-preview.1` keeps its original readme text.

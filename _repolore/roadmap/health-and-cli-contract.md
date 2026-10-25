@@ -85,7 +85,8 @@ IDs are public API: add new ones, never rename. Update the fixture first, then t
 `CommandRules` lists the options each command accepts; `--repo-root`, `--json`, `--quiet` are
 common (except `version`, which takes only `--json`). Unknown options, options a command does not
 accept, a repeated singleton option, and extra positionals are usage errors. `--node` is the only
-repeatable option. `--help` and `version` need no repository. `--quiet` suppresses all normal stdout
+repeatable option. `--help` and `version` need no repository. `migrate` takes `--check` or
+`--dry-run`, not both (a usage error since 2026-10-25). `--quiet` suppresses all normal stdout
 of every command that accepts it (`path` and `tree` ignored it until 2026-10-25); diagnostics stay
 on stderr.
 

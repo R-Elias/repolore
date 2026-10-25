@@ -121,6 +121,8 @@ public class InitEngineTests
 
             var result = Engine(temp).Run(MethodTemplate, RootTemplate, updateMethod: true);
             result.MethodUpdated.Should().BeTrue();
+            result.RecoveryId.Should().Be(1);
+            result.PublishedId.Should().Be(2, "the checkpoint holding the new method is reported, not null");
             File.ReadAllText(Path.Combine(temp, "_repolore", "method.md")).Should().Be(MethodTemplate);
             File.Exists(PendingPath(temp)).Should().BeFalse();
 

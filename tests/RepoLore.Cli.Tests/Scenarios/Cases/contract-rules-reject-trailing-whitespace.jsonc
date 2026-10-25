@@ -1,0 +1,19 @@
+// 1.0 contract: a rule ending with whitespace is invalid instead of silently matching nothing. In .repoloreignore it
+// blocks only health-check; in history.exclude it is an invalid history policy, which refuses reads and writes.
+{
+  "name": "contract-rules-reject-trailing-whitespace",
+  "tags": ["contract", "configuration"],
+  "steps": [
+    { "checkout": "s45-ignore-rule-trailing-space" },
+    { "run": "health-check --json", "expect": { "exit": 3, "json": {
+      "findings.0.id": "policy-error", "findings.0.path": ".repoloreignore",
+      "findings.0.message": "line 2: rule ends with whitespace; remove it (a comment must be on its own line)." } } },
+    { "run": "context services/", "expect": { "exit": 0, "stdout": "## _repolore/root.md [durable]" } },
+    { "run": "checkpoint", "expect": { "exit": 0, "stdout": "checkpoint 0000000000000001" } },
+    { "checkout": "s46-history-exclude-trailing-space" },
+    { "run": "health-check --json", "expect": { "exit": 3, "json": {
+      "findings.0.id": "policy-error", "findings.0.path": "_repolore/repolore.json",
+      "findings.0.message": "history.exclude rule #1 is invalid: rule ends with whitespace; remove it (a comment must be on its own line)." } } },
+    { "run": "checkpoint --json", "expect": { "exit": 3, "json": { "error.id": "policy-error" } } }
+  ]
+}

@@ -1,0 +1,25 @@
+// Decisions frozen for 1.0 (maintainer, 2026-10-25). Changing any of these is a breaking change. Also frozen and
+// pinned elsewhere: a restore --path outside coverage exits 3 with restore-plan-invalid (restore-refusals).
+{
+  "name": "contract-frozen-for-1-0",
+  "tags": ["contract"],
+  "steps": [
+    { "checkout": "s10-session-cleaned-up" },
+    // The budget takes notes in order, root first, skips one that does not fit and keeps trying the later ones.
+    { "run": "context services/payments/ --budget-tokens 300 --json", "expect": { "exit": 0, "json": {
+      "included.0.path": "_repolore/root.md", "included.1.path": "_repolore/sparse-tree/services/services.md",
+      "omitted.0.path": "_repolore/sparse-tree/services/payments/payments.md", "omitted.0.reason": "budget" } } },
+    { "run": "context services/payments/ --budget-tokens 150 --json", "expect": { "exit": 0, "json": {
+      "included.0.path": "_repolore/sparse-tree/services/services.md",
+      "omitted.0.path": "_repolore/root.md", "omitted.1.path": "_repolore/sparse-tree/services/payments/payments.md" } } },
+    { "run": "context services/payments/ --budget-tokens 150 --strict", "expect": { "exit": 1,
+      "stderr": "omitted: _repolore/sparse-tree/services/payments/payments.md (budget)" } },
+    // Unknown and misspelled repolore.json keys are ignored: history stays enabled with its defaults.
+    { "checkout": "s44-unknown-config-keys" },
+    { "run": "health-check", "expect": { "exit": 0, "stdout": "healthy: no findings" } },
+    { "run": "health-check --explain _repolore/adr/0001-event-bus.md", "expect": { "exit": 0,
+      "stdout": "history coverage: covered (eligible; no history.exclude rule matches)" } },
+    { "run": "checkpoint", "expect": { "exit": 0, "stdout": "checkpoint 0000000000000001" } },
+    { "run": "history --json", "expect": { "exit": 0, "json": { "checkpoints.0.files.0": "_repolore/adr/0001-event-bus.md" } } }
+  ]
+}

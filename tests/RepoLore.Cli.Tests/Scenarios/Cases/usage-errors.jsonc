@@ -1,4 +1,5 @@
-// Unknown commands and options, and running outside a knowledge base, are usage errors (exit 2).
+// Unknown commands and options, options that exclude each other, and running outside a knowledge base are usage errors
+// (exit 2).
 {
   "name": "usage-errors",
   "tags": ["cli"],
@@ -7,6 +8,7 @@
     { "run": "health-check --json", "expect": { "exit": 2, "json": { "error.id": "usage" } } },
     { "checkout": "s04-knowledge-adopted" },
     { "run": "frobnicate", "expect": { "exit": 2, "stderr": ["Usage: repolore <command> [options]", "unknown command: frobnicate"] } },
-    { "run": "context --bogus --json", "expect": { "exit": 2, "json": { "error.id": "usage", "error.message": "unknown option: --bogus" } } }
+    { "run": "context --bogus --json", "expect": { "exit": 2, "json": { "error.id": "usage", "error.message": "unknown option: --bogus" } } },
+    { "run": "migrate --check --dry-run --json", "expect": { "exit": 2, "json": { "error.id": "usage", "error.message": "migrate takes --check or --dry-run, not both" } } }
   ]
 }

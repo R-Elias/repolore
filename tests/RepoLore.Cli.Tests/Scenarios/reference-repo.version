@@ -1,4 +1,4 @@
 # Pinned version of the scenario reference repository. Move it forward only, together with the scenarios that need it.
 repository https://github.com/R-Elias/repolore-e2e-test-reference.git
-tag s42-method-guides-context
-commit 89e6b10b044b5116ef2c0f82494b10377cde5b74
+tag s46-history-exclude-trailing-space
+commit f503a5ae68bc1abf13ea9d3ecd63733448e992fe

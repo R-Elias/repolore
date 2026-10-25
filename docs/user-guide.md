@@ -57,7 +57,7 @@ Create sessions only after `init`. If you created a session folder first, `init`
 | Read what is known before changing `src/payments/` | `repolore context src/payments/` (the root note, then the note of each directory down to `src/payments/`, in that order) |
 | See which notes exist for a path | `repolore path src/payments/` |
 | Read a specific custom note | `repolore context --node _repolore/architecture/overview.md` |
-| List durable knowledge | `repolore tree` |
+| List durable knowledge | `repolore tree` (Markdown notes and the folders that hold them, each folder followed by its contents) |
 | Save a recoverable state | `repolore checkpoint` |
 | Check structure, links and history | `repolore health-check` |
 
@@ -78,7 +78,7 @@ Path notes live in `_repolore/sparse-tree/`: the directory `src/payments/` maps 
 | `--include-method` | `path`, `context` | List or read `_repolore/method.md` first |
 | `--start <dir>` | `tree` | List only below this directory under `_repolore/` |
 | `--path <file>`, `--dry-run` | `restore` | Restore one file; preview without writing (section 7) |
-| `--check`, `--dry-run` | `migrate` | Report or preview a migration without writing (section 6) |
+| `--check` or `--dry-run` | `migrate` | Report or preview a migration without writing (section 6); not both |
 | `--explain <path>` | `health-check` | Show which rules decide discovery and history coverage for a path (section 6) |
 | `--update-method` | `init` | Replace `method.md` with the installed version's (section 6) |
 
@@ -138,7 +138,7 @@ The rules look like `.gitignore` rules but differ in three ways:
 
 - **Every rule is anchored at the repository root.** `*.pyc` matches only `x.pyc` at the top; write `**/*.pyc` for any depth. A leading `/` changes nothing.
 - **`!` re-includes a path even below an excluded directory** (`generated/` then `!generated/schemas/`), which Git cannot do.
-- **Only `*` and `?` (within one path segment) and `**` (a whole segment) are special.** Character classes (`[abc]`) and backslash escapes are refused, except `\#` and `\!` at the start. Spaces belong to the pattern, so a trailing space or comment makes a rule match nothing.
+- **Only `*` and `?` (within one path segment) and `**` (a whole segment) are special.** Character classes (`[abc]`) and backslash escapes are refused, except `\#` and `\!` at the start. Spaces inside a pattern belong to it (`docs/Design Notes/`), but a rule ending with a space or tab is refused as invalid, since it could never match what you meant. A `#` after a rule is part of the pattern, not a comment; put comments on their own line.
 
 One rule per line; empty lines and lines starting with `#` are skipped. A trailing `/` matches directories only, a rule that matches a directory also matches everything below it, and the last matching rule wins. Matching is case-sensitive. In `history.exclude`, each array item is one rule, and errors give its position (`rule #2`). `--explain` treats a path that does not exist as a file: add a trailing `/` to ask about a directory.
 
@@ -159,11 +159,13 @@ Before running `migrate` on knowledge you care about, **make your own backup out
 `repolore checkpoint` stores complete copies of every eligible file (all `_repolore/` Markdown including every session, `repolore.json`, `.repoloreignore`) and skips the call when nothing changed. Only states seen by a successful checkpoint can be recovered: edits between checkpoints collapse into one, a file created and deleted between two checkpoints is gone, and the oldest checkpoints are evicted when history exceeds `history.maxBytes` (200 MiB by default; the latest checkpoint is never evicted). Pause editing while a checkpoint runs; a file that changes mid-capture makes it fail with a retry message.
 
 ```text
-repolore history                                   # checkpoints and the files each holds
+repolore history                                   # checkpoints, their times and the files each holds
 repolore restore 2 --path <note> --dry-run         # preview: add, replace or delete
 repolore restore 2 --path <note>                   # apply to one path
 repolore restore 2                                 # apply a whole checkpoint within its coverage
 ```
+
+Checkpoint times are ISO 8601 in UTC with six fractional digits, such as `2026-10-24T13:30:00.918757+00:00`.
 
 Applying a restore first checkpoints the current state of everything it will change, and then reports how to undo it: `restore complete: ... (checkpoint 0000000000000003); undo with 'repolore restore 2'` (in JSON, `recoveryId`). `migrate` and `init --update-method` report their undo command the same way. If a restore (or `migrate`, or `init --update-method`) is interrupted, the tool records a pending operation and refuses other writes with the recovery id; run `repolore restore <that id>` to return to the pre-operation state. `history`, `context` and `health-check` keep working meanwhile.
 

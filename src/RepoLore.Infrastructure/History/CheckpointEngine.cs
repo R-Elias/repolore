@@ -15,7 +15,7 @@ public sealed class Clock
 
     public Clock(Func<DateTimeOffset> now) { _now = now; }
 
-    public string NowIso() => _now().ToString("o", CultureInfo.InvariantCulture);
+    public string NowIso() => CheckpointTimestamp.Format(_now());
 }
 
 public sealed class CheckpointResult

@@ -1,0 +1,15 @@
+// 1.0 contract: init --update-method reports the checkpoint it publishes and the one that undoes it, like restore and
+// migrate. s04 holds the method of an earlier release.
+{
+  "name": "contract-update-method-reports-its-checkpoints",
+  "tags": ["contract", "init"],
+  "steps": [
+    { "checkout": "s04-knowledge-adopted" },
+    { "run": "init --update-method --json", "expect": { "exit": 0,
+      "json": { "methodUpdated": true, "checkpointId": 2, "recoveryId": 1 },
+      "file-equals": { "path": "_repolore/method.md", "at": "s42-method-guides-context" } } },
+    { "run": "restore 1 --path _repolore/method.md",
+      "expect": { "exit": 0, "stdout": "restore complete: 0 added, 1 replaced, 0 deleted (checkpoint 0000000000000003); undo with 'repolore restore 2'",
+                  "file-equals": { "path": "_repolore/method.md", "at": "s04-knowledge-adopted" } } }
+  ]
+}

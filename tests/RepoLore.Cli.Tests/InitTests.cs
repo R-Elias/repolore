@@ -148,7 +148,7 @@ public class InitTests
 
             var update = TestSupport.Run(temp, TestSupport.Cli, "init", "--update-method");
             update.Code.Should().Be(0);
-            update.Out.Should().Contain("updated _repolore/method.md; undo with 'repolore restore 1'");
+            update.Out.Should().Contain("updated _repolore/method.md; undo with 'repolore restore 1'").And.Contain("checkpoint 0000000000000002");
             var method = File.ReadAllText(Path.Combine(temp, "_repolore", "method.md"));
             method.Should().StartWith("# RepoLore Method");
             method.Should().NotContain("OLD_METHOD_SENTINEL");

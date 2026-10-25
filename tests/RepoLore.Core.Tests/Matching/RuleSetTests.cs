@@ -30,13 +30,21 @@ public class RuleSetTests
     [Fact]
     public void Invalid_rules_are_rejected_with_their_line_numbers()
     {
-        foreach (var bad in new[] { "ab**cd", "a**", "**a", "a[bc]", "a\\b", "a//b", "\\x", "!" })
+        foreach (var bad in new[] { "ab**cd", "a**", "**a", "a[bc]", "a\\b", "a//b", "\\x", "!", "generated/ ", "generated/\t", "generated/ # comment " })
         {
             var ex = new Action(() => RuleSet.Compile(new[] { "ok.md", bad }))
                 .Should().Throw<RuleSyntaxException>().Which;
             ex.Line.Should().Be(2, bad);
             ex.Message.Should().NotBeEmpty(bad);
         }
+    }
+
+    [Fact]
+    public void Whitespace_only_lines_are_blank_and_spaces_inside_a_pattern_are_kept()
+    {
+        var rules = RuleSet.Compile(new[] { "   ", "\t", "# a comment ", "docs/Design Notes/" });
+        rules.Rules.Should().ContainSingle().Which.Display.Should().Be("docs/Design Notes/");
+        rules.IsExcluded("docs/Design Notes/x.md", false).Should().BeTrue();
     }
 
     [Fact]

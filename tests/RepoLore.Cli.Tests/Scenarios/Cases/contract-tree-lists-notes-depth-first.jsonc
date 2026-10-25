@@ -1,0 +1,25 @@
+// 1.0 contract: tree lists only Markdown notes and the folders leading to one, depth first: a folder's notes, then
+// each subfolder followed by its contents. Other files, folders without a note and repolore.json are left out.
+{
+  "name": "contract-tree-lists-notes-depth-first",
+  "tags": ["contract", "tree"],
+  "steps": [
+    { "checkout": "s43-non-knowledge-files" },
+    { "run": "health-check", "expect": { "exit": 0, "stdout": "healthy: no findings" } },
+    { "run": "tree", "expect": { "exit": 0,
+      "stdout": ["_repolore/sparse-tree/services/orders/orders.md", "_repolore/sparse-tree/infra/k8s/k8s.md"],
+      "stdout-not": ["todo.txt", "context-diagram.svg", "terraform", ".gitkeep", "repolore.json"] } },
+    { "run": "tree --json", "expect": { "exit": 0, "json": {
+      "entries.0.path": "_repolore/method.md", "entries.0.type": "file",
+      "entries.1.path": "_repolore/root.md",
+      "entries.2.path": "_repolore/adr", "entries.2.type": "directory",
+      "entries.3.path": "_repolore/adr/0001-event-bus.md",
+      "entries.4.path": "_repolore/adr/0002-idempotent-payments.md",
+      "entries.5.path": "_repolore/architecture" } } },
+    { "run": "tree --start _repolore/sparse-tree/services --json", "expect": { "exit": 0, "json": {
+      "entries.0.path": "_repolore/sparse-tree/services/services.md",
+      "entries.1.path": "_repolore/sparse-tree/services/inventory", "entries.1.type": "directory",
+      "entries.2.path": "_repolore/sparse-tree/services/inventory/inventory.md",
+      "entries.3.path": "_repolore/sparse-tree/services/orders" } } }
+  ]
+}

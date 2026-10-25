@@ -30,7 +30,8 @@ and its only consumer); a file only splits when it is a distinct, evolving respo
   `.history/tmp/`, `.history/write.lock` (and later `.history/pending.json`). Objects are
   immutable and published before the manifest; the manifest is published last via a
   same-directory temp-file rename.
-- Each manifest records `historyVersion` (1), `id`, `timestamp`, `knowledgeFormat`,
+- Each manifest records `historyVersion` (1), `id`, `timestamp` (`CheckpointTimestamp`: ISO 8601 with six fractional
+  digits since 2026-10-25; older manifests hold seven and are normalized on output), `knowledgeFormat`,
   `scope {historyEnabled, maxBytes, exclude[], repoloreJson}`, and sorted
   `files[{path,hash,size}]`. `repoloreJson` is `present`/`absent`/`excluded`, so an eligible
   absence is distinct from an excluded/uncaptured one.

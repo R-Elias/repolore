@@ -49,6 +49,8 @@ public class CheckpointEngineTests
             result.Added.Contains(A).Should().BeTrue();
             File.Exists(Path.Combine(temp, "_repolore", ".history", "checkpoints", "0000000000000001.json")).Should().BeTrue();
             HighestId(temp).Should().Be(1L);
+            new CheckpointStore(Path.Combine(temp, "_repolore", ".history")).ReadHighestCompleted()!.Timestamp
+                .Should().Be("2026-09-27T11:00:00.000000+00:00");
         });
     }
 

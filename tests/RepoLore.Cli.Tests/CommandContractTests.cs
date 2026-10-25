@@ -182,6 +182,24 @@ public class CommandContractTests
         ParseSingleDocument(result.Out).RootElement.GetProperty("included").GetArrayLength().Should().Be(2);
     }
 
+    // On Windows the tests start the CLI directly, as the native executable is started, not through the .NET CLI.
+    [Fact]
+    public void Output_is_utf8_whatever_the_console_code_page()
+    {
+        TestSupport.WithTemp(temp =>
+        {
+            Arrangements.Apply("minimal", temp);
+            var note = Path.Combine(temp, "_repolore", "sparse-tree", "équipe", "équipe.md");
+            Directory.CreateDirectory(Path.GetDirectoryName(note)!);
+            File.WriteAllText(note, "# Équipe\n");
+
+            var result = TestSupport.Run(temp, TestSupport.Cli, "tree");
+
+            result.Code.Should().Be(0, result.Error);
+            result.Out.Should().Contain("_repolore/sparse-tree/équipe/équipe.md");
+        });
+    }
+
     [Fact]
     public void Help_and_version_work_outside_a_repository()
     {

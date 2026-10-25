@@ -11,6 +11,15 @@ using RepoLore.Core.Restore;
 using RepoLore.Infrastructure;
 using RepoLore.Infrastructure.History;
 
+// Agents read the output through a pipe, so it is UTF-8 everywhere: on Windows the console's code page would otherwise
+// apply, losing characters it lacks and differing between channels (the .NET CLI switches the console to UTF-8 before
+// it runs a tool; a native executable starts directly). Without a console there is nothing to switch.
+if (OperatingSystem.IsWindows())
+{
+    try { Console.OutputEncoding = new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: false); }
+    catch (IOException) { }
+}
+
 var json = Array.IndexOf(args, "--json") >= 0;
 
 try

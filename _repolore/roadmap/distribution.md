@@ -1,6 +1,16 @@
 # Distribution beyond NuGet
 
-Status: **set up in PR #21 (merged 2026-10-25); no channel other than NuGet has been published yet.** The publish dry run #13 from that branch (`b3dc529`) was green on all six platforms, including the assemble job. The first release using it is `1.1.0`, prepared on branch `release/1.1.0` (2026-10-25), straight to stable by the maintainer's choice, so Homebrew, winget and the website are part of it.
+Status: **set up in PR #21; `1.1.0` (PR #22, tag `v1.1.0`, publish run #14) published on 2026-10-25 to every channel except winget, whose first pull request awaits Microsoft's review.** The dry run #13 from the setup branch was green on all six platforms.
+
+1.1.0, verified on 2026-10-25 by downloading or installing on macOS arm64 (other platforms: their files are byte-identical to the ones the run tested on their own runners):
+
+- NuGet: `RepoLore.Cli` 1.1.0 installs as a local tool and runs; repository signature only. The `RepoLore` ID was not published.
+- GitHub release "RepoLore 1.1.0": 10 assets, all matching `repolore-1.1.0.sha256`, itself identical to the run's.
+- PyPI: the six wheels' digests equal `repolore-1.1.0.packages.sha256`; the macOS arm64 wheel installs a running executable. The Linux tag is `manylinux_2_34`.
+- npm: the run's npm job failed (see the `./` note below), so the maintainer published the run's checksum-verified tarballs from the maintainer's machine with `build/npm-publish.sh`, after enabling 2FA (a passkey; npm requires 2FA to publish). The registry's seven tarballs equal those files; these versions carry no provenance attestation. New packages show a `0.0.0-stage` placeholder for a few minutes while npm processes them. Trusted publishing (`R-Elias/repolore`, `publish.yml`, environment `npm`) was then set on all seven with `npm trust github`, so `NPM_TOKEN` is to be removed.
+- Homebrew: the tap's formula equals the run's, and its URLs and checksums match the release.
+- Website: the first deployment was refused because `github-pages` allowed only `main`; with the tag rule `v*` added, a re-run of the job deployed it, and `install.sh` installs a running 1.1.0.
+- winget: pull request microsoft/winget-pkgs#461674. Its URL check failed because the homepage was still 404 at the time; after the CLA comment, an empty commit pushed to the pull request's branch restarted validation (`@wingetbot run` is documented among the moderators' tools).
 
 ## Decision (maintainer, 2026-10-25)
 
@@ -34,6 +44,7 @@ Name findings of 2026-10-25: the GitHub organization `repolore` and the npm orga
 - `build/distribution.py` (standard library only) builds the archives, wheels and npm packages from an executable, then writes the release files: `repolore-<version>.sha256` (exactly the GitHub release attachments), `repolore-<version>.packages.sha256` (wheels and npm tarballs), the native SBOM `repolore-<version>.native.cdx.json`, the Homebrew formula and the winget manifests. Text files are written with LF, since a CRLF shebang would break the npm launcher.
 - `.github/actions/native` builds, smoke-tests (`build/smoke-native.sh`), runs the scenarios against (`REPOLORE_SCENARIO_EXECUTABLE`), packages, and installs one executable through pip, npm and the website script. `ci` runs it for linux-x64, win-x64 and osx-arm64 on every pull request; `publish` runs it for all six platforms.
 - `publish` runs only by hand. From a tag `v<version>` it publishes the ticked channels; from a branch it is a dry run. Pushing a tag publishes nothing. Homebrew, winget and the website take stable versions only, and npm publishes a prerelease under the `next` tag. Each publish job checks the checksums before uploading, and re-running skips what already exists.
+- A run uses the workflow file of the ref it runs from, so a fix to `publish.yml` never reaches an existing tag: the 1.1.0 run, whose npm job failed, could not be repaired by re-running it. That job had called `npm publish release/<file>.tgz`, which npm reads as the GitHub repository `release/<file>.tgz`, and CI had only installed the tarballs. `build/npm-publish.sh` now prefixes `./`, and `assemble` runs it with `--dry-run` in every run, dry runs included, so the exact publish command is exercised before a tag.
 
 ## One-time setup before the first publish
 

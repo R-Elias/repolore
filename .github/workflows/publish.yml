@@ -136,6 +136,7 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       VERSION: ${{ needs.build.outputs.version }}
+      PRERELEASE: ${{ needs.build.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v7
@@ -151,6 +152,8 @@ jobs:
           npm pack "$RUNNER_TEMP/npm-main/repolore-cli" --pack-destination release
       - name: Write the checksums, the native SBOM, the Homebrew formula and the winget manifests
         run: python3 build/distribution.py release "$VERSION" release
+      - name: Check the npm packages with the publish command itself (dry run)
+        run: bash build/npm-publish.sh release "$VERSION" "$PRERELEASE" --dry-run
       - name: Summarize the release files
         run: |
           {
@@ -274,6 +277,7 @@ jobs:
       VERSION: ${{ needs.build.outputs.version }}
       PRERELEASE: ${{ needs.build.outputs.prerelease }}
     steps:
+      - uses: actions/checkout@v5
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
@@ -290,18 +294,7 @@ jobs:
         env:
           # Only for a package's very first publish, before its Trusted Publisher exists; otherwise leave it unset.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          tag=latest; [ "$PRERELEASE" = true ] && tag=next
-          publish() {
-            name=$(tar -xOzf "$1" package/package.json | node -p 'JSON.parse(require("fs").readFileSync(0)).name')
-            if [ "$(npm view "$name@$VERSION" version 2> /dev/null)" = "$VERSION" ]; then
-              echo "$name@$VERSION is already published"
-            else
-              npm publish "$1" --access public --tag "$tag"
-            fi
-          }
-          for package in release/repolore-org-cli-*-"$VERSION".tgz; do publish "$package"; done
-          publish "release/repolore-cli-$VERSION.tgz"
+        run: bash build/npm-publish.sh release "$VERSION" "$PRERELEASE"
 
   homebrew:
     needs: [build, assemble, github-release]

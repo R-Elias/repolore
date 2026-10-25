@@ -19,12 +19,16 @@ public static class TestSupport
         RunWithEnvironment(cwd, new Dictionary<string, string>(), arguments);
 
     public static (int Code, string Out, string Error) RunWithEnvironment(
-        string cwd, IReadOnlyDictionary<string, string> environment, params string[] arguments)
+        string cwd, IReadOnlyDictionary<string, string> environment, params string[] arguments) =>
+        RunProgram(Dotnet, cwd, environment, arguments);
+
+    public static (int Code, string Out, string Error) RunProgram(
+        string program, string cwd, IReadOnlyDictionary<string, string> environment, params string[] arguments)
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
         try
         {
-            var result = CliWrap.Cli.Wrap(Dotnet)
+            var result = CliWrap.Cli.Wrap(program)
                 .WithArguments(arguments)
                 .WithWorkingDirectory(cwd)
                 .WithEnvironmentVariables(env =>
@@ -40,7 +44,7 @@ public static class TestSupport
         }
         catch (OperationCanceledException)
         {
-            throw new TimeoutException("dotnet exceeded two minutes.");
+            throw new TimeoutException(Path.GetFileName(program) + " exceeded two minutes.");
         }
     }
 

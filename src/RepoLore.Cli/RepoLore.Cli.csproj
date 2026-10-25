@@ -17,6 +17,16 @@
     <RepositoryUrl>https://github.com/R-Elias/repolore.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
+  <!-- RepoLoreNative=true builds the self-contained native executable that every channel except NuGet ships. Invariant
+       globalization drops the ICU dependency; the code uses only ordinal and invariant string operations. -->
+  <PropertyGroup Condition="'$(RepoLoreNative)' == 'true'">
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <AssemblyName>repolore</AssemblyName>
+    <PackAsTool>false</PackAsTool>
+    <IsPackable>false</IsPackable>
+    <RuntimeIdentifiers>win-x64;win-arm64;linux-x64;linux-arm64;osx-x64;osx-arm64</RuntimeIdentifiers>
+  </PropertyGroup>
   <ItemGroup>
     <None Include="../../README.md" Pack="true" PackagePath="/" />
   </ItemGroup>

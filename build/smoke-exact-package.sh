@@ -14,6 +14,7 @@ fi
 
 nupkg="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
 expected_version="$2"
+package_id="$(basename "$1" ".$expected_version.nupkg" | tr '[:upper:]' '[:lower:]')"
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
@@ -35,7 +36,7 @@ cat > "$work/consumer/.config/dotnet-tools.json" <<EOF
   "version": 1,
   "isRoot": true,
   "tools": {
-    "repolore.cli": { "version": "$expected_version", "commands": [ "repolore" ], "rollForward": false }
+    "$package_id": { "version": "$expected_version", "commands": [ "repolore" ], "rollForward": false }
   }
 }
 EOF

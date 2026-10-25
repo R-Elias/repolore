@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RepoLore</title>
+  <meta name="description" content="Local, offline operational memory for developers and coding agents, stored as Markdown.">
+  <style>
+    :root { --bg: #ffffff; --fg: #1d2125; --muted: #5b6470; --line: #d9dee3; --code: #f3f5f7; --accent: #0b5cad; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #14171a; --fg: #e6e9ec; --muted: #9aa4ae; --line: #2c3238; --code: #1d2227; --accent: #6db3ff; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    main { max-width: 52rem; margin: 0 auto; padding: 3rem 1rem 4rem; }
+    h1 { font-size: 2.2rem; margin: 0 0 .25rem; }
+    h2 { font-size: 1.25rem; margin: 2.5rem 0 .75rem; }
+    p.lead { font-size: 1.15rem; color: var(--muted); margin: 0 0 1.5rem; }
+    a { color: var(--accent); }
+    pre { background: var(--code); border: 1px solid var(--line); border-radius: 6px; padding: .75rem 1rem; overflow-x: auto; margin: .25rem 0 1rem; }
+    code { font: .92em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+    th, td { text-align: left; padding: .5rem .25rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; }
+    .note { color: var(--muted); font-size: .92rem; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>RepoLore</h1>
+  <p class="lead">Local, offline operational memory for developers and coding agents, stored as Markdown.</p>
+  <p>RepoLore keeps what a maintainer needs to know before changing an area of a repository as plain Markdown under
+    <code>_repolore/</code>. The <code>repolore</code> command reads it, checks it and protects it with local
+    checkpoints. It makes no network calls and sends no telemetry. Current version: <strong>__VERSION__</strong>.</p>
+
+  <h2>Install</h2>
+  <table>
+    <tr><th>With</th><th>Run</th></tr>
+    <tr><td>macOS or Linux</td><td><pre><code>curl -fsSL https://repolore.org/install.sh | sh</code></pre></td></tr>
+    <tr><td>Windows (PowerShell)</td><td><pre><code>irm https://repolore.org/install.ps1 | iex</code></pre></td></tr>
+    <tr><td>Homebrew</td><td><pre><code>brew install repolore-org/tap/repolore</code></pre></td></tr>
+    <tr><td>winget</td><td><pre><code>winget install RepoLore.RepoLore</code></pre></td></tr>
+    <tr><td>Python (pipx, uv or pip)</td><td><pre><code>pipx install repolore</code></pre></td></tr>
+    <tr><td>Node.js (npm)</td><td><pre><code>npm install -g repolore-cli</code></pre></td></tr>
+    <tr><td>.NET (pinned per repository)</td><td><pre><code>dotnet new tool-manifest
+dotnet tool install RepoLore.Cli --version __VERSION__ --local</code></pre></td></tr>
+  </table>
+  <p class="note">Every channel installs the same native executable, except .NET, which installs the same tool as a
+    .NET tool. The install scripts check the file against the release's checksums before installing it.</p>
+
+  <h2>Download</h2>
+  <table>
+    <tr><th>System</th><th>x64</th><th>arm64</th></tr>
+    <tr><td>Windows</td>
+      <td><a href="https://github.com/R-Elias/repolore/releases/download/v__VERSION__/repolore-__VERSION__-win-x64.zip">zip</a></td>
+      <td><a href="https://github.com/R-Elias/repolore/releases/download/v__VERSION__/repolore-__VERSION__-win-arm64.zip">zip</a></td></tr>
+    <tr><td>macOS</td>
+      <td><a href="https://github.com/R-Elias/repolore/releases/download/v__VERSION__/repolore-__VERSION__-osx-x64.tar.gz">tar.gz</a></td>
+      <td><a href="https://github.com/R-Elias/repolore/releases/download/v__VERSION__/repolore-__VERSION__-osx-arm64.tar.gz">tar.gz</a></td></tr>
+    <tr><td>Linux (glibc)</td>
+      <td><a href="https://github.com/R-Elias/repolore/releases/download/v__VERSION__/repolore-__VERSION__-linux-x64.tar.gz">tar.gz</a></td>
+      <td><a href="https://github.com/R-Elias/repolore/releases/download/v__VERSION__/repolore-__VERSION__-linux-arm64.tar.gz">tar.gz</a></td></tr>
+  </table>
+  <p class="note">Verify a download against
+    <a href="https://github.com/R-Elias/repolore/releases/download/v__VERSION__/repolore-__VERSION__.sha256">repolore-__VERSION__.sha256</a>,
+    for example with <code>shasum -a 256 -c</code>. The executables have no code signature: on macOS, a file downloaded
+    with a browser is blocked until you allow it, so prefer the install script or Homebrew there. On Windows,
+    SmartScreen may warn about the file.</p>
+
+  <h2>Learn more</h2>
+  <p><a href="https://github.com/R-Elias/repolore/blob/main/docs/user-guide.md">User guide</a> ·
+    <a href="https://github.com/R-Elias/repolore/releases/tag/v__VERSION__">Release notes</a> ·
+    <a href="https://github.com/R-Elias/repolore">Source</a> ·
+    <a href="https://github.com/R-Elias/repolore/blob/main/SECURITY.md">Security</a></p>
+</main>
+</body>
+</html>

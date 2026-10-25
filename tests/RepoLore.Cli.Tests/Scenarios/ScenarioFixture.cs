@@ -25,13 +25,19 @@ public sealed class ScenarioTheoryAttribute : TheoryAttribute
 }
 
 // Packs the shipped projects once, restores the exact package into an isolated cache, and checks that the local
-// reference clone holds the pinned tag at the pinned commit.
+// reference clone holds the pinned tag at the pinned commit. With REPOLORE_SCENARIO_EXECUTABLE set, the scenarios run
+// that native executable instead, so each platform build is held to the same contract as the NuGet tool.
 public sealed class ScenarioFixture : IDisposable
 {
     public const string ArtifactsVariable = "REPOLORE_SCENARIO_ARTIFACTS";
+    public const string ExecutableVariable = "REPOLORE_SCENARIO_EXECUTABLE";
 
-    private readonly PackedToolFixture package = new();
-    private readonly IsolatedToolEnvironment environment;
+    private readonly string? executable = Environment.GetEnvironmentVariable(ExecutableVariable) is { Length: > 0 } path
+        ? Path.GetFullPath(path)
+        : null;
+    private readonly string workRoot = Path.Combine(Path.GetTempPath(), "repolore-scenarios-" + Guid.NewGuid().ToString("N"));
+    private readonly PackedToolFixture? package;
+    private readonly IsolatedToolEnvironment? environment;
 
     public string ReferenceRepository { get; }
 
@@ -42,6 +48,14 @@ public sealed class ScenarioFixture : IDisposable
         var resolved = GitRepository.Open(ReferenceRepository).ResolveCommit(pin.Tag);
         resolved.Should().Be(pin.Commit, $"the reference clone must hold tag {pin.Tag} at the pinned commit; fetch its tags or re-clone {pin.Repository}");
 
+        if (executable is not null)
+        {
+            File.Exists(executable).Should().BeTrue($"{ExecutableVariable} must name an existing executable");
+            Directory.CreateDirectory(workRoot);
+            return;
+        }
+
+        package = new PackedToolFixture();
         environment = new IsolatedToolEnvironment(package.FeedDirectory);
         environment.UseEmptyPackageCache();
         environment.PinTool(package.PackageId, package.PackageVersion);
@@ -53,13 +67,22 @@ public sealed class ScenarioFixture : IDisposable
     // clone itself stays exactly as the reference repository has it.
     public string NewWorkDirectory(string name)
     {
+        if (environment is null)
+        {
+            var directory = Path.Combine(workRoot, "scenario-" + name);
+            Directory.CreateDirectory(directory);
+            return directory;
+        }
+
         var work = environment.PathForNewRepository("scenario-" + name);
-        environment.PinToolIn(work, package.PackageId, package.PackageVersion);
+        environment.PinToolIn(work, package!.PackageId, package.PackageVersion);
         return work;
     }
 
     public (int Code, string Out, string Error) RunTool(string repository, string[] arguments) =>
-        environment.RunToolIn(repository, arguments);
+        executable is not null
+            ? TestSupport.RunProgram(executable, repository, new Dictionary<string, string>(), arguments)
+            : environment!.RunToolIn(repository, arguments);
 
     // On failure in CI, keeps the command log and the clone's files (without .git) for the uploaded artifact.
     public void KeepForInspection(string name, string work)
@@ -72,8 +95,17 @@ public sealed class ScenarioFixture : IDisposable
 
     public void Dispose()
     {
-        environment.Dispose();
-        package.Dispose();
+        environment?.Dispose();
+        package?.Dispose();
+        if (Directory.Exists(workRoot))
+        {
+            foreach (var file in Directory.EnumerateFiles(workRoot, "*", SearchOption.AllDirectories))
+            {
+                try { File.SetAttributes(file, FileAttributes.Normal); }
+                catch (FileNotFoundException) { } // a dangling symlink from a scenario stage
+            }
+            Directory.Delete(workRoot, recursive: true);
+        }
     }
 
     private static void CopyWithoutLinks(DirectoryInfo source, string destination)

@@ -1,26 +1,55 @@
 name: publish
+# Run it from "Run workflow". From a release tag (v<version>), it publishes the channels that are ticked. From a
+# branch, it is a dry run: it builds and tests every channel and publishes nothing. Pushing a tag publishes nothing.
 on:
-  push:
-    tags: ['v*']
   workflow_dispatch:
     inputs:
-      publish:
-        description: 'Publish to nuget.org (only honored when run from a tag)'
+      nuget:
+        description: 'NuGet: RepoLore.Cli'
+        type: boolean
+        default: true
+      nuget_repolore:
+        description: 'NuGet: the same tool under the ID RepoLore'
         type: boolean
         default: false
+      github_release:
+        description: 'GitHub release: native executables, NuGet packages, SBOMs and checksums'
+        type: boolean
+        default: true
+      pypi:
+        description: 'PyPI: repolore'
+        type: boolean
+        default: true
+      npm:
+        description: 'npm: repolore-cli and its platform packages'
+        type: boolean
+        default: true
+      homebrew:
+        description: 'Homebrew: repolore-org/tap (stable versions only)'
+        type: boolean
+        default: true
+      winget:
+        description: 'winget: RepoLore.RepoLore (stable versions only)'
+        type: boolean
+        default: true
+      website:
+        description: 'Website: repolore.org on GitHub Pages (stable versions only)'
+        type: boolean
+        default: true
 permissions:
   contents: read
 concurrency:
   group: publish-${{ github.ref }}
   cancel-in-progress: false
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: '1'
 jobs:
   build:
     runs-on: ubuntu-24.04
-    env:
-      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
-      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: '1'
     outputs:
       version: ${{ steps.version.outputs.value }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-dotnet@v5
@@ -32,6 +61,7 @@ jobs:
           version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)
           test -n "$version"
           echo "value=$version" >> "$GITHUB_OUTPUT"
+          case "$version" in *-*) echo "prerelease=true" ;; *) echo "prerelease=false" ;; esac >> "$GITHUB_OUTPUT"
       - name: Require the tag to match that version
         if: github.ref_type == 'tag'
         env:
@@ -47,14 +77,16 @@ jobs:
       - run: dotnet test --no-build --configuration Release tests/RepoLore.Infrastructure.Tests
       - run: dotnet test --no-build --configuration Release tests/RepoLore.Cli.Tests --filter "FullyQualifiedName!~RepoLore.Cli.Tests.Packaging&Category!=Scenario"
       - run: dotnet test --no-build --configuration Release tests/RepoLore.Cli.Tests --filter "FullyQualifiedName~RepoLore.Cli.Tests.Packaging"
-      - name: Pack the single tool package from the tested build
+      - name: Pack the tool package from the tested build
         run: dotnet pack src/RepoLore.Cli/RepoLore.Cli.csproj --no-build --configuration Release --output artifacts
-      - name: Smoke-test the exact package file that would be published
+      - name: Pack the same build under the ID RepoLore
+        if: inputs.nuget_repolore
+        run: dotnet pack src/RepoLore.Cli/RepoLore.Cli.csproj --no-build --configuration Release --output artifacts -p:PackageId=RepoLore
+      - name: Smoke-test the exact package files that would be published
         env:
           VERSION: ${{ steps.version.outputs.value }}
         run: |
-          test "$(ls artifacts/*.nupkg | wc -l)" -eq 1
-          bash build/smoke-exact-package.sh "artifacts/RepoLore.Cli.$VERSION.nupkg" "$VERSION"
+          for package in artifacts/*.nupkg; do bash build/smoke-exact-package.sh "$package" "$VERSION"; done
       - name: Generate the SBOM of the package contents
         env:
           VERSION: ${{ steps.version.outputs.value }}
@@ -65,27 +97,78 @@ jobs:
             --output artifacts --filename "RepoLore.Cli.$VERSION.cdx.json" --output-format Json \
             --set-version "$VERSION" --set-name RepoLore.Cli --include-project-references \
             --disable-package-restore --set-nuget-purl --no-serial-number
-      - name: Record the checksums of the exact package file and its SBOM
-        env:
-          VERSION: ${{ steps.version.outputs.value }}
+      - uses: actions/upload-artifact@v6
+        with:
+          name: nuget
+          path: artifacts/
+          if-no-files-found: error
+
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { rid: win-x64, os: windows-latest }
+          - { rid: win-arm64, os: windows-11-arm }
+          - { rid: linux-x64, os: ubuntu-22.04 }
+          - { rid: linux-arm64, os: ubuntu-22.04-arm }
+          - { rid: osx-x64, os: macos-15-intel }
+          - { rid: osx-arm64, os: macos-latest }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - uses: ./.github/actions/native
+        with:
+          rid: ${{ matrix.rid }}
+          upload: 'true'
+
+  assemble:
+    needs: [build, native]
+    runs-on: ubuntu-24.04
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v7
+        with:
+          path: release
+          merge-multiple: true
+      - name: Build the npm package that users install
         run: |
-          cd artifacts
-          sha256sum "RepoLore.Cli.$VERSION.nupkg" "RepoLore.Cli.$VERSION.cdx.json" | tee "RepoLore.Cli.$VERSION.sha256"
+          python3 build/distribution.py npm-main "$VERSION" "$RUNNER_TEMP/npm-main"
+          npm pack "$RUNNER_TEMP/npm-main/repolore-cli" --pack-destination release
+      - name: Write the checksums, the native SBOM, the Homebrew formula and the winget manifests
+        run: python3 build/distribution.py release "$VERSION" release
+      - name: Summarize the release files
+        run: |
           {
-            echo "### RepoLore.Cli $VERSION"
+            echo "### RepoLore $VERSION"
             echo "commit: $GITHUB_SHA"
             echo '```'
-            cat "RepoLore.Cli.$VERSION.sha256"
+            cat "release/repolore-$VERSION.sha256" "release/repolore-$VERSION.packages.sha256"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v6
         with:
-          name: package
-          path: artifacts/
+          name: release
+          path: release/
           if-no-files-found: error
-  publish:
-    needs: build
-    if: github.ref_type == 'tag' && (github.event_name == 'push' || inputs.publish)
+
+  publish-nuget:
+    needs: [build, assemble]
+    if: github.ref_type == 'tag' && (inputs.nuget || inputs.nuget_repolore)
     runs-on: ubuntu-24.04
     environment: nuget-preview
     permissions:
@@ -96,19 +179,217 @@ jobs:
     steps:
       - uses: actions/download-artifact@v7
         with:
-          name: package
-          path: artifacts
+          name: release
+          path: release
       - name: Verify the downloaded files against the recorded checksums
-        run: cd artifacts && sha256sum --check "RepoLore.Cli.$VERSION.sha256"
+        run: cd release && sha256sum --check "repolore-$VERSION.sha256"
       - name: NuGet login (OIDC, short-lived API key)
         id: login
         uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
         with:
           user: ${{ secrets.NUGET_USER }}
-      - name: Push the package
+      - name: Push RepoLore.Cli
+        if: inputs.nuget
         env:
           NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
         run: >
-          dotnet nuget push "artifacts/RepoLore.Cli.$VERSION.nupkg"
-          --api-key "$NUGET_API_KEY"
-          --source https://api.nuget.org/v3/index.json
+          dotnet nuget push "release/RepoLore.Cli.$VERSION.nupkg" --api-key "$NUGET_API_KEY"
+          --source https://api.nuget.org/v3/index.json --skip-duplicate
+      - name: Push RepoLore
+        if: inputs.nuget_repolore
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: >
+          dotnet nuget push "release/RepoLore.$VERSION.nupkg" --api-key "$NUGET_API_KEY"
+          --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+  github-release:
+    needs: [build, assemble]
+    if: github.ref_type == 'tag' && inputs.github_release
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
+      PRERELEASE: ${{ needs.build.outputs.prerelease }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v7
+        with:
+          name: release
+          path: release
+      - name: Verify the downloaded files against the recorded checksums
+        run: cd release && sha256sum --check "repolore-$VERSION.sha256"
+      - name: Create the release, or add the files it lacks
+        run: |
+          files=("release/repolore-$VERSION.sha256")
+          while read -r _ name; do files+=("release/$name"); done < "release/repolore-$VERSION.sha256"
+          if gh release view "v$VERSION" > /dev/null 2>&1; then
+            existing=$(gh release view "v$VERSION" --json assets --jq '.assets[].name')
+            for file in "${files[@]}"; do
+              grep -qxF "$(basename "$file")" <<< "$existing" || gh release upload "v$VERSION" "$file"
+            done
+          else
+            flags=(); [ "$PRERELEASE" = true ] && flags+=(--prerelease)
+            gh release create "v$VERSION" "${files[@]}" --verify-tag --title "RepoLore $VERSION" \
+              --notes-file "docs/release-notes/$VERSION.md" "${flags[@]}"
+          fi
+
+  publish-pypi:
+    needs: [build, assemble]
+    if: github.ref_type == 'tag' && inputs.pypi
+    runs-on: ubuntu-24.04
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: release
+          path: release
+      - name: Verify the wheels against the recorded checksums
+        run: |
+          cd release && sha256sum --check "repolore-$VERSION.packages.sha256"
+          mkdir ../dist && mv repolore-*.whl ../dist/ && ls -l ../dist
+      - name: Upload to PyPI (Trusted Publishing)
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+        with:
+          packages-dir: dist/
+          skip-existing: true
+
+  publish-npm:
+    needs: [build, assemble]
+    if: github.ref_type == 'tag' && inputs.npm
+    runs-on: ubuntu-24.04
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
+      PRERELEASE: ${{ needs.build.outputs.prerelease }}
+    steps:
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+      - name: Use an npm that supports Trusted Publishing
+        run: npm install -g npm@11
+      - uses: actions/download-artifact@v7
+        with:
+          name: release
+          path: release
+      - name: Verify the npm packages against the recorded checksums
+        run: cd release && sha256sum --check "repolore-$VERSION.packages.sha256"
+      - name: Publish the platform packages, then the package users install
+        env:
+          # Only for a package's very first publish, before its Trusted Publisher exists; otherwise leave it unset.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          tag=latest; [ "$PRERELEASE" = true ] && tag=next
+          publish() {
+            name=$(tar -xOzf "$1" package/package.json | node -p 'JSON.parse(require("fs").readFileSync(0)).name')
+            if [ "$(npm view "$name@$VERSION" version 2> /dev/null)" = "$VERSION" ]; then
+              echo "$name@$VERSION is already published"
+            else
+              npm publish "$1" --access public --tag "$tag"
+            fi
+          }
+          for package in release/repolore-org-cli-*-"$VERSION".tgz; do publish "$package"; done
+          publish "release/repolore-cli-$VERSION.tgz"
+
+  homebrew:
+    needs: [build, assemble, github-release]
+    if: >
+      always() && github.ref_type == 'tag' && inputs.homebrew && needs.build.outputs.prerelease == 'false'
+      && needs.assemble.result == 'success' && contains(fromJSON('["success", "skipped"]'), needs.github-release.result)
+    runs-on: ubuntu-24.04
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
+      TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: release
+          path: release
+      - name: Require the token for the tap repository
+        run: test -n "$TAP_TOKEN" || { echo "::error::set the HOMEBREW_TAP_TOKEN secret (write access to repolore-org/homebrew-tap)"; exit 1; }
+      - name: Require the archives on the GitHub release
+        run: |
+          grep -o 'url "[^"]*"' release/channels/homebrew/repolore.rb | cut -d '"' -f 2 | while read -r url; do
+            curl -fsIL "$url" > /dev/null || { echo "::error::$url is not reachable; publish the GitHub release first"; exit 1; }
+          done
+      - uses: actions/checkout@v5
+        with:
+          repository: repolore-org/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+      - name: Commit the formula
+        run: |
+          mkdir -p tap/Formula
+          cp release/channels/homebrew/repolore.rb tap/Formula/repolore.rb
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/repolore.rb
+          git diff --cached --quiet && { echo "the formula is already at $VERSION"; exit 0; }
+          git commit -m "repolore $VERSION"
+          git push
+
+  winget:
+    needs: [build, assemble, github-release]
+    if: >
+      always() && github.ref_type == 'tag' && inputs.winget && needs.build.outputs.prerelease == 'false'
+      && needs.assemble.result == 'success' && contains(fromJSON('["success", "skipped"]'), needs.github-release.result)
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
+      WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: release
+          path: release
+      - name: Require the token for winget-pkgs pull requests
+        shell: bash
+        run: test -n "$WINGET_TOKEN" || { echo "::error::set the WINGET_TOKEN secret (a classic token with public_repo)"; exit 1; }
+      - name: Submit the manifests to microsoft/winget-pkgs
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -UseBasicParsing -Uri https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+          $manifests = Get-ChildItem -Recurse -Directory "release/channels/winget" | Where-Object Name -eq $env:VERSION | Select-Object -First 1
+          .\wingetcreate.exe submit --token $env:WINGET_TOKEN --prtitle "New version: RepoLore.RepoLore version $env:VERSION" $manifests.FullName
+
+  website:
+    needs: [build, assemble, github-release]
+    if: >
+      always() && github.ref_type == 'tag' && inputs.website && needs.build.outputs.prerelease == 'false'
+      && needs.assemble.result == 'success' && contains(fromJSON('["success", "skipped"]'), needs.github-release.result)
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    env:
+      VERSION: ${{ needs.build.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Fill in the version
+        run: |
+          mkdir -p "$RUNNER_TEMP/site"
+          cp site/* "$RUNNER_TEMP/site/"
+          sed -i "s/__VERSION__/$VERSION/g" "$RUNNER_TEMP/site/index.html" "$RUNNER_TEMP/site/install.sh" "$RUNNER_TEMP/site/install.ps1"
+          ! grep -r "__VERSION__" "$RUNNER_TEMP/site"
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: ${{ runner.temp }}/site
+      - id: deploy
+        uses: actions/deploy-pages@v5

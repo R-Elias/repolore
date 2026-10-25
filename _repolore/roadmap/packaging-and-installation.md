@@ -1,5 +1,7 @@
 # Packaged tool and restricted installation — package 11
 
+The channels other than NuGet (native executables, PyPI, npm, Homebrew, winget, the website) are in [distribution](distribution.md).
+
 `RepoLore.Cli` ships as one framework-dependent .NET tool package. See the
 [implementation guide](implementation-v1.md#11--verify-the-package-users-will-actually-install) for the gates and
 [roadmap section 8](roadmap.md) for the release contract. Nothing has been published; no placeholder was pushed to reserve the ID.

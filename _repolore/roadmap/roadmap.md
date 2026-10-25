@@ -11,7 +11,7 @@ The alpha PowerShell scripts and the alpha method text described the alpha layou
 - Open-source tool maintained by one developer. Enterprise usability means straightforward approval, installation, review, and recovery; no commercial platform is implied.
 - v1 ships the core functionality and CLI as **one NuGet .NET tool package, `RepoLore.Cli`**, invoking `repolore`. Confirm package ID availability before publishing.
 - `RepoLore.Core` and `RepoLore.Infrastructure` remain internal projects whose assemblies are bundled in that tool. Do not publish separate library packages in v1.
-- No plugins, plugin discovery, plugin commands, npm wrappers, or standalone platform binaries in v1.
+- No plugins, plugin discovery or plugin commands in v1. Native executables and their npm, PyPI, Homebrew and winget wrappers were added after 1.0.0 by maintainer decision (2026-10-25); they ship the same code from the same tag ([distribution](distribution.md)).
 - One authoritative, authored path-based knowledge tree: `_repolore/sparse-tree/`. Keep that name to avoid an unnecessary rename. Remove the complete physical mirror from the design; do not generate empty nodes.
 - User-defined long-term knowledge subtrees are first-class. They need not correspond to source paths.
 - Extend durable knowledge with local, Gitignored short-term knowledge in `sessions/<session-id>/`. Sessions are ordinary folders of Markdown, explicitly selected for context, and covered by checkpoint history by default. See [session contract](../product/sessions.md).

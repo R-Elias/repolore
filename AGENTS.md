@@ -44,7 +44,7 @@ Use small deterministic test projects (one per shipped assembly) with small fixt
 ## Boundaries that must survive every change
 
 - **Local and private:** the shipped CLI/core performs no network operations, telemetry, remote AI calls, update checks, or subprocess execution. Build/package tooling and external agents are outside that application boundary; do not claim control over them.
-- **One release package:** v1 ships `RepoLore.Cli` as a NuGet .NET tool with Core/Infrastructure assemblies included. No separate Core package, plugins, additional package ecosystems, or hosted service.
+- **One tool, one build:** RepoLore ships `RepoLore.Cli` as a NuGet .NET tool with Core/Infrastructure assemblies included and, since the maintainer's decision of 2026-10-25, the same code as native executables for the GitHub release, PyPI, npm, Homebrew, winget and repolore.org, all from one tagged commit and one publish workflow ([distribution](_repolore/roadmap/distribution.md)). No separate Core package, plugins, or hosted service.
 - **Simple execution:** no daemon, watcher, database, or semantic index. The specified small exclusive writer guard protects mutations; it is not a background service.
 - **Preserve before mutation:** do not enable destructive handlers until capture, retention, and recovery gates pass. A failed pre-operation checkpoint blocks overwrite/delete/migration. Retention must preserve the required undo state.
 - **Read-only means read-only:** reads, health checks, and previews must not checkpoint, migrate, normalize files, or clean up history.

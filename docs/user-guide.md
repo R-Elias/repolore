@@ -30,6 +30,20 @@ dotnet tool run repolore -- version
 
 **Alternative (single user, not exercised by the package tests):** `dotnet tool install --global RepoLore.Cli --version 1.0.0 --add-source <feed>`, then run `repolore`.
 
+**Without .NET: the native executable.** From the first release after 1.0.0, the same tool also ships as a self-contained executable for Windows, Linux (glibc) and macOS, on x64 and arm64. It needs no .NET:
+
+| With | Install | Pin a version |
+|---|---|---|
+| Script, macOS or Linux | `curl -fsSL https://repolore.org/install.sh \| sh` | `REPOLORE_VERSION=<version>` |
+| Script, Windows | `irm https://repolore.org/install.ps1 \| iex` | `$env:REPOLORE_VERSION = '<version>'` |
+| Homebrew | `brew install repolore-org/tap/repolore` | not offered |
+| winget | `winget install repolore` (identifier `RepoLore.RepoLore`) | `--version <version>` |
+| pipx or uv | `pipx install repolore` or `uv tool install repolore` | `repolore==<version>` |
+| npm | `npm install -g repolore-cli` | `repolore-cli@<version>`, or a dev dependency |
+| Download | the archives attached to the GitHub release | the release tag |
+
+The scripts check the archive against the release's checksum file before installing it. `REPOLORE_INSTALL_DIR` changes where they install, and `REPOLORE_DOWNLOAD_BASE` points them at an internal mirror of the release files. npm installs a small Node.js launcher that starts the executable; every other channel installs the executable itself. The executables have **no code signature**: on macOS a browser download is blocked until you allow it and on Windows SmartScreen may warn, so prefer a package manager or the script. On npm, an unrelated package named `repolore` installs a command of the same name; do not install both globally.
+
 All examples below write `repolore <command>`; with the manifest, run `dotnet tool run repolore -- <command>`.
 
 ## 2. Set up once
@@ -180,10 +194,10 @@ When history is damaged, `health-check` reports `history-corrupt` and writes are
 | Install | .NET 10 SDK; run on a .NET 10.0.x runtime (`LatestPatch`; a .NET 11 runtime is not used) |
 | Operating systems tested | CI on GitHub-hosted `windows-latest`, `ubuntu-latest` and `macos-latest` runners; development on macOS arm64. Other combinations are expected to work and are untested |
 | Repository language | Any; the tool does not read source code |
-| Network use by the tool | None. Evidence: the build refuses networking, process and dynamic-loading APIs in the three shipped projects; the Linux CI run repeats the install and smoke test with networking blocked. There is **no runtime network trace**, so this is evidence, not proof. NuGet restore, your editor and your agents are separate systems |
+| Network use by the tool | None. Evidence: the build refuses networking, process and dynamic-loading APIs in the three shipped projects; the Linux CI run repeats the install and smoke test with networking blocked, for the NuGet tool and for the Linux x64 executable. There is **no runtime network trace**, so this is evidence, not proof. The native executables link the operating system's networking libraries because the .NET runtime's native layer does; RepoLore's code never calls them. NuGet restore, the npm launcher's Node.js, your package manager, your editor and your agents are separate systems |
 | Reporting a vulnerability | Privately, as described in [SECURITY.md](../SECURITY.md) |
 
-To verify a release: compare the SHA-256 of the file you pushed or approved with the checksum file published with the release (`RepoLore.Cli.<version>.sha256`, which covers the package and its CycloneDX SBOM `RepoLore.Cli.<version>.cdx.json`). A package downloaded from NuGet.org carries NuGet.org's repository signature, so its bytes differ from the pushed file; check it with `dotnet nuget verify <file>`. The package has **no author signature**, and the SBOM lists no third-party components because there are none. Release notes live in `docs/release-notes/`.
+To verify a release: compare the SHA-256 of the file you pushed or approved with the checksum file published with the release. Up to 1.0.0 it is `RepoLore.Cli.<version>.sha256`, covering the package and its CycloneDX SBOM `RepoLore.Cli.<version>.cdx.json`. From the release after 1.0.0 it is `repolore-<version>.sha256`, covering every file attached to the release: the archives, the NuGet packages and both SBOMs (`repolore-<version>.native.cdx.json` describes the executables). A package downloaded from NuGet.org carries NuGet.org's repository signature, so its bytes differ from the pushed file; check it with `dotnet nuget verify <file>`. The package has **no author signature**. The NuGet package's SBOM lists no third-party components because it contains none; the native executables contain the .NET runtime, which their SBOM lists and whose MIT license and notices ship as `THIRD-PARTY-NOTICES.txt` in every archive. Release notes live in `docs/release-notes/`.
 
 ## Where to learn more
 

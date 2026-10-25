@@ -8,6 +8,8 @@
     <Deterministic>true</Deterministic>
     <DeterministicSourcePaths>true</DeterministicSourcePaths>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <!-- Native builds add the native compiler and runtime packs, so they keep their own lock files. -->
+    <NuGetLockFilePath Condition="'$(RepoLoreNative)' == 'true'">packages.native.lock.json</NuGetLockFilePath>
     <IsPackable>false</IsPackable>
     <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
   </PropertyGroup>

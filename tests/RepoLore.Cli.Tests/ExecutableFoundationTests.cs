@@ -120,4 +120,35 @@ public class ExecutableFoundationTests
             recovered.Code.Should().Be(0);
         });
     }
+
+    [Fact]
+    public void Only_the_native_compiler_packages_are_allowed_and_only_in_a_native_build()
+    {
+        TestSupport.WithTemp(temp =>
+        {
+            foreach (var file in new[] { "global.json", "Directory.Build.props", "Directory.Build.targets", "NuGet.Config" })
+                File.Copy(Path.Combine(TestSupport.Repo, file), Path.Combine(temp, file));
+            TestSupport.CopyTree(Path.Combine(TestSupport.Repo, "build"), Path.Combine(temp, "build"));
+            TestSupport.CopyTree(Path.Combine(TestSupport.Repo, "src"), Path.Combine(temp, "src"));
+            var project = Path.Combine(temp, "src", "RepoLore.Cli", "RepoLore.Cli.csproj");
+            var native = new[] { "-p:RepoLoreNative=true", "--runtime", System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier };
+            string[] Build(params string[] extra) =>
+                ["build", project, "--configuration", "Release", "--nologo", "--disable-build-servers", .. extra];
+
+            // The native build references the SDK's compiler packages, which the guard lets through.
+            TestSupport.Run(temp, Build(native)).Code.Should().Be(0);
+
+            var withPackage = System.Xml.Linq.XDocument.Parse(File.ReadAllText(project));
+            withPackage.Root!.Add(new System.Xml.Linq.XElement("ItemGroup", new System.Xml.Linq.XElement("PackageReference",
+                new System.Xml.Linq.XAttribute("Include", "Newtonsoft.Json"), new System.Xml.Linq.XAttribute("Version", "13.0.4"))));
+            withPackage.Save(project);
+            foreach (var mode in new[] { Array.Empty<string>(), native })
+            {
+                var result = TestSupport.Run(temp, Build(mode));
+                result.Code.Should().NotBe(0);
+                result.Out.Should().Contain("RLBOUNDARY: shipped projects must not reference NuGet packages: Newtonsoft.Json")
+                    .And.NotContain("Microsoft.DotNet.ILCompiler", "the compiler packages stay allowed in a native build");
+            }
+        });
+    }
 }

@@ -17,6 +17,20 @@
     <RepositoryUrl>https://github.com/R-Elias/repolore.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
+  <!-- RepoLoreNative=true builds the self-contained native executable that every channel except NuGet ships. Invariant
+       globalization drops the ICU dependency; the code uses only ordinal and invariant string operations. The target
+       defaults to the SDK's own platform (native compilation does not cross operating systems), so a plain restore
+       also downloads that platform's NativeAOT runtime pack, which publish needs; setting it here rather than as a
+       global property keeps it off Core and Infrastructure, whose lock files have no platforms. -->
+  <PropertyGroup Condition="'$(RepoLoreNative)' == 'true'">
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <AssemblyName>repolore</AssemblyName>
+    <PackAsTool>false</PackAsTool>
+    <IsPackable>false</IsPackable>
+    <RuntimeIdentifiers>win-x64;win-arm64;linux-x64;linux-arm64;osx-x64;osx-arm64</RuntimeIdentifiers>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">$(NETCoreSdkRuntimeIdentifier)</RuntimeIdentifier>
+  </PropertyGroup>
   <ItemGroup>
     <None Include="../../README.md" Pack="true" PackagePath="/" />
   </ItemGroup>

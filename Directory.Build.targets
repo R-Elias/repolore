@@ -17,7 +17,13 @@
   </UsingTask>
   <Target Name="EnforceRuntimeDependencies" AfterTargets="ResolveReferences"
           Condition="'$(EnforceRuntimeBoundary)' == 'true'">
-    <Error Condition="'@(PackageReference)' != ''" Text="RLBOUNDARY: shipped projects must not reference NuGet packages." />
+    <ItemGroup>
+      <!-- A native build compiles with the SDK's own native compiler and trimmer packages: build tooling, not runtime
+           dependencies. Every other package reference stays forbidden. -->
+      <_ForbiddenPackage Include="@(PackageReference)"
+        Condition="'$(PublishAot)' != 'true' or ('%(PackageReference.Identity)' != 'Microsoft.DotNet.ILCompiler' and '%(PackageReference.Identity)' != 'Microsoft.NET.ILLink.Tasks')" />
+    </ItemGroup>
+    <Error Condition="'@(_ForbiddenPackage)' != ''" Text="RLBOUNDARY: shipped projects must not reference NuGet packages: @(_ForbiddenPackage)" />
     <ItemGroup>
       <_UnexpectedReference Include="@(ReferencePath)"
         Condition="'%(ReferencePath.FrameworkReferenceName)' != 'Microsoft.NETCore.App' and '%(ReferencePath.ReferenceSourceTarget)' != 'ProjectReference'" />

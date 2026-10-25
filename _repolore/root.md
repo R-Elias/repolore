@@ -19,6 +19,7 @@ This repository is the proof of concept of RepoLore: operational memory for deve
 - Work on the NuGet tool package, package contents, install/restore from a local feed, or the network-blocked smoke → [packaging and installation](roadmap/packaging-and-installation.md).
 - Use the tool (install, internal feed, daily use, sessions, migration, recovery) → [user guide](../docs/user-guide.md).
 - Plan or work on the scenario tests (reference repository, scenarios, stages, schedule) → [scenario tests](roadmap/scenario-tests.md).
+- Work on the native executables, the channels other than NuGet, the publish workflow's checkboxes or the website → [distribution](roadmap/distribution.md).
 - Plan or work on the v1.0.0 release (author signing deferred; SBOM, release notes, vulnerability reporting, remaining actions) → [v1.0.0 release plan](roadmap/release-v1.md).
 - Prepare or review the dogfood migration of this checkout, the acceptance journey, or the preview-readiness checklist and publication steps → [dogfood and preview](roadmap/dogfood-and-preview.md).
 - Read the method (the shipped v1 guidance; the two copies are identical) → repository-root `method.md` and its matching `_repolore/method.md` copy. The alpha text it replaced is in Git history.
@@ -30,7 +31,7 @@ The alpha full mirror (`_repolore/tree/`) has been removed; `_repolore/sparse-tr
 
 The full mirror is gone and `sparse-tree/` is the sole authored path tree. Custom areas are first-class. Planned `sessions/<session-id>/` folders add Gitignored short-term knowledge, explicitly selected for context and included in checkpoint recovery by default. Durable knowledge remains the reviewed long-term layer. `product/` and `roadmap/` are authored planning areas today and may be edited directly. Do not run alpha generators on a migrated v1 knowledge base.
 
-The first release is one NuGet .NET tool package, `RepoLore.Cli`, containing Core and Infrastructure assemblies. No plugins or additional package channels. Runtime target: .NET 10. The core is local-only; recovery uses explicit checkpoints with a configurable 200 MiB default budget.
+The first release is one NuGet .NET tool package, `RepoLore.Cli`, containing Core and Infrastructure assemblies. No plugins. Since 2026-10-25 the same code also ships as native executables for the GitHub release, PyPI, npm, Homebrew, winget and repolore.org ([distribution](roadmap/distribution.md)). Runtime target: .NET 10. The core is local-only; recovery uses explicit checkpoints with a configurable 200 MiB default budget.
 
 The old alpha notes are historical implementation references. The v1 roadmap supersedes their full-mirror and exact-command-compatibility assumptions. Both method copies were replaced on 2026-10-24 with the shipped v1 method through `repolore init --update-method`, updated again on 2026-10-25 to the method that `1.0.0-rc.2` through `1.0.0` ship, and remain identical; the committed tool manifest `.config/dotnet-tools.json` pins `RepoLore.Cli` `1.0.0`, the first stable release; before that it pinned `0.1.0-preview.1` and the three release candidates ([dogfood and preview](roadmap/dogfood-and-preview.md)).
 

@@ -2,4 +2,7 @@
 
 Draft notes for changes after `1.0.0`. Before tagging the next version, move the entries below into `docs/release-notes/<version>.md` (the release workflow refuses a version without its own notes file) and reset this list.
 
-- None yet.
+- **New channels:** the same tool now also ships as a native executable that needs no .NET, for Windows, Linux (glibc) and macOS on x64 and arm64: archives on the GitHub release, `repolore` on PyPI, `repolore-cli` on npm, `repolore-org/tap/repolore` on Homebrew, `repolore` on winget, and install scripts on repolore.org. Each executable passes the same smoke and scenario suite as the NuGet tool on its own operating system.
+- **Windows output is UTF-8:** RepoLore now switches the console to UTF-8, as `dotnet tool run` already did before starting it, so a path such as `docs/équipe/` prints the same on every channel and nothing is lost to the console's code page. Only a tool started without `dotnet tool run` (a global tool, or the new executables) behaves differently than before; the console stays in UTF-8 after RepoLore exits, as it does after any `dotnet` command.
+- **Release files:** the checksum file is now `repolore-<version>.sha256` and covers every file attached to the release. A second SBOM, `repolore-<version>.native.cdx.json`, lists the .NET runtime components inside the executables, and every archive carries the runtime's license and notices.
+- **Publishing:** the publish workflow runs by hand with one checkbox per channel; pushing a tag no longer publishes. The same build can also be published to NuGet under the ID `RepoLore`.

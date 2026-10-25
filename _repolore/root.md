@@ -32,7 +32,7 @@ The full mirror is gone and `sparse-tree/` is the sole authored path tree. Custo
 
 The first release is one NuGet .NET tool package, `RepoLore.Cli`, containing Core and Infrastructure assemblies. No plugins or additional package channels. Runtime target: .NET 10. The core is local-only; recovery uses explicit checkpoints with a configurable 200 MiB default budget.
 
-The old alpha notes are historical implementation references. The v1 roadmap supersedes their full-mirror and exact-command-compatibility assumptions. Both method copies were replaced on 2026-10-24 with the shipped v1 method through `repolore init --update-method`, updated again on 2026-10-25 to the method `1.0.0-rc.2` ships, and remain identical; the committed tool manifest `.config/dotnet-tools.json` pins `RepoLore.Cli` `1.0.0-rc.2`, the second release candidate; it pinned `0.1.0-preview.1` until 2026-10-24 and `1.0.0-rc.1` until 2026-10-25 ([dogfood and preview](roadmap/dogfood-and-preview.md)).
+The old alpha notes are historical implementation references. The v1 roadmap supersedes their full-mirror and exact-command-compatibility assumptions. Both method copies were replaced on 2026-10-24 with the shipped v1 method through `repolore init --update-method`, updated again on 2026-10-25 to the method `1.0.0-rc.2` and `1.0.0-rc.3` ship, and remain identical; the committed tool manifest `.config/dotnet-tools.json` pins `RepoLore.Cli` `1.0.0-rc.3`, the third release candidate; it pinned `0.1.0-preview.1` until 2026-10-24, then `1.0.0-rc.1` and `1.0.0-rc.2` on 2026-10-24 and 2026-10-25 ([dogfood and preview](roadmap/dogfood-and-preview.md)).
 
 ## Remaining design work
 

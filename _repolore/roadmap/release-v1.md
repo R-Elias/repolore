@@ -85,7 +85,12 @@ Remaining:
      - Scenarios tagged `contract` pin both the fixed and the frozen items ([scenario tests](scenario-tests.md)).
    - PR #16 merged them (`f555624`) after the maintainer pushed `s43`–`s46`; `ci` was green on all three operating systems, scenarios included (reported 2026-10-25).
    - **Release candidate `1.0.0-rc.3`, branch `release/1.0.0-rc.3`:** `<Version>` is `1.0.0-rc.3`, the lock files were regenerated (only the project version changed), `docs/release-notes/1.0.0-rc.3.md` holds the contract entries from `unreleased.md` (reset), and the readme and the guide name `1.0.0-rc.3`. Its upgrade note warns about rules ending with a space. The tool pin stays at `1.0.0-rc.2` until rc.3 is published.
-   - Then: dry run, tag `v1.0.0-rc.3`, verify, move the pin, use it briefly, and cut 1.0.0 from it.
+   - **Published (2026-10-25):** `publish` dry run #9 on `main` (`2df6477`, PR #17) was green. Tag `v1.0.0-rc.3` (lightweight) on that commit started run #10: build green, and the publish job, approved by the maintainer, completed at 12:27:41 UTC. NuGet.org's flat container listed it a few minutes later and the registration index (which `dotnet tool install` resolves) about 80 seconds after that; an install in between fails with "version not found".
+     - A clean install from nuget.org only, with empty caches, succeeded. `version` reported `RepoLore 1.0.0-rc.3`; `init` and `health-check` worked; the written method is byte-identical to this repository's; `history --json` showed a six-digit time; `tree` listed only the two notes; a `.repoloreignore` rule ending with a space gave the new `policy-error` (exit 3).
+     - `dotnet nuget verify --all` exited 0 with only NuGet.org's repository signature. The downloaded file is 141440 bytes with that signature; the pushed file is 128351 bytes.
+     - The GitHub pre-release "RepoLore.Cli 1.0.0-rc.3 (release candidate)" carries the `.nupkg`, `.cdx.json` and `.sha256` from run #10. Downloaded from the release, `shasum -a 256 -c` reported OK for the package (`b5929245…`) and the SBOM (`99a5deee…`); the SBOM is CycloneDX 1.7 for `RepoLore.Cli 1.0.0-rc.3` with `RepoLore.Core` and `RepoLore.Infrastructure`.
+     - Branch `chore/pin-1.0.0-rc.3` moves the pin. Here the candidate read the 45 existing checkpoints (the newest, written by the source build, already with six digits), took checkpoint 46 and was healthy, and `init --update-method` had nothing to do.
+   - Then: use rc.3 briefly, and cut 1.0.0 from it.
 6. **The cut:**
    - bump `<Version>` to `1.0.0` and write `docs/release-notes/1.0.0.md` from the candidate's notes plus `unreleased.md`;
    - run `scenarios` on that commit;

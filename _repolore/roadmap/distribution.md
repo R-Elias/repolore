@@ -1,6 +1,6 @@
 # Distribution beyond NuGet
 
-Status: **set up in PR #21; `1.1.0` (PR #22, tag `v1.1.0`, publish run #14) published on 2026-10-25 to every channel except winget, whose first pull request awaits Microsoft's review.** The dry run #13 from the setup branch was green on all six platforms.
+Status: **set up in PR #21; `1.1.0` (PR #22, tag `v1.1.0`, publish run #14) published on 2026-10-25 to every channel except winget, whose first pull request awaits Microsoft's review; `1.1.1` (NuGet ID `RepoLore`) followed the same evening.** The dry run #13 from the setup branch was green on all six platforms.
 
 1.1.0, verified on 2026-10-25 by downloading or installing on macOS arm64 (other platforms: their files are byte-identical to the ones the run tested on their own runners):
 
@@ -10,8 +10,12 @@ Status: **set up in PR #21; `1.1.0` (PR #22, tag `v1.1.0`, publish run #14) publ
 - npm: the run's npm job failed (see the `./` note below), so the maintainer published the run's checksum-verified tarballs from the maintainer's machine with `build/npm-publish.sh`, after enabling 2FA (a passkey; npm requires 2FA to publish). The registry's seven tarballs equal those files; these versions carry no provenance attestation. New packages show a `0.0.0-stage` placeholder for a few minutes while npm processes them. Trusted publishing (`R-Elias/repolore`, `publish.yml`, environment `npm`) was then set on all seven with `npm trust github`, so `NPM_TOKEN` is to be removed.
 - Homebrew: the tap's formula equals the run's, and its URLs and checksums match the release.
 - Website: the first deployment was refused because `github-pages` allowed only `main`; with the tag rule `v*` added, a re-run of the job deployed it, and `install.sh` installs a running 1.1.0.
-- This checkout pins `1.1.0` since branch `chore/pin-1.1.0`: it read the 59 existing checkpoints, had nothing to checkpoint, was healthy, and the method is unchanged since `1.0.0-rc.2`.
+- This checkout pinned `1.1.0` from branch `chore/pin-1.1.0` until 1.1.1: it read the 59 existing checkpoints, had nothing to checkpoint, was healthy, and the method is unchanged since `1.0.0-rc.2`.
 - winget: pull request microsoft/winget-pkgs#461674. Its URL check failed because the homepage was still 404 at the time; after the CLA comment, an empty commit pushed to the pull request's branch restarted validation (`@wingetbot run` is documented among the moderators' tools).
+
+1.1.1 (PR #25, tag `v1.1.1`), published on 2026-10-25 with every channel ticked except winget (its 1.1.0 pull request was still in review and the executable was unchanged); its only change is the NuGet package ID `RepoLore`. Verified the same way: the release's 9 checksums, PyPI's 6 wheels, npm's 7 packages (now with SLSA provenance attestations, so trusted publishing works without a token), the Homebrew formula's URLs and checksums, the website and `install.sh`, and `RepoLore` 1.1.1 installed from NuGet.org with its repository signature. The first NuGet push was refused (403) because the trusted publishing policy's package pattern did not cover the new ID; after the maintainer widened it, a re-run of the job published it. NuGet.org served the new ID about 5 minutes after the push. This checkout then moved its manifest from `RepoLore.Cli` 1.1.0 to `RepoLore` 1.1.1 (branch `chore/pin-repolore-1.1.1`) with `dotnet tool uninstall RepoLore.Cli --local` and `dotnet tool install RepoLore --version 1.1.1 --local`; it read the 61 existing checkpoints, had nothing to checkpoint and was healthy. Deprecating every `RepoLore.Cli` version (Legacy, alternate `RepoLore`) and the `RepoLore` prefix reservation are manual steps on nuget.org.
+
+A Defender detection blocks the winget pull request: its installation test (2026-10-25) ended with `Validation-Defender-Error` and `Validation-Executable-Error`, although both installs completed and the manifest's `RelativeFilePath` matches the archives. The likely cause is a false positive on a new, unsigned NativeAOT executable, which then disappears so the test cannot find it; the maintainer is to submit the executables to Microsoft for analysis and answer on the pull request within 10 days. Any Windows channel can meet the same detection until Microsoft clears it; code signing would be the lasting fix.
 
 ## Decision (maintainer, 2026-10-25)
 

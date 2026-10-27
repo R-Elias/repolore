@@ -2,8 +2,8 @@
   "version": 1,
   "isRoot": true,
   "tools": {
-    "repolore.cli": {
-      "version": "1.1.0",
+    "repolore": {
+      "version": "1.1.1",
       "commands": [
         "repolore"
       ],
